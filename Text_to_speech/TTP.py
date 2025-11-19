@@ -77,5 +77,8 @@ async def text_to_speech(input_file):
             print(f"Failed to delete {output_file}: {e}")
 
 if __name__ == "__main__":
-    file_path = input("Enter text file path: ").strip()
+    # file_path = input("Enter text file path: ").strip()
+    file_path = "Text_to_speech/TestAr.txt"  # Example file path
+    file_path = "Text_to_speech/TestEn.txt"  # Example file path
+    
     asyncio.run(text_to_speech(file_path))
