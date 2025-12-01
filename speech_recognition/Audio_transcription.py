@@ -1,85 +1,113 @@
 import os
-import tempfile
-import requests
 import ffmpeg
 import torch
 import whisper
-from icecream import ic
-
-# Define lists of video and audio file extensions
-video_extensions = ['.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv']
-audio_extensions = ['.mp3', '.wav', '.aac', '.ogg', '.flac', '.waptt']
-
-output_audio = "test_audio.mp3"
 
 
-def extract_audio(file_name, audio_path):
-    ffmpeg.input(file_name).output(audio_path).run()
+# --------------------------
+# File Extension Definitions
+# --------------------------
+VIDEO_EXTENSIONS = ['.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv']
+AUDIO_EXTENSIONS = ['.mp3', '.wav', '.aac', '.ogg', '.flac']
+
+EXTRACTED_AUDIO_NAME = "extracted_audio.mp3"
 
 
-def check_file_type(file_name):
-    if any(file_name.lower().endswith(ext) for ext in video_extensions):
-        print("This file is a video.")
-        extract_audio(file_name, output_audio)
-        return output_audio
-    elif any(file_name.lower().endswith(ext) for ext in audio_extensions):
-        print("This file is an audio.")
-        return file_name
-    else:
-        print("This file is neither a video nor an audio. Please check the file type.")
-        return None
+# --------------------------
+# Helper: Convert paths to absolute
+# --------------------------
+def to_abs(path):
+    return os.path.abspath(path)
 
 
-def delete_file(path):
-    try:
-        os.remove(path)
-        print(f"File {path} has been deleted.")
-    except FileNotFoundError:
-        print(f"File {path} not found.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
+# --------------------------
+# Extract audio from video
+# --------------------------
+def extract_audio(video_path, output_path):
+    """
+    Converts a video file into an audio file using ffmpeg.
+    """
+    ffmpeg.input(video_path).output(output_path).run()
+    return output_path
 
 
-def init():
+# --------------------------
+# Determine if file is audio or video
+# --------------------------
+def get_audio_path(input_path):
+    """
+    Returns a valid audio file path.
+    - If input is video → extract audio.
+    - If input is audio → return it.
+    """
+    path = to_abs(input_path)
+
+    # Video file
+    if any(path.lower().endswith(ext) for ext in VIDEO_EXTENSIONS):
+        print("Detected: Video file → extracting audio...")
+        return extract_audio(path, EXTRACTED_AUDIO_NAME)
+
+    # Audio file
+    if any(path.lower().endswith(ext) for ext in AUDIO_EXTENSIONS):
+        print("Detected: Audio file.")
+        return path
+
+    # Neither
+    print("Error: File is not a supported audio or video type.")
+    return None
+
+
+# --------------------------
+# Whisper initialization
+# --------------------------
+def load_whisper_model():
+    """
+    Loads Whisper (large model) on GPU if available.
+    """
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = whisper.load_model("large").to(device)
-    return model
+    return whisper.load_model("large").to(device)
 
 
-def transcribe(model, file_name):
-    result = model.transcribe(file_name, language="ar")
+# --------------------------
+# Transcription
+# --------------------------
+def transcribe_audio(model, audio_path, language="ar"):
+    result = model.transcribe(audio_path, language=language)
     print(result["text"])
-    with open("speech_recognition/transcription.txt", "w", encoding="utf-8") as f:
+    return result
+
+
+# --------------------------
+# Top-level function
+# --------------------------
+def transcribe_media(input_file):
+    """
+    Full pipeline:
+    1. Identify audio source
+    2. (Extract if video)
+    3. Transcribe
+    4. Save output to TXT file
+    """
+    audio_path = get_audio_path(input_file)
+    if audio_path is None:
+        return
+
+    print("Transcribing...")
+    result = transcribe_audio(model, audio_path)
+
+    # Save transcription
+    out_name = f"transcription_{os.path.basename(audio_path)}.txt"
+    with open("./speech_recognition/" + out_name, "w", encoding="utf-8") as f:
         f.write(result["text"])
 
-model = init()
+    print("✓ Transcription saved:", out_name)
 
-def transcribe_video_or_audio(media_files):
-    """
-    media_files: list of dicts like
-        [{'url': 'https://api.twilio.com/…', 'type': 'audio/ogg'}, …]
-    """
-    ic(torch.cuda.is_available())
-    ic(torch.cuda.device_count())
-    ic(torch.cuda.get_device_name(0))
-    
-    file_to_test = media_files
-    Voice = ""  # <-- initialize empty string to store text
-    tmp_path = tempfile.mkstemp()
 
-    path_to_audio = check_file_type(file_to_test)
-    # path_to_audio = check_file_type(tmp_path)
-    if path_to_audio:
-        # print("Transcribing...")
-        result = model.transcribe(path_to_audio, language="ar")
-        # print("Transcription complete.")
-        # Voice += result["text"] + "\n"  # <-- store text
-        # print(result["text"])
-        print("Transcription written to file.")
-        # delete_file(path_to_audio)
-
-    delete_file(tmp_path)
-
-    return Voice   # <-- return it
-
-transcribe_video_or_audio("speech_recognition/Test_audio.mp3")
+# --------------------------
+# Run the script
+# --------------------------
+model = load_whisper_model()
+# transcribe_media("./speech_recognition/Test_audio.mp3")
+transcribe_media("./Todo/waleed.aac")
+transcribe_media("./Todo/handosa1.aac")
+transcribe_media("./Todo/handosa2.aac")

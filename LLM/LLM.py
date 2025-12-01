@@ -59,7 +59,8 @@ def generate_response(prompt: str, max_new_tokens: int = 100):
 
 
 # --- Run the Model ---
-user_prompt = "Explain the concept of a black hole in simple terms."
+# user_prompt = "Explain the concept of a black hole in simple terms."
+user_prompt = "Explain the concept of a Smart glasses in simple terms."
 print(f"\n--- User Prompt ---\n{user_prompt}")
 print("\n--- Model Response ---")
 response = generate_response(user_prompt)

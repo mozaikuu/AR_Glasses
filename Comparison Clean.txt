@@ -1,0 +1,45 @@
+Complete Specification Table
+
+Meta Ray-Ban Smart Glasses • Lenovo ThinkReality A3 • Microsoft HoloLens 2
+
+Category	Meta Ray-Ban Smart Glasses	Lenovo ThinkReality A3	Microsoft HoloLens 2
+Device Type	Smart glasses (camera + audio)	AR smart glasses (tethered)	Standalone mixed-reality headset
+Price	~$299–$379	~$1,499	~$3,500
+Release Year	2023 (2nd Gen)	2021	2019
+Weight	~48–50 g	~130 g	~566 g
+Dimensions	Eyewear form factor	Glasses form factor	Head-mounted visor
+Operating System	Meta firmware	Android-based custom OS	Windows Holographic
+CPU / Processor	Qualcomm Snapdragon (light SoC)	Uses PC/phone CPU	Qualcomm Snapdragon 850 + custom Holographic Processing Unit (HPU 2.0)
+GPU	Integrated mobile GPU	Uses PC/phone GPU	Integrated Adreno + custom HPU
+RAM	Not publicly specified	Uses PC/phone RAM	4 GB LPDDR4x
+Storage	Not applicable (cloud/app based)	Uses PC/phone storage	64 GB UFS
+Display Type	None (not AR)	Binocular 1080p micro-OLED AR displays	Waveguide AR holographic displays
+Display Resolution	—	1920 × 1080 per eye	2k per eye (2048 × 1080 equivalent)
+Field of View (FOV)	—	~40° diagonal	~52° diagonal
+Optics	—	45% transparency	Diffractive waveguides
+Brightness	—	~200–400 nits	~500 nits equivalent
+Cameras	12-MP photo, 1080p60 video	8-MP RGB camera, dual fisheye tracking	Depth camera, 8-MP RGB camera
+Sensors	Accelerometer, gyroscope, touch panel, microphones	IMU, dual-fisheye 6DoF tracking	IMU, depth sensor, IR cameras, eye-tracking cameras
+Tracking Type	No positional tracking	6DoF inside-out	Full 6DoF inside-out tracking
+Hand Tracking	No	Yes (basic)	Yes (advanced, fully articulated)
+Eye Tracking	No	No	Yes
+Environment Mapping	No	Spatial mapping via fisheye	Real-time spatial mapping
+Audio	Open-ear speakers; 5-mic array	Stereo speakers	Spatial sound stereo speakers
+Voice Assistant	Yes (Meta AI)	No	Yes (Cortana optional for enterprise)
+Connectivity	Bluetooth 5.x	USB-C tether to PC/phone	Wi-Fi 5, Bluetooth
+Battery Life	3–4 hours mixed use	Tethered (no battery)	2–3 hours mixed MR use
+Charging Time	~1 hour	—	~65–90 minutes
+Battery Capacity	Not specified	—	~15.2 Wh
+Controller Support	No controllers	Optional 6DoF controller	Hand tracking (no controllers)
+Compute Mode	On-device only	Tethered: PC Edition / Industrial Edition	Standalone (full compute onboard)
+Software Ecosystem	Meta View app, Meta AI	ThinkReality XR platform	Microsoft Dynamics 365, enterprise MR apps
+Development Platform	Meta SDK	Lenovo ThinkReality SDK	Unity, Unreal, MRTK
+Security / Privacy	Capture LED, encrypted pairing	Enterprise control suite	Enterprise encryption, secure boot
+Use Cases	Social content, photo/video, calls	Virtual monitors, AR workflows, training	MR training, remote support, surgery, design
+Build Material	Acetate frame, sunglasses	Lightweight plastic/metal	Carbon fiber, plastic
+Comfort / Fit	Everyday sunglasses	Lightweight but tethered	Adjustable headband, balanced front/back
+Environmental Rating	—	Depends on PC/phone	IP50 (dust protected)
+Accessories	Charging case	Companion PC/phone; industrial safety frame	Carry case, fit kit
+Supported Platforms	iOS, Android	PC, Motorola phones	Windows ecosystem
+Developer Access	Moderate	Moderate	Full enterprise SDK
+Safety Features	Recording LED	Enterprise admin controls	Eye safety compliance, passthrough alerts

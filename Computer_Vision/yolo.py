@@ -20,7 +20,7 @@ else:
     model = YOLO(PATH + "yolo11n_coco8_trained.pt")
 
 # Run inference test
-# results = model(PATH + "Tests/Test1.jpg")
-# results = model(PATH + "Tests/Test2.jpg")
-# results = model(PATH + "Tests/Test3.jpg")
-# results = model(PATH + "Tests/Test4.png")
+results = model(PATH + "Tests/Test1.jpg")
+results = model(PATH + "Tests/Test2.jpg")
+results = model(PATH + "Tests/Test3.jpg")
+results = model(PATH + "Tests/Test4.png")
