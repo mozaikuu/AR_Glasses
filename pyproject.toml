@@ -1,0 +1,18 @@
+[project]
+name = "smart-glasses"
+version = "0.1.0"
+description = "Smart Glasses MCP Server"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+]
+
+[project.optional-dependencies]
+dev = ["debugpy", "pytest"]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,18 @@
+README.md
+pyproject.toml
+src/MCP_Server/Quick_start.py
+src/MCP_Server/Server copy.py
+src/MCP_Server/Server.py
+src/MCP_Server/Server_Simple.py
+src/MCP_Server/Tools.py
+src/MCP_Server/__init__.py
+src/MCP_Server/Tools/CV.py
+src/MCP_Server/Tools/GPS.py
+src/MCP_Server/Tools/TTS.py
+src/MCP_Server/Tools/bt.py
+src/MCP_Server/Tools/wifi.py
+src/smart_glasses.egg-info/PKG-INFO
+src/smart_glasses.egg-info/SOURCES.txt
+src/smart_glasses.egg-info/dependency_links.txt
+src/smart_glasses.egg-info/requires.txt
+src/smart_glasses.egg-info/top_level.txt
