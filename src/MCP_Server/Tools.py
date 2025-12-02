@@ -1,15 +1,15 @@
 from mcp.server.fastmcp import FastMCP
 # import Computer_Vision.yolo as cv_tool
-from Computer_Vision.yolo import infer as cv_tool
+from Computer_Vision.yolo import infer
 
 mcp = FastMCP(name="Tools Server")
 
 # LLM -> MCP -> Tools -> LLM 
 
 @mcp.tool()
-def CV() -> str:
+def CV() -> None:
     """Computer Vision tool."""
-    return cv_tool.infer()
+    return infer()
 
 
 @mcp.tool()

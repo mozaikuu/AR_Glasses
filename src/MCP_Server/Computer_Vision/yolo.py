@@ -49,5 +49,9 @@ else:
 
 def infer():
     """Run inference on an image and return results."""
-    results = model.predict(frame, save=True, save_txt=True, project='./src/MCP_Server/Computer_Vision/Inference_Results', name='camera_output')
+    # results = model.predict(frame, save=True, save_txt=True, project='./src/MCP_Server/Computer_Vision/Inference_Results', name='camera_output')
+    results = model(frame, project='./src/MCP_Server/Computer_Vision/Inference_Results', name='camera_output')
     return results
+
+data = infer()
+print(data)  # or process the results as needed
