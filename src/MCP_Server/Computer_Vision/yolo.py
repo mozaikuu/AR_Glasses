@@ -50,8 +50,10 @@ else:
 def infer():
     """Run inference on an image and return results."""
     # results = model.predict(frame, save=True, save_txt=True, project='./src/MCP_Server/Computer_Vision/Inference_Results', name='camera_output')
-    results = model(frame, project='./src/MCP_Server/Computer_Vision/Inference_Results', name='camera_output')
-    return results
+    results = model.predict(frame, project='./src/MCP_Server/Computer_Vision/Inference_Results', name='camera_output')
+    output_string = str(results[0]) if isinstance(results, list) else str(results)
+    return str(output_string)
 
-data = infer()
-print(data)  # or process the results as needed
+# infer()
+
+# print("Inference Results:", results)

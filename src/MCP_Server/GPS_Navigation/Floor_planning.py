@@ -487,10 +487,13 @@ class MultiFloorPlanner(ctk.CTk):
             self.redraw()
             steps = len(path) - 1
             messagebox.showinfo("Path Found", f"Path found!\nSteps: {steps}\nFollow the gold line.")
+            return path
         else:
             self.path_result = []
             self.redraw()
             messagebox.showwarning("No Path", "No route exists between these rooms.\nCheck walls and floor connections (Stairs/Elevators).")
+            err = "No Path", "No route exists between these rooms.\nCheck walls and floor connections (Stairs/Elevators)."
+            return err
 
     def astar_3d(self, start, goal):
         # Node: (f, r, c)
