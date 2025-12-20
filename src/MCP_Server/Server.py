@@ -1,112 +1,139 @@
-"""
-MCP JSON-RPC TCP server + tool dispatcher + wifi & bluetooth discovery integration.
+# from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP  
+# from tools.computer_vision.yolo import infer
+# from tools.gps_navigation.Floor_planning import MultiFloorPlanner 
+from tools.search_web.search_web import retrieve_web_context
+from tools.computer_vision.cv import detect_objects
 
-Run: python server.py
-"""
+mcp = FastMCP(name="smart-glasses")
 
-import asyncio
-import json
-import sys
-import signal
+# LLM -> MCP -> Tools -> LLM 
 
-from tools.tts import tts_tool
-from tools.gps import gps_tool
-from tools.camera import cv_tool
+# @mcp.tool()
+# def NavigateIndoor(start: str, destination: str, algorithm: str = "astar") -> str:
+#     graph = {...}
+#     heuristic = {...}
 
-from discovery.wifi import start_wifi_broadcast
-from discovery.bluetooth import start_bt_broadcast
+#     nav = IndoorNavigator(graph, heuristic)
 
-PORT = 8765
-TOOLS = {
-    "tts": tts_tool,
-    "gps": gps_tool,
-    "cv": cv_tool
-}
+#     if algorithm == "bfs":
+#         path = nav.bfs(start, destination)
+#     elif algorithm == "dfs":
+#         path = nav.dfs(start, destination)
+#     elif algorithm == "dijkstra":
+#         path, _ = nav.dijkstra(start, destination)
+#     else:
+#         path, _ = nav.astar(start, destination)
 
-async def handle_tcp(reader, writer):
-    addr = writer.get_extra_info('peername')
-    print("TCP client connected:", addr)
-    while True:
-        data = await reader.readline()
-        if not data:
-            break
-        try:
-            msg = json.loads(data.decode().strip())
-        except Exception as e:
-            print("Invalid JSON:", e)
-            continue
+#     if not path:
+#         return "No route found."
 
-        # Expect JSON-RPC like: {"jsonrpc":"2.0","id":1,"method":"call_tool","params":{"tool":"tts","args":{"text":"hi"}}}
-        response = {"jsonrpc": "2.0", "id": msg.get("id")}
+#     return " → ".join(path)
 
-        try:
-            if msg.get("method") == "call_tool":
-                params = msg.get("params", {})
-                tool_name = params.get("tool")
-                args = params.get("args", {})
-                if tool_name in TOOLS:
-                    tool = TOOLS[tool_name]
-                    if asyncio.iscoroutinefunction(tool):
-                        result = await tool(args)
-                    else:
-                        # run sync tool in threadpool so we don't block event loop
-                        loop = asyncio.get_event_loop()
-                        result = await loop.run_in_executor(None, tool, args)
-                    response["result"] = result
-                else:
-                    response["error"] = {"code": -32601, "message": "Tool not found"}
-            else:
-                response["error"] = {"code": -32601, "message": "Unknown method"}
-        except Exception as e:
-            response["error"] = {"code": -32000, "message": str(e)}
+@mcp.tool()
+def retrieve_web_context(query: str) -> dict:
+    """Perform a web search and returns results to summarize."""
+    # Placeholder for web search logic
+    return retrieve_web_context(query)
 
-        writer.write((json.dumps(response) + "\n").encode())
-        await writer.drain()
+# @mcp.tool()
+# def CV() -> str:
+#     """Computer Vision tool."""
+#     results = infer()
+#     return f"Computer Vision Inference Results: {results}"
 
-    writer.close()
-    await writer.wait_closed()
-    print("TCP client disconnected:", addr)
+# @mcp.tool()
+# def GPS_Path() -> str:
+#     return MultiFloorPlanner.calculate_path()
 
+# @mcp.tool()
+# def GPS_Layout() -> str:    
+#     return MultiFloorPlanner.save_project()
 
-async def start_server():
-    server = await asyncio.start_server(handle_tcp, host="0.0.0.0", port=PORT)
-    addrs = ", ".join(str(sock.getsockname()) for sock in server.sockets)
-    print(f"[TCP] Serving on {addrs}")
+# @mcp.tool()
+# def VisionDetect() -> str:
+#     """Detect objects using the camera."""
+#     return detect_objects()
 
-    # Start discovery services
-    zeroconf, local_ip = start_wifi_broadcast(port=PORT)
-    bt_sock = start_bt_broadcast(local_ip, PORT)
+# @mcp.tool()
+# def TTS() -> str:
+#     """Natural Language Understanding tool."""
+#     return "NLU tool executed."
 
-    # Graceful shutdown on SIGINT/SIGTERM
-    loop = asyncio.get_event_loop()
-    stop = asyncio.Future()
+# # @mcp.resource("file://documents/{name}")
+# # def read_document(name: str) -> str:
+# #     """Read a document by name."""
+# #     # This would normally read from disk
+# #     return f"Content of {name}"
 
-    def _signal_handler():
-        if not stop.done():
-            stop.set_result(True)
+#  /////////////////////////////////////////////////////////////////////////////////////
 
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        try:
-            loop.add_signal_handler(sig, _signal_handler)
-        except Exception:
-            # Not all systems support add_signal_handler (Windows)
-            pass
+# NOTES_FILE = os.path.join(os.path.dirname(__file__), "notes.txt")
 
-    async with server:
-        await asyncio.wait([server.serve_forever(), stop], return_when=asyncio.FIRST_COMPLETED)
+# def ensure_file():
+#     if not os.path.exists(NOTES_FILE):
+#         with open(NOTES_FILE, "w") as f:
+#             f.write("")
 
-    # cleanup
-    try:
-        zeroconf.unregister_all_services()
-        zeroconf.close()
-    except Exception:
-        pass
-    try:
-        bt_sock.close()
-    except Exception:
-        pass
-    print("Server shut down.")
+# @mcp.tool()
+# def add_note(message: str) -> str:
+#     """
+#     Append a new note to the sticky note file.
+
+#     Args:
+#         message (str): The note content to be added.
+
+#     Returns:
+#         str: Confirmation message indicating the note was saved.
+#     """
+#     ensure_file()
+#     with open(NOTES_FILE, "a") as f:
+#         f.write(message + "\n")
+#     return "Note saved!"
+
+# @mcp.tool()
+# def read_notes() -> str:
+#     """
+#     Read and return all notes from the sticky note file.
+
+#     Returns:
+#         str: All notes as a single string separated by line breaks.
+#              If no notes exist, a default message is returned.
+#     """
+#     ensure_file()
+#     with open(NOTES_FILE, "r") as f:
+#         content = f.read().strip()
+#     return content or "No notes yet."
+
+# @mcp.resource("notes://latest")
+# def get_latest_note() -> str:
+#     """
+#     Get the most recently added note from the sticky note file.
+
+#     Returns:
+#         str: The last note entry. If no notes exist, a default message is returned.
+#     """
+#     ensure_file()
+#     with open(NOTES_FILE, "r") as f:
+#         lines = f.readlines()
+#     return lines[-1].strip() if lines else "No notes yet."
+
+# @mcp.prompt()
+# def note_summary_prompt() -> str:
+#     """
+#     Generate a prompt asking the AI to summarize all current notes.
+
+#     Returns:
+#         str: A prompt string that includes all notes and asks for a summary.
+#              If no notes exist, a message will be shown indicating that.
+#     """
+#     ensure_file()
+#     with open(NOTES_FILE, "r") as f:
+#         content = f.read().strip()
+#     if not content:
+#         return "There are no notes yet."
+
+#     return f"Summarize the current notes: {content}"
 
 if __name__ == "__main__":
-    asyncio.run(start_server())
-    # mcp.run()
+    mcp.run()

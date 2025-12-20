@@ -1,18 +1,20 @@
 [project]
-name = "smart-glasses"
+name = "mcp-server"
 version = "0.1.0"
-description = "Smart Glasses MCP Server"
+description = "your ai companion and navigation in Smart Glasses"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+ "fastmcp==2.14.1",
+ "mcp==1.24.0",
 ]
-
-[project.optional-dependencies]
-dev = ["debugpy", "pytest"]
+[[project.authors]]
+name = "Ahmed Moussa"
+email = "ahmedmoussa.dev@gmail.com"
 
 [build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
+requires = [ "uv_build>=0.9.14,<0.10.0",]
+build-backend = "uv_build"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[project.scripts]
+mcp-server = "mcp_server:main"

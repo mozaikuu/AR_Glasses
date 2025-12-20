@@ -1,0 +1,525 @@
+2025-12-15 15:53:39,553 INFO Attempt 1 connecting over stdio transport
+2025-12-15 15:53:41,577 ERROR Stdio transport connection failed
+  + Exception Group Traceback (most recent call last):
+  |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\exceptiongroup\_catch.py", line 63, in handle_exception
+  |     raise matched
+  | ExceptionGroup:  (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\src\mcp_server\client.py", line 106, in run_agent
+    |     async with client:
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 496, in __aenter__
+    |     return await self._connect()
+    |            ^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 586, in _connect
+    |     raise exception
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 649, in _session_runner
+    |     await stack.enter_async_context(self._context_manager())
+    |   File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 659, in enter_async_context
+    |     result = await _enter(cm)
+    |              ^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    |     return await anext(self.gen)
+    |            ^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\exceptiongroup\_catch.py", line 65, in handle_exception
+    |     result = handler(matched)
+    |              ^^^^^^^^^^^^^^^^
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\utilities\exceptions.py", line 29, in _exception_handler
+    |     raise leaf
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 433, in _context_manager
+    |     await self.initialize()
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 490, in initialize
+    |     self._session_state.initialize_result = await self.session.initialize()
+    |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\mcp\client\session.py", line 171, in initialize
+    |     result = await self.send_request(
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\mcp\shared\session.py", line 306, in send_request
+    |     raise McpError(response_or_error.error)
+    | mcp.shared.exceptions.McpError: Connection closed
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\src\mcp_server\client.py", line 106, in run_agent
+    async with client:
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 496, in __aenter__
+    return await self._connect()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 586, in _connect
+    raise exception
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 649, in _session_runner
+    await stack.enter_async_context(self._context_manager())
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 659, in enter_async_context
+    result = await _enter(cm)
+             ^^^^^^^^^^^^^^^^
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\exceptiongroup\_catch.py", line 65, in handle_exception
+    result = handler(matched)
+             ^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\utilities\exceptions.py", line 29, in _exception_handler
+    raise leaf
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 433, in _context_manager
+    await self.initialize()
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 490, in initialize
+    self._session_state.initialize_result = await self.session.initialize()
+                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\mcp\client\session.py", line 171, in initialize
+    result = await self.send_request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\mcp\shared\session.py", line 306, in send_request
+    raise McpError(response_or_error.error)
+mcp.shared.exceptions.McpError: Connection closed
+2025-12-15 15:53:41,582 INFO Running diagnostic command: D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Scripts\fastmcp.exe run src/mcp_server/server.py:mcp --transport stdio --no-banner
+2025-12-15 15:53:51,590 ERROR Failed to run diagnostic fastmcp command
+  + Exception Group Traceback (most recent call last):
+  |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\exceptiongroup\_catch.py", line 63, in handle_exception
+  |     raise matched
+  | ExceptionGroup:  (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\src\mcp_server\client.py", line 106, in run_agent
+    |     async with client:
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 496, in __aenter__
+    |     return await self._connect()
+    |            ^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 586, in _connect
+    |     raise exception
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 649, in _session_runner
+    |     await stack.enter_async_context(self._context_manager())
+    |   File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 659, in enter_async_context
+    |     result = await _enter(cm)
+    |              ^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    |     return await anext(self.gen)
+    |            ^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\exceptiongroup\_catch.py", line 65, in handle_exception
+    |     result = handler(matched)
+    |              ^^^^^^^^^^^^^^^^
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\utilities\exceptions.py", line 29, in _exception_handler
+    |     raise leaf
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 433, in _context_manager
+    |     await self.initialize()
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 490, in initialize
+    |     self._session_state.initialize_result = await self.session.initialize()
+    |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\mcp\client\session.py", line 171, in initialize
+    |     result = await self.send_request(
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\mcp\shared\session.py", line 306, in send_request
+    |     raise McpError(response_or_error.error)
+    | mcp.shared.exceptions.McpError: Connection closed
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\src\mcp_server\client.py", line 106, in run_agent
+    async with client:
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 496, in __aenter__
+    return await self._connect()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 586, in _connect
+    raise exception
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 649, in _session_runner
+    await stack.enter_async_context(self._context_manager())
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 659, in enter_async_context
+    result = await _enter(cm)
+             ^^^^^^^^^^^^^^^^
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\exceptiongroup\_catch.py", line 65, in handle_exception
+    result = handler(matched)
+             ^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\utilities\exceptions.py", line 29, in _exception_handler
+    raise leaf
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 433, in _context_manager
+    await self.initialize()
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 490, in initialize
+    self._session_state.initialize_result = await self.session.initialize()
+                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\mcp\client\session.py", line 171, in initialize
+    result = await self.send_request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\mcp\shared\session.py", line 306, in send_request
+    raise McpError(response_or_error.error)
+mcp.shared.exceptions.McpError: Connection closed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\src\mcp_server\client.py", line 130, in run_agent
+    proc = subprocess.run(diag_cmd, capture_output=True, text=True, timeout=10)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\subprocess.py", line 550, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\subprocess.py", line 1209, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\subprocess.py", line 1628, in _communicate
+    raise TimeoutExpired(self.args, orig_timeout)
+subprocess.TimeoutExpired: Command '['D:\\0_code\\New_ideas\\1_Coding_Now\\Smart_Glasses\\.venv\\Scripts\\fastmcp.exe', 'run', 'src/mcp_server/server.py:mcp', '--transport', 'stdio', '--no-banner']' timed out after 10 seconds
+2025-12-15 15:53:51,608 INFO Retrying in 1.0 seconds...
+2025-12-15 15:53:52,620 INFO Attempt 2 connecting over stdio transport
+2025-12-15 15:53:52,620 ERROR Stdio transport connection failed
+Traceback (most recent call last):
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 433, in _context_manager
+    await self.initialize()
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 490, in initialize
+    self._session_state.initialize_result = await self.session.initialize()
+                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\mcp\client\session.py", line 171, in initialize
+    result = await self.send_request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\mcp\shared\session.py", line 281, in send_request
+    await self._write_stream.send(SessionMessage(message=JSONRPCMessage(jsonrpc_request), metadata=metadata))
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\anyio\streams\memory.py", line 249, in send
+    self.send_nowait(item)
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\anyio\streams\memory.py", line 218, in send_nowait
+    raise ClosedResourceError
+anyio.ClosedResourceError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 649, in _session_runner
+    await stack.enter_async_context(self._context_manager())
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 659, in enter_async_context
+    result = await _enter(cm)
+             ^^^^^^^^^^^^^^^^
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\exceptiongroup\_catch.py", line 65, in handle_exception
+    result = handler(matched)
+             ^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\utilities\exceptions.py", line 29, in _exception_handler
+    raise leaf
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 436, in _context_manager
+    raise RuntimeError("Server session was closed unexpectedly") from e
+RuntimeError: Server session was closed unexpectedly
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\src\mcp_server\client.py", line 106, in run_agent
+    async with client:
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 496, in __aenter__
+    return await self._connect()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 587, in _connect
+    raise RuntimeError(
+RuntimeError: Client failed to connect: Server session was closed unexpectedly
+2025-12-15 15:53:52,632 INFO Running diagnostic command: D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Scripts\fastmcp.exe run src/mcp_server/server.py:mcp --transport stdio --no-banner
+2025-12-15 15:54:02,639 ERROR Failed to run diagnostic fastmcp command
+Traceback (most recent call last):
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 433, in _context_manager
+    await self.initialize()
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 490, in initialize
+    self._session_state.initialize_result = await self.session.initialize()
+                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\mcp\client\session.py", line 171, in initialize
+    result = await self.send_request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\mcp\shared\session.py", line 281, in send_request
+    await self._write_stream.send(SessionMessage(message=JSONRPCMessage(jsonrpc_request), metadata=metadata))
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\anyio\streams\memory.py", line 249, in send
+    self.send_nowait(item)
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\anyio\streams\memory.py", line 218, in send_nowait
+    raise ClosedResourceError
+anyio.ClosedResourceError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 649, in _session_runner
+    await stack.enter_async_context(self._context_manager())
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 659, in enter_async_context
+    result = await _enter(cm)
+             ^^^^^^^^^^^^^^^^
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\exceptiongroup\_catch.py", line 65, in handle_exception
+    result = handler(matched)
+             ^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\utilities\exceptions.py", line 29, in _exception_handler
+    raise leaf
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 436, in _context_manager
+    raise RuntimeError("Server session was closed unexpectedly") from e
+RuntimeError: Server session was closed unexpectedly
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\src\mcp_server\client.py", line 106, in run_agent
+    async with client:
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 496, in __aenter__
+    return await self._connect()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 587, in _connect
+    raise RuntimeError(
+RuntimeError: Client failed to connect: Server session was closed unexpectedly
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\src\mcp_server\client.py", line 130, in run_agent
+    proc = subprocess.run(diag_cmd, capture_output=True, text=True, timeout=10)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\subprocess.py", line 550, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\subprocess.py", line 1209, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\subprocess.py", line 1628, in _communicate
+    raise TimeoutExpired(self.args, orig_timeout)
+subprocess.TimeoutExpired: Command '['D:\\0_code\\New_ideas\\1_Coding_Now\\Smart_Glasses\\.venv\\Scripts\\fastmcp.exe', 'run', 'src/mcp_server/server.py:mcp', '--transport', 'stdio', '--no-banner']' timed out after 10 seconds
+2025-12-15 15:54:02,641 INFO Retrying in 1.0 seconds...
+2025-12-15 15:54:03,649 INFO Attempt 3 connecting over stdio transport
+2025-12-15 15:54:03,649 ERROR Stdio transport connection failed
+Traceback (most recent call last):
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 433, in _context_manager
+    await self.initialize()
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 490, in initialize
+    self._session_state.initialize_result = await self.session.initialize()
+                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\mcp\client\session.py", line 171, in initialize
+    result = await self.send_request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\mcp\shared\session.py", line 281, in send_request
+    await self._write_stream.send(SessionMessage(message=JSONRPCMessage(jsonrpc_request), metadata=metadata))
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\anyio\streams\memory.py", line 249, in send
+    self.send_nowait(item)
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\anyio\streams\memory.py", line 218, in send_nowait
+    raise ClosedResourceError
+anyio.ClosedResourceError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 649, in _session_runner
+    await stack.enter_async_context(self._context_manager())
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 659, in enter_async_context
+    result = await _enter(cm)
+             ^^^^^^^^^^^^^^^^
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\exceptiongroup\_catch.py", line 65, in handle_exception
+    result = handler(matched)
+             ^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\utilities\exceptions.py", line 29, in _exception_handler
+    raise leaf
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 436, in _context_manager
+    raise RuntimeError("Server session was closed unexpectedly") from e
+RuntimeError: Server session was closed unexpectedly
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\src\mcp_server\client.py", line 106, in run_agent
+    async with client:
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 496, in __aenter__
+    return await self._connect()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 587, in _connect
+    raise RuntimeError(
+RuntimeError: Client failed to connect: Server session was closed unexpectedly
+2025-12-15 15:54:03,650 INFO Running diagnostic command: D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Scripts\fastmcp.exe run src/mcp_server/server.py:mcp --transport stdio --no-banner
+2025-12-15 15:54:13,666 ERROR Failed to run diagnostic fastmcp command
+Traceback (most recent call last):
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 433, in _context_manager
+    await self.initialize()
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 490, in initialize
+    self._session_state.initialize_result = await self.session.initialize()
+                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\mcp\client\session.py", line 171, in initialize
+    result = await self.send_request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\mcp\shared\session.py", line 281, in send_request
+    await self._write_stream.send(SessionMessage(message=JSONRPCMessage(jsonrpc_request), metadata=metadata))
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\anyio\streams\memory.py", line 249, in send
+    self.send_nowait(item)
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\anyio\streams\memory.py", line 218, in send_nowait
+    raise ClosedResourceError
+anyio.ClosedResourceError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 649, in _session_runner
+    await stack.enter_async_context(self._context_manager())
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 659, in enter_async_context
+    result = await _enter(cm)
+             ^^^^^^^^^^^^^^^^
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\exceptiongroup\_catch.py", line 65, in handle_exception
+    result = handler(matched)
+             ^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\utilities\exceptions.py", line 29, in _exception_handler
+    raise leaf
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 436, in _context_manager
+    raise RuntimeError("Server session was closed unexpectedly") from e
+RuntimeError: Server session was closed unexpectedly
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\src\mcp_server\client.py", line 106, in run_agent
+    async with client:
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 496, in __aenter__
+    return await self._connect()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 587, in _connect
+    raise RuntimeError(
+RuntimeError: Client failed to connect: Server session was closed unexpectedly
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\src\mcp_server\client.py", line 130, in run_agent
+    proc = subprocess.run(diag_cmd, capture_output=True, text=True, timeout=10)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\subprocess.py", line 550, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\subprocess.py", line 1209, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\subprocess.py", line 1628, in _communicate
+    raise TimeoutExpired(self.args, orig_timeout)
+subprocess.TimeoutExpired: Command '['D:\\0_code\\New_ideas\\1_Coding_Now\\Smart_Glasses\\.venv\\Scripts\\fastmcp.exe', 'run', 'src/mcp_server/server.py:mcp', '--transport', 'stdio', '--no-banner']' timed out after 10 seconds
+2025-12-15 15:54:13,668 INFO Stdio transport failed after retries — attempting WebSocket fallback
+2025-12-15 15:54:14,792 ERROR WebSocket fallback failed
+  + Exception Group Traceback (most recent call last):
+  |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\exceptiongroup\_catch.py", line 63, in handle_exception
+  |     raise matched
+  | ExceptionGroup:  (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 649, in _session_runner
+    |     await stack.enter_async_context(self._context_manager())
+    |   File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 659, in enter_async_context
+    |     result = await _enter(cm)
+    |              ^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    |     return await anext(self.gen)
+    |            ^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\exceptiongroup\_catch.py", line 65, in handle_exception
+    |     result = handler(matched)
+    |              ^^^^^^^^^^^^^^^^
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\utilities\exceptions.py", line 29, in _exception_handler
+    |     raise leaf
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 426, in _context_manager
+    |     async with self.transport.connect_session(
+    |   File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    |     return await anext(self.gen)
+    |            ^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\transports.py", line 150, in connect_session
+    |     async with websocket_client(self.url) as transport:
+    |   File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    |     return await anext(self.gen)
+    |            ^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\mcp\client\websocket.py", line 49, in websocket_client
+    |     async with ws_connect(url, subprotocols=[Subprotocol("mcp")]) as ws:
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\websockets\asyncio\client.py", line 587, in __aenter__
+    |     return await self
+    |            ^^^^^^^^^^
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\websockets\asyncio\client.py", line 541, in __await_impl__
+    |     self.connection = await self.create_connection()
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\websockets\asyncio\client.py", line 467, in create_connection
+    |     _, connection = await loop.create_connection(factory, **kwargs)
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_events.py", line 1119, in create_connection
+    |     raise exceptions[0]
+    |   File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_events.py", line 1101, in create_connection
+    |     sock = await self._connect_sock(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_events.py", line 1004, in _connect_sock
+    |     await self.sock_connect(sock, address)
+    |   File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\asyncio\proactor_events.py", line 727, in sock_connect
+    |     return await self._proactor.connect(sock, address)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\asyncio\windows_events.py", line 798, in _poll
+    |     value = callback(transferred, key, ov)
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\asyncio\windows_events.py", line 594, in finish_connect
+    |     ov.getresult()
+    | ConnectionRefusedError: [WinError 1225] The remote computer refused the network connection
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 649, in _session_runner
+    await stack.enter_async_context(self._context_manager())
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 659, in enter_async_context
+    result = await _enter(cm)
+             ^^^^^^^^^^^^^^^^
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\exceptiongroup\_catch.py", line 65, in handle_exception
+    result = handler(matched)
+             ^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\utilities\exceptions.py", line 29, in _exception_handler
+    raise leaf
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 426, in _context_manager
+    async with self.transport.connect_session(
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\transports.py", line 150, in connect_session
+    async with websocket_client(self.url) as transport:
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\mcp\client\websocket.py", line 49, in websocket_client
+    async with ws_connect(url, subprotocols=[Subprotocol("mcp")]) as ws:
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\websockets\asyncio\client.py", line 587, in __aenter__
+    return await self
+           ^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\websockets\asyncio\client.py", line 541, in __await_impl__
+    self.connection = await self.create_connection()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\websockets\asyncio\client.py", line 467, in create_connection
+    _, connection = await loop.create_connection(factory, **kwargs)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_events.py", line 1119, in create_connection
+    raise exceptions[0]
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_events.py", line 1101, in create_connection
+    sock = await self._connect_sock(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_events.py", line 1004, in _connect_sock
+    await self.sock_connect(sock, address)
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\asyncio\proactor_events.py", line 727, in sock_connect
+    return await self._proactor.connect(sock, address)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\asyncio\windows_events.py", line 798, in _poll
+    value = callback(transferred, key, ov)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Moussa\AppData\Local\Programs\Python\Python312\Lib\asyncio\windows_events.py", line 594, in finish_connect
+    ov.getresult()
+ConnectionRefusedError: [WinError 1225] The remote computer refused the network connection
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\src\mcp_server\client.py", line 148, in run_agent
+    async with client_ws:
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 496, in __aenter__
+    return await self._connect()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\.venv\Lib\site-packages\fastmcp\client\client.py", line 587, in _connect
+    raise RuntimeError(
+RuntimeError: Client failed to connect: [WinError 1225] The remote computer refused the network connection
