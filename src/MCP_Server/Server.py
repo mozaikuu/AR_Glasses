@@ -4,6 +4,7 @@ from fastmcp import FastMCP
 # from tools.gps_navigation.Floor_planning import MultiFloorPlanner 
 from tools.search_web.search_web import retrieve_web_context
 from tools.computer_vision.cv import detect_objects
+from tools.computer_vision.yolo import infer
 
 mcp = FastMCP(name="smart-glasses")
 
@@ -31,7 +32,7 @@ mcp = FastMCP(name="smart-glasses")
 #     return " → ".join(path)
 
 @mcp.tool()
-def retrieve_web_context(query: str) -> dict:
+def search_web(query: str) -> dict:
     """Perform a web search and returns results to summarize."""
     # Placeholder for web search logic
     return retrieve_web_context(query)
@@ -54,6 +55,11 @@ def retrieve_web_context(query: str) -> dict:
 # def VisionDetect() -> str:
 #     """Detect objects using the camera."""
 #     return detect_objects()
+
+
+def VisionDetect() -> str:
+    """Detect objects using the camera."""
+    return infer()
 
 # @mcp.tool()
 # def TTS() -> str:

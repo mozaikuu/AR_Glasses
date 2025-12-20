@@ -5,7 +5,7 @@ import asyncio
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 # --- CONFIGURATION (At the top as requested) ---
-MAX_LOOPS = 3
+MAX_LOOPS = 1
 MODEL_ID = "google/gemma-3-4b-it"  # Updated to Gemma 3 Instruct
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -187,72 +187,100 @@ async def decide_tool(query, history, client, mode="thinking"):
         with torch.no_grad():
             outputs = model.generate(
                 input_ids, 
-                max_new_tokens=256, 
+                max_new_tokens=512, 
                 temperature=0.1, 
                 do_sample=True
             )
 
-        response_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        # FIX: Only decode the NEW tokens, not the prompt
+        new_tokens = outputs[0][len(input_ids[0]):]
+        response_text = tokenizer.decode(new_tokens, skip_special_tokens=True)
+        
+        print(f"DEBUG: Raw LLM Output: {response_text}") # Helpful for debugging
+
         data = extract_and_fix_json(response_text)
 
-        # 🔒 Enforce contract
-        if data.get("is_satisfied") and not data.get("answer"):
-            data["answer"] = data.get("reasoning", "").strip()
-
+        # 🔒 Strict Contract Enforcement
         normalized = {
-            "reasoning": data.get("reasoning", ""),
+            "reasoning": data.get("reasoning", "Thinking..."),
             "tool": data.get("tool"),
             "args": data.get("args", {}),
             "is_satisfied": bool(data.get("is_satisfied")),
             "answer": data.get("answer", "")
         }
 
-        # Guarantee answer if satisfied
-        if normalized["is_satisfied"] and not normalized["answer"]:
-            normalized["answer"] = normalized["reasoning"]
-
+        # Ensure we ALWAYS have a string for the TTS
+        if not normalized["answer"] and normalized["is_satisfied"]:
+             normalized["answer"] = normalized["reasoning"] if normalized["reasoning"] else "I have finished the task."
+        
         return normalized
 
     except Exception as e:
         print(f"LLM Logic Error: {e}")
-        return {"reasoning": "error", "tool": None, "is_satisfied": True, "answer": "I hit a snag in my logic."}
+        return {"reasoning": "error", "tool": None, "is_satisfied": True, "answer": "I encountered an error processing that request."}
 
-# --- 3. THE RECURSIVE AGENT LOOP ---
-async def agent_loop(client, initial_text, mode="thinking"):
+# --- 3. IMPROVED RECURSIVE AGENT LOOP ---
+
+async def agent_loop(client, initial_text, mode="thinking", max_loops=MAX_LOOPS, max_history=20):
     current_text = initial_text
     history = []
-    loop_count = 0
+    decision = {}
     
-    while loop_count < MAX_LOOPS:
-        loop_count += 1
+    for loop_count in range(1, max_loops + 1):
         print(f"\n--- {mode.upper()} LOOP {loop_count} ---")
-        
+
         # 1. Ask the model what to do
-        decision = await decide_tool(current_text, history, mode)
-        print(f"Thought: {decision.get('reasoning')}")
-        
-        # 2. Record this "Thought" in history
-        history.append({"role": "thought", "content": decision.get("reasoning")})
-        
-        # 3. Check if satisfied OR if it's Quick Mode
-        if decision.get("is_satisfied") or mode == "quick":
-            return decision.get("answer")
+        decision = await decide_tool(current_text, history, client, mode)
 
-        # 4. Use Tool if requested
-        if decision.get("tool"):
-            print(f"Action: Using {decision['tool']}...")
-            result = await client.call_tool(name=decision["tool"], arguments=decision["args"])
-            history.append({"role": "tool_output", "tool": decision["tool"], "content": str(result)})
-            
-        # 5. Refine prompt for next loop
-        if decision.get("refined_prompt"):
-            current_text = decision["refined_prompt"]
-            
-    return "I've reached my maximum thinking limit. Here is what I know: " + (decision.get("answer") or "")
+        reasoning = decision.get("reasoning", "")
+        print(f"Thought: {reasoning}")
 
-# Ensure these are the same objects you loaded at the top of your script
-# If this is a separate file, you need to import them or define them here
-# from your_main_file import model, tokenizer, device 
+        # 2. Record reasoning
+        history.append({"role": "thought", "content": reasoning})
+
+        # Trim history to avoid context explosion
+        if len(history) > max_history:
+            history = history[-max_history:]
+
+        # 3. Exit conditions
+        if decision.get("is_satisfied", False):
+            return decision.get("answer", "")
+
+        if mode == "quick":
+            return decision.get("answer", "")
+
+        # 4. Tool execution
+        tool_name = decision.get("tool")
+        if tool_name:
+            print(f"Action: Using {tool_name}...")
+            try:
+                result = await client.call_tool(
+                    name=tool_name,
+                    arguments=decision.get("args", {})
+                )
+                history.append({
+                    "role": "tool_output",
+                    "tool": tool_name,
+                    "content": str(result)
+                })
+            except Exception as e:
+                history.append({
+                    "role": "tool_output",
+                    "tool": tool_name,
+                    "content": f"Tool error: {e}"
+                })
+                print(f"Tool error: {e}")
+
+        # 5. Update prompt if refined
+        refined_prompt = decision.get("refined_prompt")
+        if refined_prompt:
+            current_text = refined_prompt
+
+    # 6. Fallback if max loops reached
+    return (
+        "I've reached my maximum reasoning limit. "
+        + (decision.get("answer") or "Here is my best conclusion so far.")
+    )
 
 def extract_and_fix_json(text: str) -> dict:
     match = re.search(r"<json>([\s\S]*?)</json>", text)
@@ -270,9 +298,6 @@ def extract_and_fix_json(text: str) -> dict:
 
 # --- 4. MAIN EXECUTION ---
 async def main(client):
-    # Setup your MCP Transport here as in your original script
-    # ... (Transport and Client setup) ...
-    
     # Placeholder for user interaction
     user_input = "A silent story unfolds before my eyes, yet its name escapes me"
     

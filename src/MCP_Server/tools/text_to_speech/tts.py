@@ -19,12 +19,14 @@ def get_voice_for_text(text: str) -> str:
 
 async def text_to_speech(text: str):
     """Convert TEXT directly to speech and play it."""
-    if not text.strip():
-        print("⚠️ Empty text")
+    if not text or not text.strip(): # Added extra check
+        print("⚠️ TTS received empty text. Skipping.")
         return
 
     voice = get_voice_for_text(text)
     output_file = f"tts_{uuid.uuid4().hex}.mp3"
+    
+    path = "./output"
 
     # Generate speech
     tts = Communicate(text=text, voice=voice)
