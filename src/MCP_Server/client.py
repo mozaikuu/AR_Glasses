@@ -1,3 +1,15 @@
+import sys
+import os
+
+class _StdoutHijack:
+    def write(self, data):
+        if data and not data.isspace():
+            sys.stderr.write(data)
+    def flush(self):
+        sys.stderr.flush()
+
+sys.stdout = _StdoutHijack()
+
 import asyncio
 import json
 from fastmcp import Client
@@ -60,7 +72,7 @@ from tools.speech_recognition.Audio_transcription import transcribe_audio
 
 #     return final_answer
 
-async def agent_service():
+async def agent_service(json):
     """Main service loop that keeps the server and model alive."""
     transport = StdioTransport(
         command="fastmcp",
@@ -78,26 +90,27 @@ async def agent_service():
                 # 1. Listen for input (Replace with transcribe_audio() for voice)
                 # print("\n[Listening...]")
                 
-                print("press anything to continue (recursion avoidance)...")
-                input()
+                # print("press anything to continue (recursion avoidance)...")
+                # input()
                 
                 # text = input("User (or press Enter to transcribe): ")
-                text = "A silent story unfolds before my eyes, yet its name escapes me"
-                if not text:
-                    print("listening via microphone...")
-                    try:
-                        text = transcribe_audio()
-                        if not text.strip():
-                            print("[WARN] No speech detected, retrying...")
-                            continue
-                    except Exception as e:
-                        print(f"[AUDIO ERROR] {e}")
-                        continue
+                # # text = "what is 2 + 2?"
+                # if not text:
+                #     print("listening via microphone...")
+                #     try:
+                #         text = transcribe_audio()
+                #         if not text.strip():
+                #             print("[WARN] No speech detected, retrying...")
+                #             continue
+                #     except Exception as e:
+                #         print(f"[AUDIO ERROR] {e}")
+                #         continue
                 
-                if text.lower() in ["exit", "quit", "stop"]:
-                    print("[*] Shutting down...")
-                    break
-                
+                # if text.lower() in ["exit", "quit", "stop"]:
+                #     print("[*] Shutting down...")
+                #     break
+                text = json.get("text", "")
+                print(f"User: {text}")
 
                 # 2. Determine Mode (Dynamic logic example)
                 # You could use 'quick' for simple tasks and 'thinking' for complex ones

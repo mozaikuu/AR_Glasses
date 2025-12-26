@@ -31,11 +31,16 @@ mcp = FastMCP(name="smart-glasses")
 
 #     return " → ".join(path)
 
+# @mcp.tool()
+# def search_web(query: str) -> dict:
+#     """Perform a web search and returns results to summarize."""
+#     # Placeholder for web search logic
+#     return retrieve_web_context(query)
+
 @mcp.tool()
-def search_web(query: str) -> dict:
-    """Perform a web search and returns results to summarize."""
-    # Placeholder for web search logic
-    return retrieve_web_context(query)
+def VisionDetect() -> str:
+    """Detect objects using the camera."""
+    return infer()
 
 # @mcp.tool()
 # def CV() -> str:
@@ -55,11 +60,6 @@ def search_web(query: str) -> dict:
 # def VisionDetect() -> str:
 #     """Detect objects using the camera."""
 #     return detect_objects()
-
-
-def VisionDetect() -> str:
-    """Detect objects using the camera."""
-    return infer()
 
 # @mcp.tool()
 # def TTS() -> str:

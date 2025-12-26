@@ -27,4 +27,4 @@ def detect_objects() -> str:
 
     return "Detected: " + ", ".join(detected)
 
-# detect_objects()
+detect_objects()
