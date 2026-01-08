@@ -8,3 +8,4 @@ Computer_Vision/Tests
 smart_home_web/node_modules
 smart_home_app/node_modules
 Temp/RealTimeObjectDetection
+env.py
