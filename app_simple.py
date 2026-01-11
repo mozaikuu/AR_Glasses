@@ -121,10 +121,6 @@ with st.expander("📝 Add Text Context (Optional)"):
 
 # Manual send button
 has_audio = len(st.session_state.audio_buffer) > 0 and not st.session_state.is_recording_audio
-if has_audio:
-    if st.button("🚀 **Send Audio Again**", type="secondary"):
-        with st.spinner("🎯 Processing..."):
-            send_to_ai()
 
 def send_to_ai():
     """Send audio and text to AI assistant."""
@@ -173,3 +169,7 @@ def send_to_ai():
         st.error("❌ Cannot connect to AI assistant")
     except Exception as e:
         st.error(f"❌ Processing failed: {str(e)}")
+
+    if st.button("🚀 **Send Audio Again**", type="secondary"):
+        with st.spinner("🎯 Processing..."):
+            send_to_ai()

@@ -251,7 +251,7 @@ def convert_numpy_to_wav(audio_array: np.ndarray, sample_rate: int) -> bytes:
     return wav_buffer.getvalue()
 
 
-def transcribe_audio(record_seconds=5, device_index=13):  # Use Realtek mic by default
+def transcribe_audio(record_seconds=5, device_index=None):  # Auto-detect by default
     """
     Record audio from microphone and transcribe.
     Full pipeline for microphone input.
@@ -261,15 +261,37 @@ def transcribe_audio(record_seconds=5, device_index=13):  # Use Realtek mic by d
         device_index: Audio device index to use (default: None, auto-detect)
     """
     import pyaudio
-    
+
     FORMAT = pyaudio.paInt16  # Use 16-bit for better compatibility
     channels = 1
     sample_rate = 16000  # Use 16kHz for better Google Speech compatibility
     chunk = 1024
 
-    # Use default device if not specified
+    # Validate device index if specified
+    p = pyaudio.PyAudio()
+    device_count = p.get_device_count()
+
+    if device_index is not None:
+        if device_index >= device_count:
+            print(f"WARNING: Device index {device_index} not found. Available devices: 0-{device_count-1}", file=__import__('sys').stderr)
+            print("Falling back to auto-detection.", file=__import__('sys').stderr)
+            device_index = None
+
+    # Auto-detect default input device if not specified
     if device_index is None:
-        device_index = None  # Use default system device
+        # Find first available input device
+        for i in range(device_count):
+            try:
+                device_info = p.get_device_info_by_index(i)
+                if device_info.get('maxInputChannels', 0) > 0:
+                    device_index = i
+                    print(f"Using auto-detected input device {i}: {device_info.get('name')}", file=__import__('sys').stderr)
+                    break
+            except Exception as e:
+                print(f"Error checking device {i}: {e}", file=__import__('sys').stderr)
+
+        if device_index is None:
+            raise RuntimeError("No suitable input device found")
     
     p = pyaudio.PyAudio()
 

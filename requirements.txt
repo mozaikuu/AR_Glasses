@@ -25,4 +25,8 @@ duckduckgo-search
 beautifulsoup4
 requests
 aiohttp
+duckduckgo-search
+openwakeword
+pyaudio
+playsound
 

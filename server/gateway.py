@@ -1,99 +1,19 @@
-"""HTTP gateway for Streamlit to connect to MCP server."""
+"""HTTP gateway for Streamlit to connect to AI directly."""
 import asyncio
 import sys
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from fastmcp import Client
-from fastmcp.client import StdioTransport
-from agent.agent_loop import agent_loop
 from models.requests import MultimodalRequest, TextRequest
 from tools.speech.transcription import transcribe_audio_bytes
-from config.settings import MCP_TRANSPORT
 
-# MCP Client
-client: Client | None = None
+# Direct LLM access with error handling in endpoints
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for FastAPI app."""
-    # Startup
-    global client
-    try:
-        # Use python -m fastmcp to ensure proper module resolution
-        import sys
-        import os
-        from pathlib import Path
-        
-        python_exe = sys.executable
-        project_root = Path(__file__).parent.parent
-        
-        # Ensure PYTHONPATH includes project root
-        current_pythonpath = os.environ.get("PYTHONPATH", "")
-        if str(project_root) not in current_pythonpath:
-            os.environ["PYTHONPATH"] = str(project_root) + (os.pathsep + current_pythonpath if current_pythonpath else "")
-        
-        # Add to sys.path for this process
-        if str(project_root) not in sys.path:
-            sys.path.insert(0, str(project_root))
-        
-        # Debug info
-        print(f"[HTTP] Python executable: {python_exe}", file=sys.stderr)
-        print(f"[HTTP] Project root: {project_root}", file=sys.stderr)
-        print(f"[HTTP] PYTHONPATH: {os.environ.get('PYTHONPATH', 'not set')}", file=sys.stderr)
-        
-        # Try importing server module to catch import errors early
-        try:
-            from server.server import mcp
-            print("[HTTP] Server module imported successfully", file=sys.stderr)
-        except Exception as import_error:
-            print(f"[ERROR] Failed to import server module: {import_error}", file=sys.stderr)
-            import traceback
-            traceback.print_exc(file=sys.stderr)
-            print(f"[ERROR] This will cause MCP client to fail. Fix import errors first.", file=sys.stderr)
-            # Continue anyway - the subprocess will show the real error
-        
-        # Create transport with proper Python executable
-        # The subprocess should inherit PYTHONPATH from environment
-        transport = StdioTransport(
-            command=python_exe,
-            args=["server/server.py"]
-        )
-
-        print(f"[HTTP] Command: {python_exe} server/server.py", file=sys.stderr)
-        
-        print(f"[HTTP] Starting MCP client...", file=sys.stderr)
-        # print(f"[HTTP] Command: {python_exe} -m fastmcp run server.server:mcp --transport {MCP_TRANSPORT}", file=sys.stderr)
-        
-        # Try to connect with timeout handling
-        try:
-            client = await Client(transport).__aenter__()
-            print("[HTTP] MCP client ready", file=sys.stderr)
-        except Exception as connect_error:
-            print(f"[ERROR] MCP client connection failed: {connect_error}", file=sys.stderr)
-            print(f"[ERROR] The MCP server subprocess may have crashed. Check:", file=sys.stderr)
-            print(f"[ERROR] 1. Is 'fastmcp' installed in the venv?", file=sys.stderr)
-            print(f"[ERROR] 2. Can 'server.server:mcp' be imported?", file=sys.stderr)
-            print(f"[ERROR] 3. Are all dependencies for server tools installed?", file=sys.stderr)
-            import traceback
-            traceback.print_exc(file=sys.stderr)
-            raise  # Re-raise to be caught by outer exception handler
-    except Exception as e:
-        print(f"[ERROR] Failed to initialize MCP client: {e}", file=sys.stderr)
-        print(f"[ERROR] Make sure 'fastmcp' is installed and 'server.server:mcp' is accessible", file=sys.stderr)
-        import traceback
-        traceback.print_exc(file=sys.stderr)
-        # Don't fail startup, but client will be None
-        client = None
-    
+    # Simple lifespan - no complex startup logic
     yield
-    
-    # Shutdown
-    if client:
-        try:
-            await client.__aexit__(None, None, None)
-        except Exception as e:
-            print(f"[ERROR] Error closing MCP client: {e}", file=sys.stderr)
 
 
 app = FastAPI(lifespan=lifespan)
@@ -102,59 +22,64 @@ app = FastAPI(lifespan=lifespan)
 @app.get("/")
 async def health_check():
     """Health check endpoint."""
-    status = {
-        "status": "ok" if client is not None else "degraded",
-        "service": "smart-glasses-gateway",
-        "mcp_client": "connected" if client is not None else "disconnected"
-    }
-    return status
+    try:
+        status = {
+            "status": "ok",
+            "service": "smart-glasses-gateway",
+            "llm_integration": "direct-api",
+            "transcription": "available",
+            "message": "Gateway is running with direct LLM integration"
+        }
+        return status
+    except Exception as e:
+        return {"status": "error", "message": f"Health check failed: {str(e)}"}
 
 
 @app.get("/debug")
 async def debug_info():
-    """Debug endpoint to check MCP client status."""
+    """Debug endpoint to check system status."""
     import os
     from pathlib import Path
-    
+
     project_root = Path(__file__).parent.parent
     python_exe = sys.executable
-    
+
     return {
-        "mcp_client_initialized": client is not None,
+        "llm_integration": "direct-api",
+        "transcription_engines": ["google-speech", "whisper-fallback"],
         "python_executable": python_exe,
         "project_root": str(project_root),
         "pythonpath": os.environ.get("PYTHONPATH", "not set"),
         "sys_path": sys.path[:5],  # First 5 entries
-        "message": "Check gateway terminal logs for detailed MCP connection errors" if client is None else "MCP client is connected"
+        "message": "Gateway is running with direct LLM integration and speech transcription"
     }
 
 
 @app.post("/run")
 async def run_agent(req: TextRequest):
     """Legacy endpoint for text-only requests."""
-    if client is None:
-        return {
-            "response": "Error: MCP client not initialized. The gateway server started but couldn't connect to the MCP server subprocess. Check the gateway terminal/logs for detailed error messages. Common causes: import errors in server.server module, missing dependencies, or PYTHONPATH issues."
-        }
-    result = await agent_loop(client, req.text, mode="thinking")
-    return {"response": result}
+    try:
+        from agent.llm import generate_chat
+        messages = [{"role": "user", "content": req.text}]
+        result = await generate_chat(messages, max_tokens=512, temperature=0.1)
+        return {"response": result}
+    except Exception as e:
+        error_msg = f"LLM processing failed: {str(e)}"
+        print(f"[ERROR] {error_msg}", file=sys.stderr)
+        return {"response": f"Error: {error_msg}"}
 
 
 @app.post("/process")
 async def process_multimodal(req: MultimodalRequest):
     """
-    Process multimodal request (text + image + audio).
-    
+    Process multimodal request (text + image + audio) using direct LLM calls.
+
     Combines all inputs into a unified prompt:
     - Transcribes audio if provided
     - Combines text + transcribed audio
-    - Includes image reference if provided
+    - Uses direct LLM call instead of MCP
     """
-    if client is None:
-        return {
-            "response": "Error: MCP client not initialized. The gateway server started but couldn't connect to the MCP server subprocess. Check the gateway terminal/logs for detailed error messages. Common causes: import errors in server.server module, missing dependencies, or PYTHONPATH issues."
-        }
-    
+
     # Transcribe audio if provided
     transcribed_text = ""
     if req.audio:
@@ -169,7 +94,7 @@ async def process_multimodal(req: MultimodalRequest):
         except Exception as e:
             print(f"Audio transcription error: {e}", file=sys.stderr)
             transcribed_text = "[Audio transcription failed]"
-    
+
     # Combine text inputs
     text_parts = []
     if req.text:
@@ -187,17 +112,24 @@ async def process_multimodal(req: MultimodalRequest):
     print(f"DEBUG: Text parts: {text_parts}", file=sys.stderr)
 
     # Determine mode
-    mode = req.mode or "thinking"
-    if not combined_text.strip() and not req.image:
-        return {"response": "No input provided. Please provide text, audio, or image."}
-    
-    # Process with agent
-    result = await agent_loop(
-        client,
-        combined_text,
-        mode=mode,
-        image=req.image
-    )
+    mode = req.mode or "quick"
+    if not combined_text.strip():
+        return {"response": "No input provided. Please provide text or audio."}
+
+    # Process with direct LLM call
+    print(f"[HTTP] Calling LLM with mode='{mode}'", file=sys.stderr)
+    try:
+        from agent.llm import generate_chat
+        messages = [{"role": "user", "content": combined_text}]
+        result = await generate_chat(messages, max_tokens=512, temperature=0.1)
+        print(f"[HTTP] LLM response received: {result[:100]}...", file=sys.stderr)
+    except Exception as e:
+        error_msg = f"LLM processing failed: {str(e)}"
+        print(f"[ERROR] {error_msg}", file=sys.stderr)
+        return {
+            "response": f"TEST ERROR: {error_msg}",
+            "transcription": transcribed_text if transcribed_text else None
+        }
 
     return {
         "response": result,

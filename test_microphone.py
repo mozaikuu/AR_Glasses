@@ -98,7 +98,7 @@ def record_audio(duration=5.0, sample_rate=44100, channels=1):
         p.terminate()
 
         recording_time = time.time() - start_time
-        print(".1f")
+        print(f"Recording completed in {recording_time:.1f} seconds")
         # Convert frames to numpy array
         if format_type == pyaudio.paFloat32:
             audio_data = np.frombuffer(b''.join(frames), dtype=np.float32)
@@ -150,7 +150,7 @@ def test_microphone_transcription():
         transcription = transcribe_audio_array(audio_data)
         transcribe_time = time.time() - start_time
 
-        print(".2f")
+        print(f"Transcription completed in {transcribe_time:.2f} seconds")
         print(f"Transcription: '{transcription}'")
 
         if not transcription.strip():
