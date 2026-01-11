@@ -206,19 +206,19 @@ class WakeWordSystem:
                     # No speech detected, continue
                     pass
                 except sr.RequestError as e:
-                    print(f"⚠️ Speech recognition error: {e}")
+                    print(f"[WARNING] Speech recognition error: {e}")
                     time.sleep(1)
 
             except sr.WaitTimeoutError:
                 # Timeout, continue listening
                 continue
             except Exception as e:
-                print(f"⚠️ Wake word listening error: {e}")
+                print(f"[WARNING] Wake word listening error: {e}")
                 time.sleep(0.5)
 
     def _listen_for_command(self):
         """Listen for command after wake word detection (ACTIVE state)"""
-        print("🎤 Listening for command...")
+        print("[MIC] Listening for command...")
 
         try:
             with self.microphone as source:
@@ -231,11 +231,11 @@ class WakeWordSystem:
 
                 # Check if command is empty or just whitespace
                 if not command_text:
-                    print("⚠️ Empty command received, returning to idle")
+                    print("[WARNING] Empty command received, returning to idle")
                     self._change_state(SystemState.IDLE)
                     return
 
-                print(f"📝 Command received: '{command_text}'")
+                print(f"[CMD] Command received: '{command_text}'")
 
                 # Transition to PROCESSING state
                 self._change_state(SystemState.PROCESSING)
@@ -245,17 +245,17 @@ class WakeWordSystem:
                     self.on_command_received(command_text)
 
             except sr.UnknownValueError:
-                print("⚠️ No command detected, returning to idle")
+                print("[WARNING] No command detected, returning to idle")
                 self._change_state(SystemState.IDLE)
             except sr.RequestError as e:
-                print(f"⚠️ Command recognition error: {e}")
+                print(f"[WARNING] Command recognition error: {e}")
                 self._change_state(SystemState.IDLE)
 
         except sr.WaitTimeoutError:
-            print("⏰ Command timeout, returning to idle")
+            print("[TIMEOUT] Command timeout, returning to idle")
             self._change_state(SystemState.IDLE)
         except Exception as e:
-            print(f"⚠️ Command listening error: {e}")
+            print(f"[WARNING] Command listening error: {e}")
             self._change_state(SystemState.IDLE)
 
     def start(self):
@@ -286,7 +286,7 @@ class WakeWordSystem:
     def return_to_idle(self):
         """Return system to IDLE state (called after command processing)"""
         self._change_state(SystemState.IDLE)
-        print("🔄 Returned to idle listening state")
+        print("[IDLE] Returned to idle listening state")
 
     def get_state(self):
         """Get current system state"""

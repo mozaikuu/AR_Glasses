@@ -127,8 +127,11 @@ async def decide(query: str, history: list, used_tools: set, client, mode: str, 
         Decision dictionary
     """
     tools = await client.list_tools()
-    tools_list = "\n".join(f"- {t.name}: {t.description}" for t in tools)
+    tools_list = "\n".join(f"- {t.name}: {t.description}" for t in tools.tools)
     history_text = "\n".join(history[-6:]) if history else "None"
+    
+    log(f"Available tools: {[t.name for t in tools.tools]}")
+    log(f"Tools list: {tools_list}")
 
     # Build user content with optional image
     user_content = query
@@ -137,21 +140,33 @@ async def decide(query: str, history: list, used_tools: set, client, mode: str, 
         # Note: For vision-capable models, you would include the image in the messages
         # This is a placeholder - actual implementation depends on model capabilities
 
+    # Build explicit tool usage instructions
+    tool_usage_instructions = ""
+    if "search" in query.lower() or "time" in query.lower() or "current" in query.lower():
+        tool_usage_instructions = "\n\nCRITICAL: The user is asking for real-time information (time, current events, web search). You MUST use the search_web tool to get this information. Set tool='search_web' with args={'query': 'user question here'}."
+    if "use" in query.lower() and "tool" in query.lower():
+        tool_usage_instructions = "\n\nCRITICAL: The user explicitly asked you to use a tool. You MUST use the tool they mentioned. Do not say you don't have access to tools - you do!"
+    
     system_prompt = f"""
-You are an intelligent agent running in {mode} mode.
+You are an intelligent agent running in {mode} mode with access to tools.
 
 Conversation history:
 {history_text}
 
 Available tools:
 {tools_list}
+{tool_usage_instructions}
 
 RULES:
 - ONLY output JSON inside <json>
 - No text outside JSON
+- If the user asks you to use a tool (like "use search_web" or "use VisionDetect"), you MUST use that tool - DO NOT say you don't have it
+- If you need information that requires a tool (like current time, web search, vision), use the appropriate tool
 - If you have an answer, set "is_satisfied" to true and provide it in "answer"
-- If you need to use a tool, specify "tool" and "args"
+- If you need to use a tool, specify "tool" and "args" (tool name must match exactly: search_web or VisionDetect)
 - In thinking mode, you can refine your approach based on tool results
+- ALWAYS use tools when explicitly requested or when you need real-time information
+- NEVER say you don't have access to tools - you have access to: {', '.join([t.name for t in tools.tools])}
 
 <json>
 {{
