@@ -124,6 +124,8 @@ use case,
 -  [ ] Hardware
    -  [ ] Glasses Design
    -  [ ] Parts
+-  [ ] Notion
+-  [ ] Ngrok / MQTT
 
 ---
 
