@@ -12,7 +12,6 @@
 -  Add your name next to the task you assigned yourself and do not assign yourself multiple tasks for the future. (no dibs)
 -  Do not mindlessly use AI
 -  > Always try to do at least two tasks a week
--
 
 ### Urgent:
 
