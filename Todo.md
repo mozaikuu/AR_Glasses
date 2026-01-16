@@ -508,3 +508,15 @@ Therefore, there is a critical need for an interaction paradigm that minimizes c
 ---
 
 This project presents an AI-powered Smart Glasses system designed to enhance daily communication, productivity, accessibility, and indoor navigation. The solution integrates computer vision, speech recognition, large language models, augmented reality, and IoT into a single, low-cost wearable device. Using real-time object detection, multilingual voice interaction (Arabic and English), and AR-based indoor navigation, the system provides hands-free, context-aware assistance in complex indoor environments such as universities, hospitals, and enterprise buildings. By leveraging open-source AI models and affordable hardware, the project delivers an intelligent, scalable, and accessible smart companion that improves user independence, safety, and efficiency while supporting smart building, telecommunication infrastructures and empowering the customer by keeping their data and privacy safe giving them the option of monetizing their own data later down the line. all of that in a one time cost product with no subscriptions unless connected to our cloud for extra services.
+
+---
+
+-  Prompts:
+   -  1. always use the venv (Smart_Glasses)
+   -  2. index and read the whole project before changing anything, understand the project and make documentation for it
+   -  3. search_web tool works but visiondetect is seemingly broken
+   -  4. "hey nova" works but it queues and waits for me to do manual record before processing the automatic one when they should be separate
+   -  5. "hey nova" should have the same logic as the manual record
+   -  6. clean up repository of useless files
+   -  7. provide ideas on integrating augmented reality to the project in the form of future work
+   -  8. refactor the code if necessary.
