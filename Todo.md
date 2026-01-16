@@ -44,6 +44,8 @@
 
 # Todo:
 
+-  [ ] fix github
+
 -  Make it work with a free api
 -  fix text
 -  fix audio and increase its accuracy
@@ -512,11 +514,12 @@ This project presents an AI-powered Smart Glasses system designed to enhance dai
 ---
 
 -  Prompts:
-   -  1. always use the venv (Smart_Glasses)
-   -  2. index and read the whole project before changing anything, understand the project and make documentation for it
-   -  3. search_web tool works but visiondetect is seemingly broken
-   -  4. "hey nova" works but it queues and waits for me to do manual record before processing the automatic one when they should be separate
-   -  5. "hey nova" should have the same logic as the manual record
-   -  6. clean up repository of useless files
-   -  7. provide ideas on integrating augmented reality to the project in the form of future work
-   -  8. refactor the code if necessary.
+   1. always use the venv (Smart_Glasses)
+   2. index and read the whole project before changing anything, understand the project and make documentation for it
+   3. search_web tool works but visiondetect is seemingly broken
+   4. "hey nova" works but it queues and waits for me to do manual record before processing the automatic one when they should be separate
+   5. "hey nova" should have the same logic as the manual record
+   6. clean up repository of useless files
+   7. provide ideas on integrating augmented reality to the project in the form of future work
+   8. fix text to speech
+   9. refactor the code if necessary.
