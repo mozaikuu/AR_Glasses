@@ -37,3 +37,6 @@ build-backend = "uv_build"
 
 [project.scripts]
 mcp-server = "mcp_server:main"
+
+[tool.setuptools]
+py-modules = ["mcp_server"]
