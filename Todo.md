@@ -31,6 +31,7 @@
       -  [ ] multiple diagrams
       -  [ ] sandy file
       -  [ ] sandy chat
+      -  [x] Basma debriefing
 -  [ ] Deadline [15/1/2026] form:https://docs.google.com/document/d/1Cz-GbuWJzl7noa4WhN8RoS49Zq4rQt6flwwXdJXYqMk/edit?tab=t.0, https://docs.google.com/document/d/1H5KlkeS_Xj_o91cd4xCa4PZApIONLgeDFOL7oLid1-o/edit?tab=t.0
 -  [ ] first form: team info, project idea, team ids mandatory (word/pdf)
 -  [ ] student acknowledgements, university certificate to asrt, team member names
@@ -123,6 +124,8 @@ use case,
 -  [ ] Hardware
    -  [ ] Glasses Design
    -  [ ] Parts
+-  [ ] Notion
+-  [ ] Ngrok / MQTT
 
 ---
 
