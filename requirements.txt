@@ -1,0 +1,32 @@
+# Smart Glasses Project Dependencies
+# Install with: pip install -r requirements.txt
+# Or use: uv sync
+
+fastmcp==2.14.1
+mcp==1.24.0
+fastapi
+uvicorn[standard]
+streamlit
+streamlit-webrtc
+pydantic
+torch
+transformers
+pillow
+numpy
+opencv-python
+ultralytics
+openai-whisper
+edge-tts
+mutagen
+pygame
+pyaudio
+SpeechRecognition
+duckduckgo-search
+beautifulsoup4
+requests
+aiohttp
+duckduckgo-search
+openwakeword
+pyaudio
+playsound
+

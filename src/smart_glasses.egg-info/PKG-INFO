@@ -1,0 +1,9 @@
+Metadata-Version: 2.4
+Name: smart-glasses
+Version: 0.1.0
+Summary: Smart Glasses MCP Server
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Provides-Extra: dev
+Requires-Dist: debugpy; extra == "dev"
+Requires-Dist: pytest; extra == "dev"

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Audio Recorder Component</title>
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/streamlit-component-lib@2.0.0/dist/index.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const {useState, useEffect, useRef} = React;
+        const {Streamlit} = window.StreamlitComponentLib;
+
+        function AudioRecorderComponent() {
+            const [isRecording, setIsRecording] = useState(false);
+            const [status, setStatus] = useState("Ready to record");
+            const mediaRecorderRef = useRef(null);
+            const audioChunksRef = useRef([]);
+
+            useEffect(() => {
+                // Initialize when component mounts
+                Streamlit.setFrameHeight(100);
+                Streamlit.setComponentValue({audio_data: null, status: "ready"});
+            }, []);
+
+            const startRecording = async () => {
+                try {
+                    setStatus("Requesting microphone access...");
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                            sampleRate: 16000,
+                            channelCount: 1,
+                            echoCancellation: true,
+                            noiseSuppression: true
+                        }
+                    });
+
+                    setStatus("Recording... (Press to stop)");
+                    setIsRecording(true);
+
+                    // Try different formats, fallback to default
+                    let mimeType = 'audio/wav';
+                    if (!MediaRecorder.isTypeSupported(mimeType)) {
+                        mimeType = 'audio/webm;codecs=opus';
+                        if (!MediaRecorder.isTypeSupported(mimeType)) {
+                            mimeType = ''; // Use default
+                        }
+                    }
+
+                    const mediaRecorder = new MediaRecorder(stream, {
+                        mimeType: mimeType
+                    });
+
+                    mediaRecorderRef.current = mediaRecorder;
+                    audioChunksRef.current = [];
+
+                    mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            audioChunksRef.current.push(event.data);
+                        }
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        setStatus("Processing audio...");
+                        setIsRecording(false);
+
+                        // Convert to base64
+                        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+
+                        // Convert blob to base64
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            const base64Data = reader.result.split(',')[1]; // Remove data:audio/webm;base64, prefix
+                            setStatus("Audio processed - Ready to send");
+
+                            // Send to Streamlit
+                            Streamlit.setComponentValue({
+                                audio_data: base64Data,
+                                status: "recorded",
+                                mime_type: "audio/webm"
+                            });
+                        };
+                        reader.readAsDataURL(audioBlob);
+
+                        // Stop all tracks
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+
+                    mediaRecorder.start(100); // Collect data every 100ms
+
+                } catch (error) {
+                    console.error('Error starting recording:', error);
+                    setStatus("Error: " + error.message);
+                    setIsRecording(false);
+                    Streamlit.setComponentValue({audio_data: null, status: "error", error: error.message});
+                }
+            };
+
+            const stopRecording = () => {
+                if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+                    setStatus("Stopping recording...");
+                    mediaRecorderRef.current.stop();
+                }
+            };
+
+            const handleButtonClick = () => {
+                if (isRecording) {
+                    stopRecording();
+                } else {
+                    startRecording();
+                }
+            };
+
+            return React.createElement('div', {style: {padding: '10px'}},
+                React.createElement('button', {
+                    onMouseDown: handleButtonClick,
+                    onMouseUp: isRecording ? handleButtonClick : null,
+                    onTouchStart: handleButtonClick,
+                    onTouchEnd: isRecording ? handleButtonClick : null,
+                    style: {
+                        backgroundColor: isRecording ? '#ff4444' : '#4CAF50',
+                        color: 'white',
+                        border: 'none',
+                        padding: '15px 30px',
+                        fontSize: '16px',
+                        borderRadius: '25px',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
+                        transition: 'all 0.3s ease',
+                        minWidth: '200px'
+                    }
+                }, isRecording ? '🔴 STOP RECORDING' : '🎤 HOLD TO RECORD'),
+
+                React.createElement('div', {
+                    style: {
+                        marginTop: '10px',
+                        fontSize: '14px',
+                        color: isRecording ? '#ff4444' : '#666',
+                        textAlign: 'center'
+                    }
+                }, status)
+            );
+        }
+
+        // Render the component
+        ReactDOM.render(
+            React.createElement(AudioRecorderComponent),
+            document.getElementById('root')
+        );
+    </script>
+</body>
+</html>

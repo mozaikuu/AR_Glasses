@@ -1,0 +1,39 @@
+[project]
+name = "smart-glasses"
+version = "0.1.0"
+description = "your ai companion and navigation in Smart Glasses"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+ "fastmcp==2.14.1",
+ "mcp==1.24.0",
+ "fastapi",
+ "uvicorn",
+ "streamlit",
+ "streamlit-webrtc",
+ "pydantic",
+ "torch",
+ "transformers",
+ "pillow",
+ "numpy",
+ "opencv-python",
+ "ultralytics",
+ "whisper",
+ "edge-tts",
+ "mutagen",
+ "pygame",
+ "pyaudio",
+ "ddgs",
+ "beautifulsoup4",
+ "requests",
+]
+[[project.authors]]
+name = "Ahmed Moussa"
+email = "ahmedmoussa.dev@gmail.com"
+
+[build-system]
+requires = [ "uv_build>=0.9.14,<0.10.0",]
+build-backend = "uv_build"
+
+[project.scripts]
+mcp-server = "mcp_server:main"

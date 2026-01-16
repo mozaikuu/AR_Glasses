@@ -1,0 +1,85 @@
+# React Native
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+.expo/
+.expo-shared/
+.expo/*
+.expo-shared/*
+
+# Metro bundler
+.expo/
+.expo-shared/
+.metro/
+metro-cache/
+.packager/
+
+# Expo
+dist/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig
+*.bak
+
+# Android
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+android/.idea/
+*.keystore
+*.so
+
+# iOS
+ios/Pods/
+ios/build/
+ios/*.plist
+ios/.DS_Store
+*.xcworkspace
+*.xcuserdata/
+*.xcodeproj/*
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# System files
+.DS_Store
+Thumbs.db
+
+# VSCode
+.vscode/
+.idea/
+
+# Babel / TypeScript
+.cache/
+tsconfig.tsbuildinfo
+
+# Bundle / output
+*.bundle
+*.map
+*.apk
+*.aab
+*.ipa
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Temp
+tmp/
+temp/
