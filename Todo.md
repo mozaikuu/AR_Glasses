@@ -16,8 +16,7 @@
 ### Urgent:
 
 -  [ ] prepare documentation for first term [21/1/2026] (Duplicate)
--  [ ] Prototype [4/1/2026]
--  [ ] Presentation
+~~-  [x] Prototype [4/1/2026]~~
 -  [ ] docs
    -  [ ] requirements
    -  [ ] prototype
@@ -31,44 +30,32 @@
       -  [ ] sandy file
       -  [ ] sandy chat
       -  [x] Basma debriefing
--  [ ] Deadline [15/1/2026] form:https://docs.google.com/document/d/1Cz-GbuWJzl7noa4WhN8RoS49Zq4rQt6flwwXdJXYqMk/edit?tab=t.0, https://docs.google.com/document/d/1H5KlkeS_Xj_o91cd4xCa4PZApIONLgeDFOL7oLid1-o/edit?tab=t.0
--  [ ] first form: team info, project idea, team ids mandatory (word/pdf)
--  [ ] student acknowledgements, university certificate to asrt, team member names
--  [ ] download files, print colored, write info, dean signature, hawk stamp, scan and upload, full team written
--  [ ] contract: money needed, download, print colored, fill info, signature of team members, scan and upload,
+-  [ ] Presentation
 -  [ ] Code: DT_GB_148
+
+### Abstract goals:
+
+-  [ ] streamlit / flask
+-  [ ] mobile test
+-  [ ] fix nova
+-  [ ] migrate to notion
+-  [ ] hardware start
+-  [ ] navigation start
 
 ### Current goal:
 
--  _Working Prototype on Mobile_
+-  [ ] _Working Prototype on Mobile_
 
 # Todo:
 
--  [ ] fix github
+~~- [x] fix github~~
 
 -  Make it work with a free api
 -  fix text
 -  fix audio and increase its accuracy
 
-Sandy iphone, [29/12/2025 3:58 AM]
-عذرا على التأخير يا شباب، بالنسبة للفصلين ٢و ٣ جيدان، ان باقي الفصول والفهارس تحتاج ضبط تنسيقات، ايضا تحتاج ازالة نصوص تبدوا انها من chatgpt، بالذات في references
-
-Sandy iphone, [29/12/2025 3:58 AM]
-بالنسبة للرسومات يفضل بعد كل رسمة كتابة شرح مبسط يشير لرقم الرسمة figure
-
-Sandy iphone, [29/12/2025 3:58 AM]
-في المعتاد يكون ترتيب رسومات Uml :
-use case,
-وبعدها عدة رسومات sequence بحيث تمثل كل منها عملية منفصلة/
-وبعدها class diagram
-
 -  [ ] Restructure todo using nesting and Priority
 -  [ ] Clean up Repo by removing unnecessary files
-
--  [ ] Documentation
-
-   -  [ ] prepare documentation for first term [21/1/2026]
-   -  [ ] Presentation
 
 -  [ ] Features
 
@@ -188,9 +175,6 @@ use case,
 # Final
 
 • Project Requirements
- Project Title
-A Final academic title of the project with an optional commercial title should be submitted by [31-12-
-2025]
  Project Contents
 Students should work on preparing power point slides include the following:
 
@@ -524,4 +508,36 @@ This project presents an AI-powered Smart Glasses system designed to enhance dai
    6. clean up repository of useless files
    7. provide ideas on integrating augmented reality to the project in the form of future work
    8. fix text to speech
-   9. refactor the code if necessary.
+   9. streamlit crashes sometimes
+   10. refactor the code if necessary.
+
+Traceback:
+pygame-ce 2.5.2 (SDL 2.30.8, Python 3.12.1)
+Calibrating microphone...
+Microphone calibrated
+Wake word detection active. Say 'Nova' or 'Hey Nova' to activate.
+Wake word system started
+Wake-word system auto-started successfully
+Wake-word system is running. State: SystemState.IDLE
+Wake word detected: 'nova' (confidence: 1.00)
+[MIC] Listening for command...
+[CMD] Command received: 'what day is'
+WAKEWORD CALLBACK: on_command_received('what day is')
+
+
+
+project name
+idea companion, nav, modularity, privacy
+Target audience
+architecture
+userflow
+comparison table
+metrics
+Business model canvas
+
+Docs:- 
+   -  Acknowledgements ✅
+   -  fix table of contents
+   -  fixed style ✅
+   -  fixed duplication ✅
+   -  fix tables
