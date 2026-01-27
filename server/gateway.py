@@ -9,8 +9,8 @@ from models.requests import MultimodalRequest, TextRequest
 from tools.speech.transcription import transcribe_audio_bytes
 
 # MCP client for tool access
-mcp_client = None
-mcp_connected = False
+mcp_client = None # try mcp_session 
+mcp_connected = False # try mcp_session.connected
 
 # Get project root
 project_root = Path(__file__).parent.parent

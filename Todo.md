@@ -45,10 +45,67 @@
 ### Current goal:
 
 -  [ ] _Working Prototype on Mobile_
+  
+### Test & Fix
+
+-  [ ]  model satisfaction
+-  [ ]  Overthinking
+-  [ ]  investigate how the model sees its own chain of thought
+-  [ ]  desync between tool use and model recall
+-  [ ]  camera permissions murky
+-  [ ]  investigate formatting (json)
+-  [ ]  in case of refusal it should break the loop
+-  [ ]  reimplement chain of thought 
+-  [ ]  try same output 10 times?
+-  [ ]  is ans actually tall cool output or is it hallucinations?
+-  [ ]  is model stable?
+-  [ ]  are tools active?
+-  [ ]  is history running correctly? 
+
 
 # Todo:
 
-~~- [x] fix github~~
+- [ ] fix todo
+- [ ] Architechture, Refactor and Design freeze
+- [ ] Tech debt list
+- [ ] module boundaries and interfaces
+- [ ] system arch diagram
+- [ ] Unit testing
+  - [ ] Tools
+    - [ ] stt
+    - [ ] tts
+    - [ ] nova wakeword
+    - [ ] vision detect
+    - [ ] search web
+  - [ ] mcp
+  - [ ] server
+  - [ ] gateway
+  - [ ] streamlit -> flask
+  - [ ] api
+  - [ ] agent
+  - [ ] llm
+  - [ ] modes
+  - [ ] config
+  - [ ] free llm api sources & model picker based on task
+  - [ ] notion documentation
+  - [ ] mobile permissions
+  - [ ] utils
+  - [ ] review Review
+  - [ ] remove redundant files
+- [ ] 
+- [ ] try out Clawdbot
+- [ ] try out Qwen TTS
+- [ ] 
+  - [ ] Navigation 
+  - [ ] Augmented reality
+  - [ ] Graph Theory
+  - [ ] MCP Tool use
+- [ ] Harware?
+  - [ ] Etching
+    - [ ] Chem
+      - [ ] Items
+
+---
 
 -  Make it work with a free api
 -  fix text
