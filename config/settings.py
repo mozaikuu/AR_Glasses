@@ -22,10 +22,10 @@ MODEL_ID = os.getenv("MODEL_ID", "llama3.3-70b")  # Cerebras model ID
 #     # "meta-llama/Meta-Llama-3.1-8B-Instruct"
 # )
 
-# DEVICE = os.getenv(
-#     "DEVICE",
-#     "cuda" if os.getenv("CUDA_AVAILABLE") == "true" else "cpu"
-# )
+DEVICE = os.getenv(
+    "DEVICE",
+    "cuda" if os.getenv("CUDA_AVAILABLE") == "true" else "cpu"
+)
 
 MAX_LOOPS = int(os.getenv("MAX_LOOPS", "8"))
 MAX_RETRIES = int(os.getenv("MAX_RETRIES", "2"))

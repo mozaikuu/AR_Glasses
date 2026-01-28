@@ -39,7 +39,7 @@ except ImportError as e:
     def infer():
         return "Vision tool not available: Import failed"
 
-mcp = FastMCP(name="smart-glasses")
+mcp = FastMCP(name="Cerebro")
 
 # LLM -> MCP -> Tools -> LLM
 
@@ -77,6 +77,11 @@ def search_web(query: str) -> dict:
     """Perform a web search and return results to summarize."""
     return retrieve_web_context(query)
 
+
+# @mcp.tool()
+# def NavigateIndoor(start: str, destination: str, algorithm: str = "astar") -> str:
+#     """Navigate indoor using A* algorithm."""
+#     return navigate_indoor(start, destination, algorithm)
 
 if __name__ == "__main__":
     mcp.run()
