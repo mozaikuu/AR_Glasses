@@ -15,8 +15,6 @@
 
 ### Urgent:
 
--  [ ] prepare documentation for first term [21/1/2026] (Duplicate)
-~~-  [x] Prototype [4/1/2026]~~
 -  [ ] docs
    -  [ ] requirements
    -  [ ] prototype
@@ -29,7 +27,6 @@
       -  [ ] multiple diagrams
       -  [ ] sandy file
       -  [ ] sandy chat
-      -  [x] Basma debriefing
 -  [ ] Presentation
 -  [ ] Code: DT_GB_148
 
@@ -44,7 +41,7 @@
 
 ### Current goal:
 
--  [ ] _Working Prototype on Mobile_
+-  [ ] _Navigation_
   
 ### Test & Fix
 
