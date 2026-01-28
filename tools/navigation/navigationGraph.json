@@ -1,0 +1,156 @@
+{
+  "Entrance": {
+    "Hall 2-0-25": {
+      "distance": 10,
+      "instruction": "Walk 10 steps forward then turn left to reach Hall 2-0-25"
+    },
+    "Hall 2-0-16": {
+      "distance": 5,
+      "instruction": "Before entering, turn right to reach Hall 2-0-16"
+    },
+    "Stairs G": {
+      "distance": 25,
+      "instruction": "Walk straight for 25 steps to reach the stairs"
+    },
+    "Elevator G": {
+      "distance": 20,
+      "instruction": "Walk 20 steps forward, the elevator will be on your right"
+    }
+  },
+
+  "Hall 2-0-25": {
+    "Entrance": {
+      "distance": 10,
+      "instruction": "Exit the hall and walk 10 steps to reach the entrance"
+    }
+  },
+
+  "Hall 2-0-16": {
+    "Entrance": {
+      "distance": 5,
+      "instruction": "Walk left to reach the entrance"
+    }
+  },
+
+  "Stairs G": {
+    "Entrance": {
+      "distance": 25,
+      "instruction": "Go down the stairs and walk 25 steps to reach the entrance"
+    },
+    "Floor 1": {
+      "distance": 25,
+      "instruction": "Go up the stairs for 25 steps to reach the first floor"
+    }
+  },
+
+  "Elevator G": {
+    "Entrance": {
+      "distance": 20,
+      "instruction": "Exit the elevator area and walk 20 steps to reach the entrance"
+    },
+    "Floor 1": {
+      "distance": 15,
+      "instruction": "Take the elevator for 15 seconds to reach the first floor"
+    }
+  },
+
+  "Floor 1": {
+    "Left Corridor": {
+      "distance": 20,
+      "instruction": "Turn left and walk 20 steps"
+    },
+    "Right Corridor": {
+      "distance": 10,
+      "instruction": "Turn right and walk 10 steps"
+    }
+  },
+
+  "Left Corridor": {
+    "Elevator F1": {
+      "distance": 6,
+      "instruction": "Turn right and walk 6 steps to reach the elevator"
+    }
+  },
+
+  "Elevator F1": {
+    "TA Office": {
+      "distance": 2,
+      "instruction": "Walk 2 steps after the elevator to reach the teaching assistants office"
+    },
+    "Dean Office": {
+      "distance": 30,
+      "instruction": "Turn left, walk 30 steps, the dean office will be on your right"
+    }
+  },
+
+  "TA Office": {
+    "Section 2-1-52": {
+      "distance": 2,
+      "instruction": "Walk forward to reach Section 2-1-52"
+    }
+  },
+
+  "Section 2-1-52": {
+    "Hall 2-1-47": {
+      "distance": 1,
+      "instruction": "Turn left, Hall 2-1-47 will be on your right"
+    },
+    "Hall 2-1-46": {
+      "distance": 8,
+      "instruction": "Walk 8 steps to reach Hall 2-1-46"
+    },
+    "Hall 2-1-45": {
+      "distance": 12,
+      "instruction": "Continue walking to reach Hall 2-1-45"
+    }
+  },
+
+  "Hall 2-1-45": {
+    "Section 2-1-41": {
+      "distance": 15,
+      "instruction": "Turn left and walk 15 steps to reach Section 2-1-41"
+    }
+  },
+
+  "Section 2-1-41": {
+    "Section 2-1-40": {
+      "distance": 7,
+      "instruction": "Walk 7 steps to reach Section 2-1-40"
+    }
+  },
+
+  "Right Corridor": {
+    "Hall 2-1-76": {
+      "distance": 5,
+      "instruction": "Walk 5 steps to reach Hall 2-1-76"
+    }
+  },
+
+  "Hall 2-1-76": {
+    "Hall 2-1-77": {
+      "distance": 3,
+      "instruction": "Walk forward to reach Hall 2-1-77"
+    }
+  },
+
+  "Hall 2-1-77": {
+    "Hall 2-1-83": {
+      "distance": 10,
+      "instruction": "Walk 10 steps to reach Hall 2-1-83"
+    }
+  },
+
+  "Hall 2-1-83": {
+    "Hall 2-1-84": {
+      "distance": 2,
+      "instruction": "Walk 2 steps to reach Hall 2-1-84"
+    }
+  },
+
+  "Hall 2-1-84": {
+    "Dean Office": {
+      "distance": 20,
+      "instruction": "Turn right and walk 20 steps to reach the dean office"
+    }
+  }
+}
