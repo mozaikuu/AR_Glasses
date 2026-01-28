@@ -78,10 +78,62 @@ def search_web(query: str) -> dict:
     return retrieve_web_context(query)
 
 
-# @mcp.tool()
-# def NavigateIndoor(start: str, destination: str, algorithm: str = "astar") -> str:
-#     """Navigate indoor using A* algorithm."""
-#     return navigate_indoor(start, destination, algorithm)
+@mcp.tool()
+def NavigateAStar(start: str, destination: str) -> str:
+    """
+    Compute navigation steps between two locations using A* pathfinding.
+
+    Requirements:
+    - navigationGraph.json must exist and be valid
+    - start and destination must be valid nodes
+
+    Returns:
+    - Step-by-step navigation instructions
+    - Total distance
+    - Or a helpful error message
+    """
+    try:
+        graph = load_graph()
+
+        if start not in graph:
+            return f"Invalid start location: {start}"
+
+        if destination not in graph:
+            return f"Invalid destination location: {destination}"
+
+        path = astar(graph, start, destination)
+
+        if not path:
+            return f"No path found from {start} to {destination}"
+
+        steps: List[str] = []
+        total_distance = 0
+
+        for i in range(len(path) - 1):
+            edge = graph[path[i]][path[i + 1]]
+            steps.append(f"{i + 1}. {edge['instruction']} ({edge['distance']} steps)")
+            total_distance += edge["distance"]
+
+        response = (
+            f"Navigation from {start} to {destination}:\n\n"
+            + "\n".join(steps)
+            + f"\n\nTotal distance: {total_distance} steps"
+        )
+
+        return response
+
+    except FileNotFoundError:
+        return (
+            "Navigation graph not found.\n\n"
+            "Troubleshooting:\n"
+            "• Ensure navigationGraph.json exists\n"
+            "• Verify correct file path\n"
+            "• Check JSON syntax"
+        )
+
+    except Exception as e:
+        return f"Navigation error: {str(e)}"
+
 
 if __name__ == "__main__":
     mcp.run()

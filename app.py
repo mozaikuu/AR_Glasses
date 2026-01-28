@@ -670,7 +670,7 @@ with st.sidebar:
     if wakeword_running:
         st.success("✅ Wake-word system: **Active**")
         st.caption(f"State: {wakeword_state}")
-    else:
+                                else:
         st.warning("⚠️ Wake-word system: **Inactive**")
         st.caption("Click 'Start Listening' to activate")
     
