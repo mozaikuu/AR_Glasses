@@ -1,24 +1,14 @@
 """Smart Glasses AI Assistant with Wake-Word Activation."""
 
 import streamlit as st
-
 import requests
-
 import numpy as np
-
 import base64
-
 import time
-
 import threading
-
 # Wake-word system and AI processing
-
 from config.settings import API_URL
-
 from tools.wakeword.wakeword_system import create_wakeword_system, SystemState
-
-
 
 # Page config
 st.set_page_config(
@@ -670,7 +660,7 @@ with st.sidebar:
     if wakeword_running:
         st.success("✅ Wake-word system: **Active**")
         st.caption(f"State: {wakeword_state}")
-                                else:
+    else:
         st.warning("⚠️ Wake-word system: **Inactive**")
         st.caption("Click 'Start Listening' to activate")
     
