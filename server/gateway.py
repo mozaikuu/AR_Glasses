@@ -4,7 +4,7 @@ import sys
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from models.requests import MultimodalRequest, TextRequest
 from tools.speech.transcription import transcribe_audio_bytes
 
@@ -352,4 +352,123 @@ async def process_multimodal(req: MultimodalRequest):
         "response": result,
         "transcription": transcribed_text if transcribed_text else None
     }
+
+
+# ----------------------------
+# NAVIGATION ENDPOINTS
+# ----------------------------
+
+@app.get("/navigation/locations")
+async def get_navigation_locations():
+    """Get all available navigation locations."""
+    global mcp_client, mcp_connected
+
+    # First check if we can get locations from nav_runner directly
+    try:
+        import sys
+        from pathlib import Path
+        project_root = Path(__file__).parent.parent
+        sys.path.insert(0, str(project_root))
+
+        from tools.navigation.navigation import load_graph, get_all_locations
+        graph = load_graph()
+        locations = get_all_locations(graph)
+        return {"locations": sorted(locations)}
+    except Exception as e:
+        print(f"[HTTP] Error loading navigation locations: {e}", file=sys.stderr)
+        return {"locations": [], "error": str(e)}
+
+
+@app.post("/navigation/start")
+async def start_navigation(req: dict):
+    """Start indoor navigation from start to destination."""
+    global mcp_client, mcp_connected
+
+    start = req.get("start")
+    destination = req.get("destination")
+
+    if not start or not destination:
+        return {"success": False, "error": "Both 'start' and 'destination' are required"}
+
+    try:
+        import sys
+        from pathlib import Path
+        project_root = Path(__file__).parent.parent
+        sys.path.insert(0, str(project_root))
+
+        from tools.navigation.nav_runner import start_navigation
+        result = start_navigation(start, destination)
+        return result
+    except Exception as e:
+        print(f"[HTTP] Error starting navigation: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/navigation/next")
+async def next_navigation_step(req: dict = None):
+    """Get next navigation instruction."""
+    global mcp_client, mcp_connected
+
+    session_id = req.get("session_id") if req else None
+
+    try:
+        import sys
+        from pathlib import Path
+        project_root = Path(__file__).parent.parent
+        sys.path.insert(0, str(project_root))
+
+        from tools.navigation.nav_runner import next_navigation_step
+        result = next_navigation_step(session_id)
+        return result
+    except Exception as e:
+        print(f"[HTTP] Error getting next step: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/navigation/status")
+async def get_navigation_status(session_id: str = Query(default=None, description="Optional session ID")):
+    """Get current navigation status/progress."""
+    global mcp_client, mcp_connected
+
+    try:
+        import sys
+        from pathlib import Path
+        project_root = Path(__file__).parent.parent
+        sys.path.insert(0, str(project_root))
+
+        from tools.navigation.nav_runner import get_navigation_status
+        result = get_navigation_status(session_id)
+        return result
+    except Exception as e:
+        print(f"[HTTP] Error getting navigation status: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/navigation/cancel")
+async def cancel_navigation(req: dict = None):
+    """Cancel active navigation session."""
+    global mcp_client, mcp_connected
+
+    session_id = req.get("session_id") if req else None
+
+    try:
+        import sys
+        from pathlib import Path
+        project_root = Path(__file__).parent.parent
+        sys.path.insert(0, str(project_root))
+
+        from tools.navigation.nav_runner import cancel_navigation
+        result = cancel_navigation(session_id)
+        return result
+    except Exception as e:
+        print(f"[HTTP] Error cancelling navigation: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        return {"success": False, "error": str(e)}
 
