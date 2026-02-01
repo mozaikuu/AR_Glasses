@@ -1,35 +1,49 @@
 # from mcp.server.fastmcp import FastMCP
-from fastmcp import FastMCP  
+from fastmcp import FastMCP
 # from tools.computer_vision.yolo import infer
-# from tools.gps_navigation.Floor_planning import MultiFloorPlanner 
+# from tools.gps_navigation.Floor_planning import MultiFloorPlanner
 from tools.search_web.search_web import retrieve_web_context
 from tools.computer_vision.cv import detect_objects
 from tools.computer_vision.yolo import infer
+import sys
+from pathlib import Path
+
+# Add project root to path for navigation imports
+project_root = Path(__file__).parent.parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+from tools.navigation.navigation import load_graph, get_all_locations, astar, navigate
 
 mcp = FastMCP(name="smart-glasses")
 
-# LLM -> MCP -> Tools -> LLM 
+# LLM -> MCP -> Tools -> LLM
 
-# @mcp.tool()
-# def NavigateIndoor(start: str, destination: str, algorithm: str = "astar") -> str:
-#     graph = {...}
-#     heuristic = {...}
 
-#     nav = IndoorNavigator(graph, heuristic)
+@mcp.tool()
+def NavigateIndoor(start: str, destination: str) -> dict:
+    """Navigate from start to destination using indoor A* routing.
 
-#     if algorithm == "bfs":
-#         path = nav.bfs(start, destination)
-#     elif algorithm == "dfs":
-#         path = nav.dfs(start, destination)
-#     elif algorithm == "dijkstra":
-#         path, _ = nav.dijkstra(start, destination)
-#     else:
-#         path, _ = nav.astar(start, destination)
+    Args:
+        start: Starting location (e.g., "Entrance", "Hall 2-0-25")
+        destination: Target destination (e.g., "Dean Office", "TA Office")
 
-#     if not path:
-#         return "No route found."
+    Returns:
+        Dict with success status, path, steps, and directions
+    """
+    result = navigate(start, destination)
+    return result
 
-#     return " → ".join(path)
+
+@mcp.tool()
+def GetNavigationLocations() -> list:
+    """Get all available indoor navigation locations.
+
+    Returns:
+        List of available location names
+    """
+    return get_all_locations(load_graph())
+
 
 # @mcp.tool()
 # def search_web(query: str) -> dict:
@@ -41,6 +55,33 @@ mcp = FastMCP(name="smart-glasses")
 def VisionDetect() -> str:
     """Detect objects using the camera."""
     return infer()
+
+
+@mcp.tool()
+def NavigateIndoor(start: str, destination: str) -> dict:
+    """Navigate from start to destination using indoor A* routing.
+
+    Args:
+        start: Starting location (e.g., "Entrance", "Hall 2-0-25")
+        destination: Target destination (e.g., "Dean Office", "TA Office")
+
+    Returns:
+        Dict with success status, path, steps, and directions
+    """
+    result = navigate(start, destination)
+    return result
+
+
+@mcp.tool()
+def GetNavigationLocations() -> list:
+    """Get all available indoor navigation locations.
+
+    Returns:
+        List of available location names
+    """
+    graph = load_graph()
+    return get_all_locations(graph)
+
 
 # @mcp.tool()
 # def CV() -> str:

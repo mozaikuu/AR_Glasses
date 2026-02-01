@@ -63,7 +63,8 @@ PIPER_ENGLISH_VOICE = str(PIPER_MODEL_DIR / "en_US-lessac-medium" / "en_US-lessa
 PIPER_ARABIC_VOICE = str(PIPER_MODEL_DIR / "ar_JO-karlovery" / "ar_JO-karlovery.onnx")
 
 # Use Piper TTS by default (set to False to use Edge-TTS)
-USE_PIPER_TTS = True
+# Edge-TTS is recommended as primary (cloud-based, always works, no model download needed)
+USE_PIPER_TTS = False
 
 # ================= LOGGING =================
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

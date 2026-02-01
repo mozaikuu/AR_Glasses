@@ -26,6 +26,10 @@ dependencies = [
  "ddgs",
  "beautifulsoup4",
  "requests",
+ "mediapipe",
+ "networkx",
+ "matplotlib",
+ "scikit-learn",
 ]
 [[project.authors]]
 name = "Ahmed Moussa"

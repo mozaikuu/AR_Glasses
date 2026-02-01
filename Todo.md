@@ -833,192 +833,78 @@ Docs:-
 
 ---
 
-You are continuing work on an existing smart-glasses web + mobile + backend project.
-Assume no prior context. All current, not-working code is provided below and must be treated as the source of truth.
+Implementation Summary
+                                                                                                                                     Phase 1: Dependencies & TTS Fix
+                                                                                                                                     config/settings.py - Changed USE_PIPER_TTS = False to use edge-tts as primary
+                                                                                                                                   
+  tools/speech/tts.py - Rewrote to:
+  - Use edge-tTS as primary (cloud-based, no model download needed)
+  - Fall back to Piper TTS if edge-tts fails
+  - Support both async and sync APIs
 
-Absolute rules
+  pyproject.toml - Added dependencies:
+  - mediapipe - Hand/gesture detection
+  - networkx - Graph navigation
+  - matplotlib - Navigation visualization
+  - scikit-learn - ML utilities
 
-Finish all tasks listed below before stopping.
+  Phase 2: Navigation UI
 
-Fix all runtime, build, and logical errors you encounter.
+  ui/app.py - Already has navigation panel in sidebar with:
+  - Location selection dropdowns
+  - Start/Cancel navigation buttons
+  - Step-by-step instructions
 
-Install and configure all required dependencies.
+  Phase 3: MediaPipe Integration
 
-Do not leave TODOs, placeholders, or “next steps”.
+  tools/vision/gestures.py - Created with:
+  - GestureDetector class for hand tracking
+  - Gesture detection: open_hand, fist, pointing, peace_sign, etc.
+  - Gesture-to-action mapping for smart glasses control
+  - Visual landmark drawing
 
-Use only open-source and free tools, libraries, and models.
+  Phase 4: Mobile App
 
-Prefer practical, lightweight, production-realistic solutions.
+  Review/smart_glasses_app/src/utils/permissions.js - Created with:
+  - requestCameraPermission()
+  - requestMicrophonePermission()
+  - requestLocationPermission()
+  - requestAllPermissions() - batch request
 
-Do not redesign everything unless necessary—incrementally improve what exists.
+  Review/smart_glasses_app/src/utils/voice.js - Created with:
+  - startVoiceInput() / stopVoiceInput()
+  - transcribeAudio() - sends to gateway
+  - playAudioResponse() / stopAudioPlayback()
 
-If multiple tasks exist, complete them sequentially, not in parallel.
+  Phase 5: MCP Server & YOLO
 
-Assume previous runs stopped due to token limits—resume and finish everything.
+  src/MCP_Server/Server.py - Added tools:
+  - NavigateIndoor(start, destination) - A* indoor routing
+  - GetNavigationLocations() - List all locations
 
-Project vision (must guide all decisions)
+  tools/vision/yolo.py - Already has:
+  - Correct model path (BASE_DIR / "models" / "yolo11n.pt")
+  - download_model_if_needed() - Auto-download YOLO11n
 
-The project is Smart Glasses with frictionless interaction:
+  Test Script
 
-Smart glasses = user interface (camera, sensors, minimal HUD or paired display)
+  test_system.py - Created for verification
 
-Phone (iOS / Android) = gateway (mic input, networking, permissions, compute offload)
+  Next Steps
 
-Servers = run intelligence with minimal runtime and cost
+  Run these commands to complete setup:
 
-Core principles:
+  # Install/update dependencies
+  uv sync
 
-Practical > flashy
+  # Start gateway server
+  python start_gateway.py
 
-Efficient and battery-aware
+  # Run Streamlit UI (separate terminal)
+  streamlit run ui/app.py
 
-Privacy-respecting
+  # Test navigation
+  python tools/navigation/navigation.py
 
-Robust in real-world conditions
-
-The system:
-
-Perceives the world using a camera and sensors
-
-Understands scenes via computer vision and lightweight AI
-
-Estimates user motion and position
-
-Returns minimal, useful information to the user (no UI clutter)
-
-Core features (must all be implemented or integrated)
-
-Indoor Navigation
-
-Camera-based perception
-
-Sensor fusion if available
-
-Works without GPS
-
-Designed for real indoor spaces
-
-Smart Companion (context-aware)
-
-Understands when the user is struggling
-
-Uses vision + voice + context
-
-Proactive but non-intrusive
-
-Hardware integration
-
-ESP32 on the glasses
-
-Paired with iOS or Android phone
-
-Phone handles mic, permissions, networking
-
-Mandatory technical tasks
-
-Install and configure all dependencies
-
-Frontend
-
-Backend
-
-Mobile / web APIs
-
-CV / AI libraries
-
-Add navigation capabilities into the web app
-
-Visual overlays
-
-Data flow from camera → processing → guidance
-
-Clear separation of concerns
-
-Configure phone microphone permissions
-
-Ensure voice input works
-
-Handle permission failures gracefully
-
-Fix all existing errors
-
-Build errors
-
-Runtime errors
-
-Broken logic
-
-Misconfigured APIs
-
-Finish any previously started tasks
-
-Do not restart them
-
-Complete them fully
-
-AI / CV constraint
-
-Evaluate and, if appropriate, integrate MediaPipe Edge AI:
-https://ai.google.dev/edge/mediapipe/solutions/guide
-
-They provide:
-
-Image classification
-
-Gesture recognition
-
-Text classification
-
-Object detection
-
-Face detection
-
-You must:
-
-Decide which components are useful for this project
-
-Justify why
-
-Integrate only what makes sense for:
-
-Hand gestures
-
-Scene understanding
-
-Context awareness
-
-Keep everything lightweight and on-device where possible
-
-Improvement task (important)
-
-After stabilizing the system:
-
-Propose concrete improvements aligned with the original vision
-
-Focus on:
-
-Interaction design (gesture + voice + context)
-
-Latency reduction
-
-Power efficiency
-
-Privacy
-
-Do not suggest paid APIs or proprietary models
-
-Final output requirements
-
-When finished, provide:
-
-Confirmation that all tasks are complete
-
-Summary of what was fixed
-
-Summary of what was added
-
-Explanation of MediaPipe’s role (or why not used)
-
-List of open-source tools used
-
-Do not stop early. ask as many questions as needed.
+  # Run system tests
+  python test_system.py
