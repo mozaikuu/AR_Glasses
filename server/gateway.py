@@ -5,6 +5,7 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
 from models.requests import MultimodalRequest, TextRequest
 from tools.speech.transcription import transcribe_audio_bytes
 
@@ -24,58 +25,94 @@ _mcp_session_context = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for FastAPI app."""
-    global mcp_client, mcp_connected, _stdio_transport_context, _mcp_session_context
-    
+    global mcp_client, mcp_connected, _stdio_transport_context, _mcp_session_context, _keepalive_task
+
     print("[HTTP] Starting gateway server...", file=sys.stderr)
-    
+
+    # Start keepalive heartbeat task
+    _keepalive_task = asyncio.create_task(_keepalive_heartbeat())
+
     try:
         from mcp import ClientSession, StdioServerParameters
         from mcp.client.stdio import stdio_client
-        
+
         print(f"[HTTP] Initializing MCP client connection to {mcp_server_path}", file=sys.stderr)
-        
+
         # Create MCP server parameters
         server_params = StdioServerParameters(
             command=sys.executable,
             args=[str(mcp_server_path)],
             env=dict(os.environ, PYTHONPATH=str(project_root))
         )
-        
+
         # Use nested async context managers properly
         async with stdio_client(server_params) as (read_stream, write_stream):
             async with ClientSession(read_stream, write_stream) as mcp_session:
                 # Initialize the session
                 await mcp_session.initialize()
-                
+
                 # List available tools
                 tools = await mcp_session.list_tools()
                 print(f"[HTTP] MCP connected successfully! Available tools: {[t.name for t in tools.tools]}", file=sys.stderr)
-                
+
                 # Store references
                 mcp_client = mcp_session
                 mcp_connected = True
                 _stdio_transport_context = stdio_client(server_params)  # Keep reference
                 _mcp_session_context = mcp_session  # Keep reference
-                
+
                 # Yield - context managers stay alive until we exit
                 yield
-                
+
                 # Cleanup happens automatically when exiting context
-        
+
     except Exception as e:
         print(f"[ERROR] Failed to connect to MCP server: {e}", file=sys.stderr)
         import traceback
         traceback.print_exc(file=sys.stderr)
         mcp_connected = False
         mcp_client = None
-    
+
     # Final cleanup
     print("[HTTP] Shutting down gateway", file=sys.stderr)
+
+    # Cancel keepalive task
+    if _keepalive_task:
+        _keepalive_task.cancel()
+        try:
+            await _keepalive_task
+        except asyncio.CancelledError:
+            pass
+
     mcp_connected = False
     mcp_client = None
     _stdio_transport_context = None
     _mcp_session_context = None
 
+
+async def _keepalive_heartbeat():
+    """Background task to keep connection alive."""
+    while True:
+        await asyncio.sleep(30)  # Heartbeat every 30 seconds
+        # Verify MCP connection is still active
+        if mcp_connected and mcp_client:
+            try:
+                await mcp_client.list_tools()
+                print("[HTTP] Keepalive: MCP connection active", file=sys.stderr)
+            except Exception as e:
+                print(f"[HTTP] Keepalive: MCP connection lost: {e}", file=sys.stderr)
+                global mcp_connected
+                mcp_connected = False
+
+
+# CORS middleware for mobile gateway access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure appropriately for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app = FastAPI(lifespan=lifespan)
 

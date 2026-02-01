@@ -1,0 +1,105 @@
+# Smart Glasses Mobile Gateway
+
+A Flutter mobile app that serves as a gateway between ESP32 smart glasses and the server.
+
+## Features
+
+- BLE connection to ESP32 smart glasses
+- Camera/microphone streaming
+- Voice command processing
+- Navigation guidance display
+- Context-aware notifications
+
+## Getting Started
+
+### Prerequisites
+
+- Flutter 3.0+ (https://flutter.dev/docs/get-started/install)
+- Android SDK / Xcode (for mobile development)
+- A physical device (BLE requires real hardware)
+
+### Installation
+
+```bash
+# Clone the repository
+git clone <repo_url>
+
+# Navigate to mobile directory
+cd mobile/smart_glasses_gateway
+
+# Get dependencies
+flutter pub get
+
+# Run on device
+flutter run -d <device_id>
+```
+
+### Configuration
+
+Edit `lib/config.dart` to set your server URL:
+
+```dart
+class Config {
+  static const String serverUrl = 'http://YOUR_SERVER_IP:8001';
+  static const String bleServiceUuid = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
+  static const String bleCharacteristicUuid = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
+}
+```
+
+## Project Structure
+
+```
+mobile/smart_glasses_gateway/
+├── lib/
+│   ├── main.dart              # App entry point
+│   ├── config.dart            # Configuration
+│   ├── services/
+│   │   ├── ble_service.dart   # Bluetooth Low Energy
+│   │   ├── api_service.dart   # HTTP API client
+│   │   └── tts_service.dart   # Text-to-speech
+│   ├── screens/
+│   │   ├── home_screen.dart   # Main interface
+│   │   ├── camera_screen.dart # Live camera feed
+│   │   └── nav_screen.dart    # Navigation guidance
+│   ├── widgets/
+│   │   ├── connection_status.dart
+│   │   └── gesture_overlay.dart
+│   └── models/
+│       └── device_data.dart
+├── pubspec.yaml
+└── README.md
+```
+
+## Dependencies
+
+```yaml
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_blue_plus: ^1.31.0    # BLE
+  http: ^1.2.0                  # HTTP requests
+  provider: ^6.1.0              # State management
+  shared_preferences: ^2.2.0    # Settings
+  flutter_tts: ^4.0.0           # Text-to-speech
+  permission_handler: ^11.0.0   # Permissions
+```
+
+## Usage
+
+1. **Pairing**: Tap "Scan" to find nearby smart glasses
+2. **Connection**: Tap the device to connect
+3. **Commands**: Use voice or gestures to control
+4. **Navigation**: Select destination from the menu
+
+## API Endpoints
+
+The mobile gateway communicates with:
+
+- `POST /v2/voice/process` - Voice command processing
+- `GET /v2/navigation/locations` - Available destinations
+- `POST /v2/context/update` - Update context
+- `GET /v2/context/suggest` - Get proactive suggestions
+
+## License
+
+MIT

@@ -2,6 +2,7 @@
 import streamlit as st
 import requests
 import numpy as np
+import cv2
 import base64
 from streamlit_webrtc import webrtc_streamer, VideoProcessorBase, AudioProcessorBase
 from config.settings import API_URL
@@ -13,6 +14,8 @@ st.set_page_config(page_title="Smart Glasses Interface", layout="wide")
 # Initialize session state
 if "captured_frame" not in st.session_state:
     st.session_state.captured_frame = None
+if "captured_frame_rgb" not in st.session_state:
+    st.session_state.captured_frame_rgb = None
 if "audio_buffer" not in st.session_state:
     st.session_state.audio_buffer = []
 if "transcribed_text" not in st.session_state:
@@ -23,13 +26,21 @@ if "recording_start_frame" not in st.session_state:
     st.session_state.recording_start_frame = 0
 
 
+def clear_inputs():
+    """Clear captured inputs for a new request."""
+    st.session_state.captured_frame = None
+    st.session_state.captured_frame_rgb = None
+    st.session_state.audio_buffer = []
+    st.session_state.transcribed_text = ""
+
+
 # ==================== VIDEO PROCESSOR ====================
 class VideoProcessor(VideoProcessorBase):
     """Process video frames from WebRTC stream."""
     def __init__(self):
         super().__init__()
         self.current_frame = None
-    
+
     def recv(self, frame):
         """Receive and store current frame."""
         img = frame.to_ndarray(format="bgr24")
@@ -119,14 +130,20 @@ with col1:
     if webrtc_ctx.video_processor:
         if st.button("📸 Capture Frame", key="capture_frame"):
             if webrtc_ctx.video_processor.current_frame is not None:
+                # Store raw BGR frame for processing
                 st.session_state.captured_frame = webrtc_ctx.video_processor.current_frame
+                # Convert to RGB for display
+                st.session_state.captured_frame_rgb = cv2.cvtColor(
+                    webrtc_ctx.video_processor.current_frame,
+                    cv2.COLOR_BGR2RGB
+                )
                 st.success("Frame captured!")
             else:
                 st.warning("No frame available. Make sure camera is active.")
-    
-    # Show captured frame
-    if st.session_state.captured_frame is not None:
-        st.image(st.session_state.captured_frame, caption="Captured Frame", use_container_width=True)
+
+    # Show captured frame (RGB for correct color display)
+    if st.session_state.captured_frame_rgb is not None:
+        st.image(st.session_state.captured_frame_rgb, caption="Captured Frame", use_container_width=True)
 
 with col2:
     st.subheader("🎛️ Controls")
@@ -246,6 +263,8 @@ with col2:
                         st.success("✅ Response received!")
                         st.write("**Agent Response:**")
                         st.write(result)
+                        # Clear inputs after successful request
+                        clear_inputs()
                     else:
                         st.error(f"Error: {response.status_code} - {response.text}")
                         
