@@ -5,31 +5,51 @@ description = "your ai companion and navigation in Smart Glasses"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+ # MCP & Server
  "fastmcp==2.14.1",
  "mcp==1.24.0",
  "fastapi",
  "uvicorn",
+ "aiohttp",
+
+ # Web UI
  "streamlit",
  "streamlit-webrtc",
- "pydantic",
+
+ # ML/AI
  "torch",
  "transformers",
- "pillow",
- "numpy",
- "opencv-python",
  "ultralytics",
  "whisper",
+ "mediapipe",
+ "scikit-learn",
+
+ # Computer Vision
+ "numpy",
+ "opencv-python",
+ "pillow",
+ "Pillow",
+
+ # Audio
  "edge-tts",
  "mutagen",
  "pygame",
  "pyaudio",
- "ddgs",
- "beautifulsoup4",
- "requests",
- "mediapipe",
+ "speechrecognition",
+
+ # Navigation & Graphs
  "networkx",
  "matplotlib",
- "scikit-learn",
+
+ # Web & Data
+ "requests",
+ "ddgs",
+ "beautifulsoup4",
+ "python-dotenv",
+
+ # Utilities
+ "pydantic",
+ "python-dateutil",
 ]
 [[project.authors]]
 name = "Ahmed Moussa"

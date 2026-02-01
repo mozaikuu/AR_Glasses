@@ -92,6 +92,7 @@ async def lifespan(app: FastAPI):
 
 async def _keepalive_heartbeat():
     """Background task to keep connection alive."""
+    global mcp_connected
     while True:
         await asyncio.sleep(30)  # Heartbeat every 30 seconds
         # Verify MCP connection is still active
@@ -101,9 +102,10 @@ async def _keepalive_heartbeat():
                 print("[HTTP] Keepalive: MCP connection active", file=sys.stderr)
             except Exception as e:
                 print(f"[HTTP] Keepalive: MCP connection lost: {e}", file=sys.stderr)
-                global mcp_connected
                 mcp_connected = False
 
+
+app = FastAPI(lifespan=lifespan)
 
 # CORS middleware for mobile gateway access
 app.add_middleware(
@@ -113,8 +115,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-app = FastAPI(lifespan=lifespan)
 
 
 @app.get("/")
