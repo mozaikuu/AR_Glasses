@@ -18,7 +18,7 @@ required_packages = [
     "mutagen",
     "pygame",
     "pyaudio",
-    "ddgs",
+    "duckduckgo_search",
     "bs4",
     "requests",
     "fastmcp",

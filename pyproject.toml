@@ -42,9 +42,9 @@ dependencies = [
  "matplotlib",
 
  # Web & Data
- "requests",
- "ddgs",
- "beautifulsoup4",
+    "requests",
+    "duckduckgo-search",
+    "beautifulsoup4",
  "python-dotenv",
 
  # Utilities
