@@ -24,6 +24,12 @@ if "is_recording_audio" not in st.session_state:
     st.session_state.is_recording_audio = False
 if "recording_start_frame" not in st.session_state:
     st.session_state.recording_start_frame = 0
+if "nav_locations" not in st.session_state:
+    st.session_state.nav_locations = []
+if "nav_session_id" not in st.session_state:
+    st.session_state.nav_session_id = None
+if "nav_current_step" not in st.session_state:
+    st.session_state.nav_current_step = None
 
 
 def clear_inputs():
@@ -302,6 +308,102 @@ python start_gateway.py
                     else:
                         st.error(f"❌ **Error processing request**: {error_msg}")
 
+# ==================== NAVIGATION PANEL ====================
+try:
+    # Fetch navigation locations
+    if not st.session_state.nav_locations:
+        try:
+            response = requests.get(f"{API_URL}/navigation/locations", timeout=2)
+            if response.status_code == 200:
+                st.session_state.nav_locations = response.json().get("locations", [])
+        except:
+            st.session_state.nav_locations = []
+
+    if st.session_state.nav_locations:
+        st.sidebar.divider()
+        st.sidebar.subheader("🧭 Indoor Navigation")
+
+        # Start navigation
+        start_loc = st.sidebar.selectbox(
+            "Start Location",
+            st.session_state.nav_locations,
+            key="nav_start"
+        )
+        dest_loc = st.sidebar.selectbox(
+            "Destination",
+            st.session_state.nav_locations,
+            key="nav_dest"
+        )
+
+        if st.sidebar.button("🛤️ Start Navigation", use_container_width=True):
+            try:
+                response = requests.post(
+                    f"{API_URL}/navigation/start",
+                    json={"start": start_loc, "destination": dest_loc},
+                    timeout=5
+                )
+                if response.status_code == 200:
+                    result = response.json()
+                    if result.get("success"):
+                        st.session_state.nav_session_id = result.get("session_id")
+                        st.session_state.nav_current_step = result.get("first_step")
+                        st.sidebar.success(f"Navigation started!")
+                        st.sidebar.json(result)
+                    else:
+                        st.sidebar.error(result.get("error", "Navigation failed"))
+                else:
+                    st.sidebar.error(f"Error: {response.status_code}")
+            except Exception as e:
+                st.sidebar.error(f"Connection error: {e}")
+
+        # Navigation controls
+        if st.session_state.nav_session_id:
+            st.sidebar.info(f"Session: {st.session_state.nav_session_id}")
+
+            # Show current step
+            if st.session_state.nav_current_step:
+                step = st.session_state.nav_current_step
+                if step.get("type") == "welcome":
+                    st.sidebar.write(f"**Ready:** {step.get('instruction')}")
+                elif step.get("type") == "arrival":
+                    st.sidebar.success(f"**Arrived:** {step.get('instruction')}")
+                    st.session_state.nav_session_id = None
+                    st.session_state.nav_current_step = None
+                else:
+                    st.sidebar.write(f"**Step {step.get('step')}:** {step.get('instruction')}")
+
+            col_nav1, col_nav2 = st.sidebar.columns(2)
+            if col_nav1.button("Next Step", key="nav_next"):
+                try:
+                    response = requests.post(
+                        f"{API_URL}/navigation/next",
+                        json={"session_id": st.session_state.nav_session_id},
+                        timeout=5
+                    )
+                    if response.status_code == 200:
+                        result = response.json()
+                        if result.get("success"):
+                            st.session_state.nav_current_step = result.get("step")
+                            st.rerun()
+                except Exception as e:
+                    st.sidebar.error(f"Error: {e}")
+
+            if col_nav2.button("Cancel", key="nav_cancel"):
+                try:
+                    requests.post(
+                        f"{API_URL}/navigation/cancel",
+                        json={"session_id": st.session_state.nav_session_id},
+                        timeout=5
+                    )
+                    st.session_state.nav_session_id = None
+                    st.session_state.nav_current_step = None
+                    st.rerun()
+                except:
+                    pass
+
+except Exception as e:
+    st.sidebar.warning(f"Navigation unavailable: {e}")
+
 # Debug section
 with st.expander("🔍 Debug Info"):
     st.write("**Session State:**")
@@ -309,6 +411,7 @@ with st.expander("🔍 Debug Info"):
         "has_frame": st.session_state.captured_frame is not None,
         "audio_frames": len(st.session_state.audio_buffer),
         "transcribed": st.session_state.transcribed_text,
-        "text_input": text_input[:50] if text_input else None
+        "text_input": text_input[:50] if text_input else None,
+        "nav_session": st.session_state.nav_session_id
     })
 

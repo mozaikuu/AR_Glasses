@@ -9,10 +9,29 @@ if str(project_root) not in sys.path:
 
 from ultralytics import YOLO
 import cv2
-from config.settings import SRC_DIR
+from config.settings import BASE_DIR
 
-# Model path
-MODEL_PATH = SRC_DIR / "mcp_server" / "tools" / "computer_vision" / "yolo11n_coco8_trained.pt"
+# Model path - try multiple locations
+MODEL_PATH = BASE_DIR / "models" / "yolo11n.pt"
+
+
+def download_model_if_needed():
+    """Download YOLO model if it doesn't exist."""
+    if MODEL_PATH.exists():
+        return True
+
+    print(f"Model not found at {MODEL_PATH}, downloading YOLO11n...", file=sys.stderr)
+
+    try:
+        # Download using Ultralytics
+        model = YOLO("yolo11n.pt")
+        MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+        model.save(str(MODEL_PATH))
+        print(f"Model downloaded to {MODEL_PATH}", file=sys.stderr)
+        return True
+    except Exception as e:
+        print(f"Failed to download model: {e}", file=sys.stderr)
+        return False
 
 
 def infer():

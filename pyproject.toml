@@ -26,6 +26,10 @@ dependencies = [
  "ddgs",
  "beautifulsoup4",
  "requests",
+ "mediapipe",
+ "networkx",
+ "matplotlib",
+ "scikit-learn",
 ]
 [[project.authors]]
 name = "Ahmed Moussa"
@@ -40,3 +44,6 @@ mcp-server = "mcp_server:main"
 
 [tool.setuptools]
 py-modules = ["mcp_server"]
+
+[tool.uv]
+package = false
