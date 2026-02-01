@@ -64,12 +64,12 @@ run all 3 previous unfinished tasks and fix all errors
       ~~~ take me from 46 to dean
       🤖 AI Assistant:
 
-                       Please choose a valid start location from the following: Entrance, Hall 2-0-25, Hall 2-0-16, Stairs G, Elevator G, Floor 1, Left Corridor, Elevator F1, TA Office, Section 2-1-52, Hall 2-1-45, Section 2-1-41, Right Corridor, Hall 2-1-76, Hall 2-1-77, Hall 2-1-83, Hall 2-1-84 ~~~
+                        Please choose a valid start location from the following: Entrance, Hall 2-0-25, Hall 2-0-16, Stairs G, Elevator G, Floor 1, Left Corridor, Elevator F1, TA Office, Section 2-1-52, Hall 2-1-45, Section 2-1-41, Right Corridor, Hall 2-1-76, Hall 2-1-77, Hall 2-1-83, Hall 2-1-84 ~~~
 
-            take me from 2-1-45 to dean
-            🤖 AI Assistant:
+             take me from 2-1-45 to dean
+             🤖 AI Assistant:
 
-                  Action already taken.
+                   Action already taken.
 
 - [ ] reset history due to task conflicts
 
@@ -675,10 +675,10 @@ Students should work on preparing power point slides include the following:
 - [x] fix my name in the file
 - [x] ABSTRACT
 
-                Modern wearable technologies aim to enhance human–technology interaction; however, existing smart glasses solutions remain limited in personalization, contextual awareness, and seamless multimodal integration. This paper presents an advanced AI-powered smart glasses system designed to improve daily communication, productivity, accessibility, and decision-making through intelligent, hands-free interaction.
-                The proposed system integrates speech recognition, real-time multilingual translation, large language models, computer vision, augmented reality, navigation, and smart home connectivity into a unified wearable platform. A YOLO-based computer vision module enables real-time object detection and face recognition, allowing personalized and context-aware interactions. Indoor navigation is supported through a custom mapping and graph-based routing approach, providing accurate guidance in complex indoor environments.
-                Speech input is transcribed using a multilingual automatic speech recognition model and processed by a large language model to understand user intent and generate appropriate responses, which are delivered through natural text-to-speech output. A companion mobile and web platform enables device management, smart home control, accessibility customization, and real-time system monitoring.
-                The system is designed with inclusivity as a core principle, supporting users with disabilities through voice-based interaction, visual aids, and hands-free operation, while also enhancing safety and efficiency in daily tasks. Experimental analysis and competitor comparison demonstrate that the proposed solution addresses key limitations of existing smart glasses platforms, particularly in advanced computer vision, indoor navigation, and AI-driven personalization.
+                 Modern wearable technologies aim to enhance human–technology interaction; however, existing smart glasses solutions remain limited in personalization, contextual awareness, and seamless multimodal integration. This paper presents an advanced AI-powered smart glasses system designed to improve daily communication, productivity, accessibility, and decision-making through intelligent, hands-free interaction.
+                 The proposed system integrates speech recognition, real-time multilingual translation, large language models, computer vision, augmented reality, navigation, and smart home connectivity into a unified wearable platform. A YOLO-based computer vision module enables real-time object detection and face recognition, allowing personalized and context-aware interactions. Indoor navigation is supported through a custom mapping and graph-based routing approach, providing accurate guidance in complex indoor environments.
+                 Speech input is transcribed using a multilingual automatic speech recognition model and processed by a large language model to understand user intent and generate appropriate responses, which are delivered through natural text-to-speech output. A companion mobile and web platform enables device management, smart home control, accessibility customization, and real-time system monitoring.
+                 The system is designed with inclusivity as a core principle, supporting users with disabilities through voice-based interaction, visual aids, and hands-free operation, while also enhancing safety and efficiency in daily tasks. Experimental analysis and competitor comparison demonstrate that the proposed solution addresses key limitations of existing smart glasses platforms, particularly in advanced computer vision, indoor navigation, and AI-driven personalization.
 
 - [x] fix bookmarks
 - [ ] TABLE OF CONTENTS
@@ -830,3 +830,195 @@ Docs:-
 - fixed style ✅
 - fixed duplication ✅
 - fix tables
+
+---
+
+You are continuing work on an existing smart-glasses web + mobile + backend project.
+Assume no prior context. All current, not-working code is provided below and must be treated as the source of truth.
+
+Absolute rules
+
+Finish all tasks listed below before stopping.
+
+Fix all runtime, build, and logical errors you encounter.
+
+Install and configure all required dependencies.
+
+Do not leave TODOs, placeholders, or “next steps”.
+
+Use only open-source and free tools, libraries, and models.
+
+Prefer practical, lightweight, production-realistic solutions.
+
+Do not redesign everything unless necessary—incrementally improve what exists.
+
+If multiple tasks exist, complete them sequentially, not in parallel.
+
+Assume previous runs stopped due to token limits—resume and finish everything.
+
+Project vision (must guide all decisions)
+
+The project is Smart Glasses with frictionless interaction:
+
+Smart glasses = user interface (camera, sensors, minimal HUD or paired display)
+
+Phone (iOS / Android) = gateway (mic input, networking, permissions, compute offload)
+
+Servers = run intelligence with minimal runtime and cost
+
+Core principles:
+
+Practical > flashy
+
+Efficient and battery-aware
+
+Privacy-respecting
+
+Robust in real-world conditions
+
+The system:
+
+Perceives the world using a camera and sensors
+
+Understands scenes via computer vision and lightweight AI
+
+Estimates user motion and position
+
+Returns minimal, useful information to the user (no UI clutter)
+
+Core features (must all be implemented or integrated)
+
+Indoor Navigation
+
+Camera-based perception
+
+Sensor fusion if available
+
+Works without GPS
+
+Designed for real indoor spaces
+
+Smart Companion (context-aware)
+
+Understands when the user is struggling
+
+Uses vision + voice + context
+
+Proactive but non-intrusive
+
+Hardware integration
+
+ESP32 on the glasses
+
+Paired with iOS or Android phone
+
+Phone handles mic, permissions, networking
+
+Mandatory technical tasks
+
+Install and configure all dependencies
+
+Frontend
+
+Backend
+
+Mobile / web APIs
+
+CV / AI libraries
+
+Add navigation capabilities into the web app
+
+Visual overlays
+
+Data flow from camera → processing → guidance
+
+Clear separation of concerns
+
+Configure phone microphone permissions
+
+Ensure voice input works
+
+Handle permission failures gracefully
+
+Fix all existing errors
+
+Build errors
+
+Runtime errors
+
+Broken logic
+
+Misconfigured APIs
+
+Finish any previously started tasks
+
+Do not restart them
+
+Complete them fully
+
+AI / CV constraint
+
+Evaluate and, if appropriate, integrate MediaPipe Edge AI:
+https://ai.google.dev/edge/mediapipe/solutions/guide
+
+They provide:
+
+Image classification
+
+Gesture recognition
+
+Text classification
+
+Object detection
+
+Face detection
+
+You must:
+
+Decide which components are useful for this project
+
+Justify why
+
+Integrate only what makes sense for:
+
+Hand gestures
+
+Scene understanding
+
+Context awareness
+
+Keep everything lightweight and on-device where possible
+
+Improvement task (important)
+
+After stabilizing the system:
+
+Propose concrete improvements aligned with the original vision
+
+Focus on:
+
+Interaction design (gesture + voice + context)
+
+Latency reduction
+
+Power efficiency
+
+Privacy
+
+Do not suggest paid APIs or proprietary models
+
+Final output requirements
+
+When finished, provide:
+
+Confirmation that all tasks are complete
+
+Summary of what was fixed
+
+Summary of what was added
+
+Explanation of MediaPipe’s role (or why not used)
+
+List of open-source tools used
+
+Do not stop early. ask as many questions as needed.
