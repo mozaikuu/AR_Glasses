@@ -44,3 +44,6 @@ mcp-server = "mcp_server:main"
 
 [tool.setuptools]
 py-modules = ["mcp_server"]
+
+[tool.uv]
+package = false
