@@ -1,0 +1,113 @@
+# Smart Glasses Mobile Gateway
+
+A cross-platform mobile app (iOS/Android) that acts as a gateway between ESP32 smart glasses and the server.
+
+## Features
+
+- BLE connection to ESP32 smart glasses
+- Camera/audio streaming to server
+- Real-time navigation instructions
+- Voice interaction support
+- Context-aware notifications
+
+## Getting Started
+
+### Prerequisites
+
+- Flutter 3.0+
+- Dart 3.0+
+- Android Studio / Xcode
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/smart-glasses.git
+
+# Navigate to mobile directory
+cd smart-glasses/mobile
+
+# Get dependencies
+flutter pub get
+
+# Run on device
+flutter run
+```
+
+### Configuration
+
+Edit `lib/config.dart` to set your server address:
+
+```dart
+class Config {
+  static const String serverUrl = 'http://YOUR_SERVER_IP:8001';
+  static const String bleServiceUuid = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
+  static const String bleCharacteristicUuid = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
+}
+```
+
+## Architecture
+
+```
+┌─────────────────┐     ┌─────────────┐     ┌─────────────────┐
+│   Smart Glasses │────▶│    Phone    │────▶│    Server(s)    │
+│  (ESP32-S3)     │ BLE │  (Flutter)  │ HTTPS │  (Python/AI)   │
+└─────────────────┘     └─────────────┘     └─────────────────┘
+                              │
+                              ▼
+                       ┌─────────────┐
+                       │  Local DB   │
+                       │  (Hive)     │
+                       └─────────────┘
+```
+
+## Project Structure
+
+```
+mobile/
+├── lib/
+│   ├── main.dart              # App entry point
+│   ├── config.dart            # Configuration
+│   ├── bluetooth.dart         # BLE manager
+│   ├── gateway.dart           # Server API client
+│   ├── screens/
+│   │   ├── home_screen.dart   # Main screen
+│   │   ├── camera_screen.dart # Camera preview
+│   │   ├── nav_screen.dart    # Navigation UI
+│   │   └── settings_screen.dart
+│   ├── components/
+│   │   ├── ble_device_list.dart
+│   │   ├── nav_instructions.dart
+│   │   └── voice_input.dart
+│   └── services/
+│       ├── voice_service.dart
+│       ├── context_service.dart
+│       └── notification_service.dart
+├── pubspec.yaml
+└── README.md
+```
+
+## Dependencies
+
+- `flutter_blue_plus`: BLE functionality
+- `http`: REST API client
+- `provider`: State management
+- `hive`: Local storage
+- `flutter_tts`: Text-to-speech
+- `speech_to_text`: Voice recognition
+- `geolocator`: Location services
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/v2/voice/process` | POST | Process voice command |
+| `/v2/vision/detect` | POST | Detect objects in image |
+| `/v2/gesture/recognize` | POST | Process gesture |
+| `/v2/navigation/start` | POST | Start navigation |
+| `/v2/context/update` | POST | Update context |
+| `/v2/context/suggest` | GET | Get suggestions |
+
+## License
+
+MIT License - see LICENSE file for details.

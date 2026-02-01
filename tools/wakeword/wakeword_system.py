@@ -198,8 +198,12 @@ class WakeWordSystem:
                                 # Play acknowledgment
                                 self._play_acknowledgment()
 
-                                # Start command listening
-                                self._listen_for_command()
+                                # Start command listening in a separate thread (non-blocking)
+                                command_thread = threading.Thread(
+                                    target=self._listen_for_command,
+                                    daemon=True
+                                )
+                                command_thread.start()
                                 break
 
                 except sr.UnknownValueError:

@@ -52,8 +52,18 @@ AUDIO_RECORD_SECONDS = 5
 
 # ================= TTS =================
 TTS_OUTPUT_DIR = BASE_DIR / "tools" / "speech" / "output"
+
+# Edge-TTS (cloud-based, requires internet)
 TTS_ENGLISH_VOICE = "en-US-AriaNeural"
 TTS_ARABIC_VOICE = "ar-EG-SalmaNeural"
+
+# Piper TTS (offline, open source)
+PIPER_MODEL_DIR = BASE_DIR / "models" / "piper"
+PIPER_ENGLISH_VOICE = str(PIPER_MODEL_DIR / "en_US-lessac-medium" / "en_US-lessac-medium.onnx")
+PIPER_ARABIC_VOICE = str(PIPER_MODEL_DIR / "ar_JO-karlovery" / "ar_JO-karlovery.onnx")
+
+# Use Piper TTS by default (set to False to use Edge-TTS)
+USE_PIPER_TTS = True
 
 # ================= LOGGING =================
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
