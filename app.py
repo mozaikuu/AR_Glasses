@@ -10,6 +10,24 @@ import threading
 from config.settings import API_URL
 from tools.wakeword.wakeword_system import create_wakeword_system, SystemState
 
+def get_valid_audio_device_index():
+    """Find a valid audio input device index."""
+    try:
+        import pyaudio
+        p = pyaudio.PyAudio()
+        device_index = None
+        for i in range(p.get_device_count()):
+            device_info = p.get_device_info_by_index(i)
+            if device_info.get('maxInputChannels', 0) > 0:
+                device_index = i
+                print(f"Found audio device: {device_info.get('name')}", file=__import__('sys').stderr)
+                break
+        p.terminate()
+        return device_index
+    except Exception as e:
+        print(f"Error finding audio device: {e}", file=__import__('sys').stderr)
+        return None
+
 # Page config
 st.set_page_config(
     page_title="Smart Glasses AI Assistant",
@@ -252,19 +270,13 @@ if events_processed > 0:
     st.session_state.wakeword_event_counter += events_processed
     print(f"Processed {events_processed} wakeword events, counter now {st.session_state.wakeword_event_counter}", file=__import__('sys').stderr)
 
-# Time-based trigger for periodic updates (every 1.5 seconds)
-current_time = __import__('time').time()
-if 'last_update_time' not in st.session_state:
-    st.session_state.last_update_time = current_time
-
-time_since_last_update = current_time - st.session_state.last_update_time
-if time_since_last_update > 1.5:
-    st.session_state.last_update_time = current_time
-    # Force a minor UI update to check for wake-word events
-    if 'update_trigger' not in st.session_state:
-        st.session_state.update_trigger = 0
-    st.session_state.update_trigger += 1
-    print(f"Periodic update trigger: {st.session_state.update_trigger} (every {time_since_last_update:.1f}s)", file=__import__('sys').stderr)
+# Auto-refresh loop to process background events
+# This keeps the script running/refreshing when the wakeword system is active
+if st.session_state.wakeword_system.is_running:
+    # Sleep briefly to avoid high CPU usage
+    time.sleep(1)
+    # Rerun the script to process any new events from the queue
+    st.rerun()
 
 # Auto-start wake-word system if not running
 if not st.session_state.wakeword_system.is_running and st.session_state.wakeword_initialized:
@@ -400,6 +412,12 @@ def record_and_process_audio():
     except Exception as e:
         st.error(f"❌ Recording failed: {str(e)}")
         print(f"Recording error: {e}", file=__import__('sys').stderr)
+    
+    finally:
+        # Resume wakeword system
+        if 'wakeword_system' in st.session_state and st.session_state.wakeword_system.is_running:
+            print("Resuming wakeword system...", file=__import__('sys').stderr)
+            st.session_state.wakeword_system.resume()
 
 
 def process_captured_audio(audio_data):

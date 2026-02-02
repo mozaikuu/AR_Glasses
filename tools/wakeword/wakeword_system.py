@@ -34,19 +34,21 @@ class WakeWordSystem:
     then transitions to ACTIVE state for command processing.
     """
 
-    def __init__(self, wake_words=None, sensitivity=0.5):
+    def __init__(self, wake_words=None, sensitivity=0.5, device_index=None):
         """
         Initialize wake word system
 
         Args:
             wake_words (list): List of wake words to detect
             sensitivity (float): Detection sensitivity (0.0-1.0)
+            device_index (int): Audio input device index (None for default)
         """
         if wake_words is None:
             wake_words = ["nova", "hey nova"]
 
         self.wake_words = [word.lower() for word in wake_words]
         self.sensitivity = sensitivity
+        self.device_index = device_index
 
         # State management
         self.state = SystemState.IDLE
@@ -54,7 +56,7 @@ class WakeWordSystem:
 
         # Speech recognition
         self.recognizer = sr.Recognizer()
-        self.microphone = sr.Microphone()
+        self.microphone = sr.Microphone(device_index=self.device_index)
 
         # Audio playback for acknowledgment
         pygame.mixer.init()
@@ -69,6 +71,7 @@ class WakeWordSystem:
         # Threading
         self.listen_thread = None
         self.is_running = False
+        self.is_paused = False
 
         # Audio calibration
         self._calibrate_microphone()
@@ -286,6 +289,16 @@ class WakeWordSystem:
 
         pygame.mixer.quit()
         print("Wake word system stopped")
+
+    def pause(self):
+        """Pause wake word detection (release microphone)"""
+        self.is_paused = True
+        print("Wake word system paused")
+
+    def resume(self):
+        """Resume wake word detection"""
+        self.is_paused = False
+        print("Wake word system resumed")
 
     def return_to_idle(self):
         """Return system to IDLE state (called after command processing)"""
