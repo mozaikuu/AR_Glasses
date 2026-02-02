@@ -73,15 +73,17 @@ def process_text():
         
         if response.status_code == 200:
             result = response.json()
-            # If the command came from wakeword, we might want to return to idle
-            if wakeword_service.wakeword_system:
-                 wakeword_service.wakeword_system.return_to_idle()
             return jsonify(result)
         else:
             return jsonify({'error': f"AI Error: {response.status_code} - {response.text}"}), 500
             
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    finally:
+        # Always attempt to return to idle state after processing
+        # This ensures the wakeword system doesn't get stuck in PROCESSING state
+        if wakeword_service.wakeword_system:
+             wakeword_service.wakeword_system.return_to_idle()
 
 @main.route('/record', methods=['POST'])
 def record_audio():

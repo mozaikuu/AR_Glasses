@@ -57,6 +57,7 @@ class WakeWordSystem:
 
         # State management
         self.state = SystemState.IDLE
+        self.last_state_change = time.time()
         self.state_lock = threading.Lock()
 
         # Speech recognition
@@ -132,6 +133,7 @@ class WakeWordSystem:
         with self.state_lock:
             old_state = self.state
             self.state = new_state
+            self.last_state_change = time.time()
 
             if self.on_state_changed and old_state != new_state:
                 self.on_state_changed(old_state, new_state)
@@ -181,6 +183,12 @@ class WakeWordSystem:
         while self.is_running:
             # Check if paused or not in IDLE state
             if self.is_paused or self.state != SystemState.IDLE:
+                # Watchdog: If in PROCESSING state for too long (e.g., > 60s), force reset to IDLE
+                # This prevents the system from getting stuck if the external processor fails to call return_to_idle()
+                if self.state == SystemState.PROCESSING and (time.time() - self.last_state_change > 60):
+                    print("[WATCHDOG] System stuck in PROCESSING state for >60s. Forcing return to IDLE.")
+                    self._change_state(SystemState.IDLE)
+                
                 time.sleep(0.1)
                 continue
 

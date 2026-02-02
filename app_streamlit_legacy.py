@@ -146,15 +146,16 @@ if not st.session_state.wakeword_initialized:
 def process_wakeword_command(command_text):
     """Process command received from wake-word system"""
     print(f"process_wakeword_command called with: '{command_text}'", file=__import__('sys').stderr)
-    try:
-        # Check if command text is empty or unintelligible
-        if not command_text or not command_text.strip():
-            print("Empty command text detected", file=__import__('sys').stderr)
-            st.session_state.error_message = "❌ Sorry, I couldn't understand your command. Please try again."
-            st.session_state.wakeword_system.return_to_idle()
-            st.session_state.processing_command = False
-            return
+    
+    # Check if command text is empty or unintelligible
+    if not command_text or not command_text.strip():
+        print("Empty command text detected", file=__import__('sys').stderr)
+        st.session_state.error_message = "❌ Sorry, I couldn't understand your command. Please try again."
+        st.session_state.wakeword_system.return_to_idle()
+        st.session_state.processing_command = False
+        return
 
+    try:
         print(f"Processing command: '{command_text.strip()}'", file=__import__('sys').stderr)
 
         # Create temporary audio data for processing (empty since we have text)
@@ -181,14 +182,16 @@ def process_wakeword_command(command_text):
         except requests.exceptions.RequestException as e:
             print(f"HTTP request failed: {e}", file=__import__('sys').stderr)
             st.session_state.error_message = f"❌ Failed to connect to AI service: {str(e)}"
-            st.session_state.processing_command = False
             return
 
         print(f"AI response status: {response.status_code}", file=__import__('sys').stderr)
         if response.status_code != 200:
             print(f"Error response: {response.text}", file=__import__('sys').stderr)
+            error_msg = f"AI Error: {response.status_code} - {response.text}"
+            print(f"Error: {error_msg}", file=__import__('sys').stderr)
+            st.session_state.error_message = error_msg
 
-        if response.status_code == 200:
+        elif response.status_code == 200:
             response_data = response.json()
             result = response_data["response"]
             transcription = response_data.get("transcription", command_text)
@@ -199,23 +202,14 @@ def process_wakeword_command(command_text):
             st.session_state.transcription = transcription
             st.session_state.command_processed = True
 
-            # Return wake-word system to idle
-            st.session_state.wakeword_system.return_to_idle()
-
-        else:
-            error_msg = f"AI Error: {response.status_code} - {response.text}"
-            print(f"Error: {error_msg}", file=__import__('sys').stderr)
-            st.session_state.error_message = error_msg
-
-    except requests.exceptions.ConnectionError as e:
-        error_msg = f"Cannot connect to AI assistant: {str(e)}"
-        print(f"Connection error: {error_msg}", file=__import__('sys').stderr)
-        st.session_state.error_message = f"❌ {error_msg}"
     except Exception as e:
         error_msg = f"Processing failed: {str(e)}"
         print(f"Wake-word processing error: {error_msg}", file=__import__('sys').stderr)
         st.session_state.error_message = f"❌ {error_msg}"
     finally:
+        # Return wake-word system to idle regardless of outcome
+        if st.session_state.wakeword_system:
+            st.session_state.wakeword_system.return_to_idle()
         st.session_state.processing_command = False
 
 # Process wake-word events (in main thread)
