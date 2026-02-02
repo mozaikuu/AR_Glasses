@@ -13,6 +13,7 @@ dependencies = [
  "aiohttp",
 
  # Web UI
+ "flask",
  "streamlit",
  "streamlit-webrtc",
 

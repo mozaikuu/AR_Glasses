@@ -4,6 +4,7 @@ import sys
 required_packages = [
     "fastapi",
     "uvicorn",
+    "flask",
     "streamlit",
     "streamlit_webrtc",
     "pydantic",

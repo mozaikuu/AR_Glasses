@@ -50,6 +50,13 @@ AUDIO_SAMPLE_RATE = 44100
 AUDIO_CHUNK_SIZE = 1024
 AUDIO_RECORD_SECONDS = 5
 
+# ================= WAKE WORD =================
+# Central configuration for wake words
+# Using "Computer" as it is distinct and easy to detect
+WAKE_WORDS = ["computer", "hey computer", "ok computer"]
+# WAKE_WORDS = ["sandy", "hey sandy", "ok sandy"]
+WAKE_WORD_SENSITIVITY = 0.6  # Slightly higher sensitivity for better accuracy
+
 # ================= TTS =================
 TTS_OUTPUT_DIR = BASE_DIR / "tools" / "speech" / "output"
 
