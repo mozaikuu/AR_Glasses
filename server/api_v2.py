@@ -33,6 +33,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from config.settings import API_HOST, API_PORT, API_URL
+from tools.speech.tts import text_to_speech, text_to_speech_sync
 
 
 # ==================== DATA MODELS ====================
@@ -549,17 +550,18 @@ async def get_context_suggestions():
 @app.post("/v2/tts/synthesize")
 async def synthesize_speech(text: str, language: str = "en"):
     """
-    Synthesize speech from text (Piper TTS).
-
-    Returns URL to pre-generated audio for streaming.
+    Synthesize speech from text using Edge-TTS or Piper TTS.
+    
+    Returns immediately while TTS plays in background.
     """
-    # This would call Piper TTS and return audio URL
-    # For now, return placeholder
+    # Start TTS in background (non-blocking)
+    asyncio.create_task(text_to_speech(text))
+    
     return {
         "text": text,
         "language": language,
-        "audio_url": None,  # Would be URL to generated audio
-        "duration_ms": len(text) * 50  # Rough estimate
+        "status": "playing",
+        "message": "TTS started in background"
     }
 
 

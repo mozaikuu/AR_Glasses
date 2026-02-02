@@ -8,6 +8,7 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from models.requests import MultimodalRequest, TextRequest
 from tools.speech.transcription import transcribe_audio_bytes
+from tools.speech.tts import text_to_speech
 
 # MCP client for tool access
 mcp_client = None # try mcp_session 
@@ -364,6 +365,8 @@ async def process_multimodal(req: MultimodalRequest):
                 ]
                 result = await generate_chat(messages, max_tokens=512, temperature=0.1)
                 print(f"[HTTP] Fallback LLM response received: {result[:100]}...", file=sys.stderr)
+                # Speak the response
+                asyncio.create_task(text_to_speech(result))
             except Exception as e2:
                 return {
                     "response": f"Error: Both MCP agent loop and direct LLM failed. MCP error: {error_msg}. LLM error: {str(e2)}",
@@ -380,6 +383,8 @@ async def process_multimodal(req: MultimodalRequest):
             ]
             result = await generate_chat(messages, max_tokens=512, temperature=0.1)
             print(f"[HTTP] Direct LLM response received: {result[:100]}...", file=sys.stderr)
+            # Speak the response
+            asyncio.create_task(text_to_speech(result))
         except Exception as e:
             error_msg = f"LLM processing failed: {str(e)}"
             print(f"[ERROR] {error_msg}", file=sys.stderr)

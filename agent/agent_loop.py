@@ -1,13 +1,15 @@
 """Main agent reasoning loop."""
 import sys
 import json
+import asyncio
 from typing import Set, Tuple
 from agent.llm import decide, log
 from agent.modes import get_mode_continuation_check
 from config.settings import MAX_LOOPS
+from tools.speech.tts import text_to_speech
 
 
-async def agent_loop(client, user_input: str, mode: str = "thinking", image: str = None):
+async def agent_loop(client, user_input: str, mode: str = "thinking", image: str = None, speak: bool = True):
     """
     Main agent loop that processes user input and makes decisions.
     
@@ -38,6 +40,8 @@ async def agent_loop(client, user_input: str, mode: str = "thinking", image: str
 
         # Check if we should ask the user
         if decision["ask_user"]:
+            if speak:
+                asyncio.create_task(text_to_speech(decision["ask_user"]))
             return decision["ask_user"]
 
         # Check if we're satisfied
@@ -46,12 +50,17 @@ async def agent_loop(client, user_input: str, mode: str = "thinking", image: str
             if not answer:
                 # If satisfied but no answer, try to construct one from reasoning
                 answer = decision["reasoning"] or "I've completed the task."
+            if speak:
+                asyncio.create_task(text_to_speech(answer))
             return answer
 
         # Check if we should continue
         if not should_continue(decision, i, MAX_LOOPS, history, used_tools):
             # Return what we have or a default message
-            return decision["answer"] or decision["reasoning"] or "I need more information."
+            answer = decision["answer"] or decision["reasoning"] or "I need more information."
+            if speak:
+                asyncio.create_task(text_to_speech(answer))
+            return answer
 
         # Execute tool if needed
         if decision["tool"]:
@@ -79,5 +88,8 @@ async def agent_loop(client, user_input: str, mode: str = "thinking", image: str
                 # Continue loop to try again or provide answer
 
     # Max loops reached
-    return decision.get("answer") or decision.get("reasoning") or "I need more information to complete this task."
+    answer = decision.get("answer") or decision.get("reasoning") or "I need more information to complete this task."
+    if speak:
+        asyncio.create_task(text_to_speech(answer))
+    return answer
 
