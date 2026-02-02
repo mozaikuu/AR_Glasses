@@ -42,6 +42,9 @@ class WakeWordService:
             self.wakeword_system = create_wakeword_system(device_index=self.device_index)
             self._setup_callbacks()
             print("WakeWordService initialized", file=sys.stderr)
+            
+            # Auto-start listening by default
+            self.start_listening()
 
     def _get_valid_audio_device_index(self):
         """Find a valid audio input device index."""

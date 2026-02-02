@@ -314,6 +314,9 @@ async def process_multimodal(req: MultimodalRequest):
             elif "use" in user_query.lower() and ("vision" in user_query.lower() or "VisionDetect" in user_query):
                 tool_requested = True
                 tool_name = "VisionDetect"
+            elif any(p in user_query.lower() for p in ["what is in front", "what's in front", "what do you see", "look at", "describe the view", "describe what you see", "identify object", "vision", "camera"]):
+                tool_requested = True
+                tool_name = "VisionDetect"
             elif ("search" in user_query.lower() and ("web" in user_query.lower() or "internet" in user_query.lower())) or "current time" in user_query.lower():
                 tool_requested = True
                 tool_name = "search_web"

@@ -74,7 +74,7 @@ def VisionDetect() -> str:
                      "• Ensure your camera is connected and enabled\n" \
                      "• Grant camera permissions to this application\n" \
                      "• For smart glasses, use an external webcam\n" \
-                     "• Check that YOLO model file exists at: src/mcp_server/tools/computer_vision/yolo11n_coco8_trained.pt\n" \
+                     "• Check that YOLO model file exists at: models/yolo11n.pt\n" \
                      "• Alternative: Use search_web tool for object information"
 
         return result
