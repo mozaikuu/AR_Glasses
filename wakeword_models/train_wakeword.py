@@ -31,7 +31,7 @@ class WakeWordDetector:
             sensitivity (float): Detection sensitivity (0.0-1.0)
         """
         if wake_words is None:
-            wake_words = ["nova", "hey nova"]
+            wake_words = ["jarvis", "hey jarvis"]
 
         self.wake_words = [word.lower() for word in wake_words]
         self.sensitivity = sensitivity
@@ -55,7 +55,7 @@ class WakeWordDetector:
     def start_listening(self):
         """Start continuous wake word detection"""
         self.is_listening = True
-        print("Wake word detection started. Say 'Nova' or 'Hey Nova' to activate.")
+        print("Wake word detection started. Say 'Jarvis' or 'Hey Jarvis' to activate.")
 
         while self.is_listening:
             try:
@@ -129,7 +129,7 @@ def test_wake_word_detection():
     detector.set_detection_callback(on_wake_word_detected)
 
     try:
-        print("Say 'Nova' or 'Hey Nova' to test detection (Ctrl+C to stop)")
+        print("Say 'Jarvis' or 'Hey Jarvis' to test detection (Ctrl+C to stop)")
         detector.start_listening()
     except KeyboardInterrupt:
         print("\nTest stopped by user")

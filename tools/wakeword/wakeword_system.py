@@ -20,6 +20,8 @@ import numpy as np
 # Add the project root to Python path
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
+from config.settings import WAKE_WORDS, WAKE_WORD_SENSITIVITY
+
 class SystemState(enum.Enum):
     """System states for wake-word activation"""
     IDLE = "idle"          # Listening for wake words only
@@ -30,11 +32,11 @@ class WakeWordSystem:
     """
     Complete wake-word activation system with state management
 
-    This system continuously listens for wake words ("Nova", "Hey Nova") in IDLE state,
+    This system continuously listens for wake words in IDLE state,
     then transitions to ACTIVE state for command processing.
     """
 
-    def __init__(self, wake_words=None, sensitivity=0.5, device_index=None):
+    def __init__(self, wake_words=None, sensitivity=None, device_index=None):
         """
         Initialize wake word system
 
@@ -44,7 +46,10 @@ class WakeWordSystem:
             device_index (int): Audio input device index (None for default)
         """
         if wake_words is None:
-            wake_words = ["nova", "hey nova"]
+            wake_words = WAKE_WORDS
+        
+        if sensitivity is None:
+            sensitivity = WAKE_WORD_SENSITIVITY
 
         self.wake_words = [word.lower() for word in wake_words]
         self.sensitivity = sensitivity
@@ -171,9 +176,14 @@ class WakeWordSystem:
 
     def _listen_for_wake_words(self):
         """Continuous wake word detection loop (IDLE state)"""
-        print("Wake word detection active. Say 'Nova' or 'Hey Nova' to activate.")
+        print(f"Wake word detection active. Say '{self.wake_words[0]}' or others to activate.")
 
-        while self.is_running and self.state == SystemState.IDLE:
+        while self.is_running:
+            # Check if paused or not in IDLE state
+            if self.is_paused or self.state != SystemState.IDLE:
+                time.sleep(0.1)
+                continue
+
             try:
                 with self.microphone as source:
                     # Listen for short audio chunks with timeout
@@ -207,7 +217,7 @@ class WakeWordSystem:
                                     daemon=True
                                 )
                                 command_thread.start()
-                                break
+                                # Don't break, just loop around (which will sleep until state changes back to IDLE)
 
                 except sr.UnknownValueError:
                     # No speech detected, continue
@@ -323,18 +333,23 @@ class WakeWordSystem:
         return self.get_state() == SystemState.PROCESSING
 
 
-def create_wakeword_system(wake_words=None, sensitivity=0.5):
+def create_wakeword_system(wake_words=None, sensitivity=None, device_index=None):
     """Factory function to create configured wake word system
 
     Args:
-        wake_words: List of wake words (default: ["nova", "hey nova"])
-        sensitivity: Detection sensitivity (0.0-1.0, default: 0.5)
+        wake_words: List of wake words (default: from settings)
+        sensitivity: Detection sensitivity (default: from settings)
+        device_index: Audio input device index (default: None)
     """
     if wake_words is None:
-        wake_words = ["nova", "hey nova"]
+        wake_words = WAKE_WORDS
+    
+    if sensitivity is None:
+        sensitivity = WAKE_WORD_SENSITIVITY
 
     system = WakeWordSystem(
         wake_words=wake_words,
-        sensitivity=sensitivity
+        sensitivity=sensitivity,
+        device_index=device_index
     )
     return system
