@@ -88,6 +88,13 @@ run all 3 previous unfinished tasks and fix all errors
       -  [ ] nova wakeword
       -  [ ] vision detect
       -  [ ] search web
+      -  [ ] Navigation
+         -  [ ] 2d map
+         -  [ ] 3d avatar / ascii?
+         -  [ ] qr codes
+            -  [ ] find a way to not use qr codes
+            -  [ ] imu + gyroscope
+            -  [ ] automatic building mapping
    -  [ ] mcp
    -  [ ] server
    -  [ ] gateway
