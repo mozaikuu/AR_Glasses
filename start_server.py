@@ -70,5 +70,10 @@ if __name__ == "__main__":
     print(f"   Local access: http://localhost:{port}")
     print(f"   Network access: http://{local_ip}:{port}")
     print("-" * 60)
+    print("NOTE: Watchdog reloader DISABLED to prevent recursion loops")
+    print("      To auto-reload on code changes, use: uvicorn.run(..., reload=True)")
+    print("-" * 60)
     
+    # Use reload=False to avoid watchdog recursion issues
+    # The recursion loop happens when watchdog triggers reload too frequently
     uvicorn.run(app, host="0.0.0.0", port=port, reload=False)
