@@ -404,6 +404,30 @@ class _VoiceScreenState extends State<VoiceScreen> {
   bool _isListening = false;
   String _transcribed = '';
   String _response = '';
+  String _error = '';
+  bool _speechAvailable = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initSpeech();
+  }
+
+  Future<void> _initSpeech() async {
+    try {
+      // Check if speech recognition is available
+      // Note: This is a simplified implementation
+      // For production, use the speech_to_text package
+      setState(() {
+        _speechAvailable = true; // Assume available, actual check would use package
+      });
+    } catch (e) {
+      setState(() {
+        _speechAvailable = false;
+        _error = 'Speech recognition not available';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -411,6 +435,21 @@ class _VoiceScreenState extends State<VoiceScreen> {
       padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
+          // Error message
+          if (_error.isNotEmpty)
+            Card(
+              color: Colors.red[100],
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Row(
+                  children: [
+                    Icon(Icons.error, color: Colors.red[700]),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(_error)),
+                  ],
+                ),
+              ),
+            ),
           // Voice Input
           Card(
             child: Padding(
@@ -429,13 +468,19 @@ class _VoiceScreenState extends State<VoiceScreen> {
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton.icon(
-                    onPressed: _isListening ? null : _startListening,
+                    onPressed: _isListening ? null : (_speechAvailable ? _startListening : null),
                     icon: Icon(_isListening ? Icons.stop : Icons.mic),
                     label: Text(_isListening ? 'Stop' : 'Speak'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          _isListening ? Colors.red : Colors.blue,
+                      backgroundColor: _isListening ? Colors.red : Colors.blue,
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Fallback to manual input
+                  TextButton.icon(
+                    onPressed: _isListening ? null : _showManualInput,
+                    icon: const Icon(Icons.keyboard),
+                    label: const Text('Type instead'),
                   ),
                 ],
               ),
@@ -482,13 +527,38 @@ class _VoiceScreenState extends State<VoiceScreen> {
   }
 
   void _startListening() async {
-    setState(() => _isListening = true);
-    // Implement speech-to-text using speech_to_text package
-    // For now, simulate with manual input
-    _showManualInput();
+    setState(() {
+      _isListening = true;
+      _error = '';
+    });
+
+    // For now, show manual input as a fallback
+    // In production, implement actual speech-to-text using speech_to_text package
+    // Example implementation:
+    //
+    // import 'package:speech_to_text/speech_to_text.dart';
+    // SpeechToText speech = SpeechToText();
+    // await speech.initialize();
+    // await speech.listen(onResult: (result) {
+    //   setState(() {
+    //     _transcribed = result.recognizedWords;
+    //     _isListening = false;
+    //   });
+    //   if (_transcribed.isNotEmpty) {
+    //     _processCommand(_transcribed);
+    //   }
+    // });
+
+    // Simulate listening delay then show manual input
+    await Future.delayed(const Duration(seconds: 2));
+    if (mounted) {
+      _showManualInput();
+    }
   }
 
   void _showManualInput() {
+    setState(() => _isListening = false);
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -531,7 +601,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
       });
     } catch (e) {
       setState(() {
-        _response = 'Error: Could not connect to server.';
+        _response = 'Error: Could not connect to server. Make sure the server is running on ${Config.serverUrl}';
       });
     }
   }

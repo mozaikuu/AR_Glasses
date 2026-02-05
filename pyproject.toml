@@ -24,6 +24,7 @@ dependencies = [
  "whisper",
  "mediapipe",
  "scikit-learn",
+ "bitsandbytes",  # For Moondream quantization
 
  # Computer Vision
  "numpy",

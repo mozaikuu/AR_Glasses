@@ -32,12 +32,16 @@ except ImportError as e:
     raise
 
 try:
-    from tools.vision.yolo import infer
+    from tools.vision.yolo import infer as yolo_infer
 except ImportError as e:
     print(f"ERROR: Failed to import yolo: {e}", file=sys.stderr, flush=True)
-    # Don't raise - make it optional for now
-    def infer():
-        return "Vision tool not available: Import failed"
+    yolo_infer = None
+
+try:
+    from tools.vision.moondream import detect_and_describe, load_model
+except ImportError as e:
+    print(f"ERROR: Failed to import moondream: {e}", file=sys.stderr, flush=True)
+    detect_and_describe = None
 
 try:
     from tools.navigation.navigation import navigate, load_graph, get_all_locations, visualize_graph, astar, navigate_steps
@@ -56,26 +60,41 @@ mcp = FastMCP(name="Cerebro")
 
 @mcp.tool()
 def VisionDetect() -> str:
-    """Detect and identify objects in the camera view using YOLO object detection.
+    """Detect and identify objects in the camera view using Moondream vision-language model.
 
     Requirements:
     - Camera must be connected and accessible
     - Camera permissions must be granted
-    - YOLO model must be available
+    - Moondream model will provide detailed scene descriptions
 
-    Returns detected objects as a comma-separated list, or error message if camera/model unavailable.
+    Returns detailed description of what the camera sees, including objects, activities, and text.
     """
+    from config.settings import USE_MOONDREAM
+    
     try:
-        result = infer()
-
-        # If vision fails, provide helpful guidance
-        if "not available" in result.lower() or "failed" in result.lower() or "not found" in result.lower():
-            result += "\n\nTroubleshooting:\n" \
-                     "• Ensure your camera is connected and enabled\n" \
-                     "• Grant camera permissions to this application\n" \
-                     "• For smart glasses, use an external webcam\n" \
-                     "• Check that YOLO model file exists at: models/yolo11n.pt\n" \
-                     "• Alternative: Use search_web tool for object information"
+        # Try Moondream first if enabled
+        if USE_MOONDREAM and detect_and_describe is not None:
+            try:
+                result = detect_and_describe()
+                if result and "not available" not in result.lower():
+                    return result
+            except Exception as moondream_error:
+                print(f"Moondream error: {moondream_error}, trying YOLO fallback", file=sys.stderr)
+        
+        # Fallback to YOLO
+        if yolo_infer is not None:
+            result = yolo_infer()
+            if result and "not available" not in result.lower():
+                return result
+        
+        # If both fail, provide helpful guidance
+        result = "Vision detection not available."
+        result += "\n\nTroubleshooting:\n" \
+                 "• Ensure your camera is connected and enabled\n" \
+                 "• Grant camera permissions to this application\n" \
+                 "• For smart glasses, use an external webcam\n" \
+                 "• Check that vision model is installed\n" \
+                 "• Alternative: Use search_web tool for object information"
 
         return result
     except Exception as e:
