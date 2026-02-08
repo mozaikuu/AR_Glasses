@@ -75,9 +75,10 @@ def infer():
     if frame is None or working_camera is None:
         return "Camera not available: No working camera found. Please ensure your camera is connected and permissions are granted."
 
-    # Check if model file exists
+    # Check if model file exists and download if needed
     if not MODEL_PATH.exists():
-        return f"Vision model not found: {MODEL_PATH}. Please ensure the YOLO model is installed."
+        if not download_model_if_needed():
+             return f"Vision model not found and download failed: {MODEL_PATH}. Please ensure internet connection."
 
     try:
         # Load model

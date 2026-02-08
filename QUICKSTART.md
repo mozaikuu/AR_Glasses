@@ -74,7 +74,39 @@ source .venv/bin/activate
 
 ### Step 2: Start the Gateway Server
 
-**Option A: Using the activation script (Recommended)**
+**Option A: Using the new startup script (Recommended for mobile access)**
+
+```bash
+python start_server.py
+```
+
+This will:
+
+-  Automatically detect and display your local IP address
+-  Start the FastAPI server on `0.0.0.0:8000` (accessible from mobile on local network)
+-  Show connection info for configuring the mobile app
+
+You'll see output like:
+
+```
+============================================================
+  Smart Glasses Server - Starting Up
+============================================================
+
+📍 Local IP Address: 192.168.1.100
+
+📱 Mobile App Configuration:
+   Update mobile/lib/config.dart with:
+   static const String serverUrl = 'http://192.168.1.100:8001';
+
+🌐 Access URLs:
+   • API Server:     http://192.168.1.100:8000
+   • Web Dashboard:  http://192.168.1.100:5000
+   • Health Check:    http://192.168.1.100:8000/health
+   • API v2 Root:     http://192.168.1.100:8000/v2/
+```
+
+**Option B: Using the activation script**
 
 **Windows:**
 
@@ -89,7 +121,7 @@ chmod +x start_gateway.sh
 ./start_gateway.sh
 ```
 
-**Option B: Manual activation then run**
+**Option C: Manual activation then run**
 
 ```bash
 # Activate venv first (see Step 1)
@@ -194,3 +226,63 @@ If port 8000 is already in use, you can change it:
 
 1. Press `Ctrl+C` in the gateway terminal to stop the server
 2. Press `Ctrl+C` in the Streamlit terminal to stop the app
+
+## Mobile App Configuration
+
+### Accessing from Mobile Phone (No ngrok needed!)
+
+The server now runs on `0.0.0.0` which means it's accessible from your local network.
+
+1. **Start the server** using `python start_server.py`
+2. **Note the Local IP Address** displayed in the terminal (e.g., `192.168.1.100`)
+3. **Update mobile config**: Edit `mobile/lib/config.dart`:
+
+```dart
+class Config {
+  // Replace YOUR_PC_IP with your computer's IP address
+  static const String serverUrl = 'http://192.168.1.100:8001';
+}
+```
+
+4. **Run the mobile app** on your phone (connected to the same WiFi network)
+
+### Why Mobile Mic Might Not Work
+
+If the microphone works on PC but not on phone:
+
+1. **Server not accessible**: Ensure the server IP in `mobile/lib/config.dart` is correct
+2. **Different network**: Phone and PC must be on the same WiFi network
+3. **Firewall**: Ensure Windows Firewall allows Python through:
+   -  Go to Windows Security → Firewall & Network Protection
+   -  Allow an app through firewall
+   -  Find Python and check both Private and Public
+4. **Manual input fallback**: The mobile app has a "Type instead" button if voice doesn't work
+
+## Moondream Vision Model
+
+The application now uses **Moondream** for enhanced vision-language understanding instead of YOLO.
+
+### What Moondream Provides:
+
+-  Detailed scene descriptions (not just object labels)
+-  Activity recognition (what people are doing)
+-  Text extraction from images
+-  Context-aware understanding
+
+### Fallback to YOLO:
+
+If Moondream fails to load (due to GPU/memory constraints), the system automatically falls back to YOLO.
+
+### Installation:
+
+Moondream uses 4-bit quantization to run efficiently on consumer GPUs:
+
+```bash
+pip install bitsandbytes  # Already included in dependencies
+```
+
+### Troubleshooting Vision:
+
+-  **No GPU**: Moondream will fall back to YOLO
+-  **Out of memory**: Reduce batch size or use YOLO
+-  **First run slow**: Moondream downloads model on first use (~2GB)

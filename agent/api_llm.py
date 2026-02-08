@@ -117,7 +117,7 @@ async def decide(query: str, history: list, used_tools: set, client, mode: str, 
 
     Args:
         query: User query text
-        history: Conversation history
+        history: Conversation history (will be limited to last 4 exchanges)
         used_tools: Set of (tool_name, args_json) tuples already used
         client: MCP client
         mode: "quick" or "thinking"
@@ -128,17 +128,21 @@ async def decide(query: str, history: list, used_tools: set, client, mode: str, 
     """
     tools = await client.list_tools()
     tools_list = "\n".join(f"- {t.name}: {t.description}" for t in tools.tools)
-    history_text = "\n".join(history[-6:]) if history else "None"
+    
+    # Limit history to last 4 exchanges to prevent context overflow
+    # Each exchange is 2 items (User + Agent)
+    history_text = "\n".join(history[-8:]) if history else "None"
+    
+    # Count how many tool results are in history
+    tool_count = sum(1 for h in history if h.startswith("Tool("))
     
     log(f"Available tools: {[t.name for t in tools.tools]}")
-    log(f"Tools list: {tools_list}")
+    log(f"History length: {len(history)}, Tool calls: {tool_count}")
 
     # Build user content with optional image
     user_content = query
     if image:
         user_content += f"\n[Image provided: {image[:50]}...]"
-        # Note: For vision-capable models, you would include the image in the messages
-        # This is a placeholder - actual implementation depends on model capabilities
 
     # Build explicit tool usage instructions
     tool_usage_instructions = ""
@@ -147,11 +151,24 @@ async def decide(query: str, history: list, used_tools: set, client, mode: str, 
     if "use" in query.lower() and "tool" in query.lower():
         tool_usage_instructions = "\n\nCRITICAL: The user explicitly asked you to use a tool. You MUST use the tool they mentioned. Do not say you don't have access to tools - you do!"
     
+    # Check if user explicitly asked for vision
+    vision_keywords = ["what do you see", "what is in front", "describe the view", "look at", "identify"]
+    if any(kw in query.lower() for kw in vision_keywords):
+        tool_usage_instructions = "\n\nCRITICAL: The user wants to see/identify something. You MUST use VisionDetect tool to describe what you see. Set tool='VisionDetect' with args={}.".format(
+            "{}" if mode == "quick" else "{}"
+        )
+    
+    # Only show used tools warning if they've already been used
+    used_tools_warning = ""
+    if used_tools:
+        used_tools_warning = f"\nNote: These tools have already been used in this session: {[sig[0] for sig in used_tools]}. Consider if you need to use them again with different parameters."
+    
     system_prompt = f"""
 You are an intelligent agent running in {mode} mode with access to tools.
 
-Conversation history:
+Conversation history (last 4 exchanges):
 {history_text}
+{used_tools_warning}
 
 Available tools:
 {tools_list}
@@ -160,13 +177,13 @@ Available tools:
 RULES:
 - ONLY output JSON inside <json>
 - No text outside JSON
-- If the user asks you to use a tool (like "use search_web" or "use VisionDetect"), you MUST use that tool - DO NOT say you don't have it
-- If you need information that requires a tool (like current time, web search, vision), use the appropriate tool
-- If you have an answer, set "is_satisfied" to true and provide it in "answer"
+- If the user asks you to use a tool, you MUST use that tool - DO NOT say you don't have it
+- If you need real-time information, use the appropriate tool
+- If you have a complete answer, set "is_satisfied" to true and provide it in "answer"
 - If you need to use a tool, specify "tool" and "args" (tool name must match exactly: search_web or VisionDetect)
 - In thinking mode, you can refine your approach based on tool results
-- ALWAYS use tools when explicitly requested or when you need real-time information
-- NEVER say you don't have access to tools - you have access to: {', '.join([t.name for t in tools.tools])}
+- If a tool was already used, try a DIFFERENT approach or ask for clarification
+- MAX {tool_count + 2} tool calls remaining before you must give an answer
 
 <json>
 {{
@@ -193,12 +210,16 @@ RULES:
             data = extract_json(raw)
             decision = normalize(data)
 
+            # If tool already used, try to proceed without it
             if decision["tool"]:
                 sig = (decision["tool"], json.dumps(decision["args"], sort_keys=True))
                 if sig in used_tools:
+                    log(f"Tool {decision['tool']} already used, suggesting alternative approach")
+                    # Instead of blocking, suggest the LLM try a different approach
                     decision["tool"] = None
                     decision["is_satisfied"] = True
-                    decision["answer"] = decision["answer"] or "Action already taken."
+                    if not decision["answer"]:
+                        decision["answer"] = "I've already checked that. Is there something else you'd like to know?"
 
             return decision
 
@@ -211,7 +232,7 @@ RULES:
                     "args": {},
                     "ask_user": None,
                     "is_satisfied": True,
-                    "answer": "Internal API issue."
+                    "answer": "I encountered an issue processing your request. Please try again."
                 }
 
             messages.append({

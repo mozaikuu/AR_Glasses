@@ -41,9 +41,15 @@ MCP_TRANSPORT = "stdio"
 
 # ================= TOOLS =================
 TOOLS_DIR = BASE_DIR / "tools"
+
+# Vision model configuration - now using Moondream for better scene understanding
+# Moondream is a vision-language model that provides detailed descriptions
+USE_MOONDREAM = True
 VISION_MODEL_PATH = (
-    SRC_DIR / "mcp_server" / "tools" / "computer_vision" / "yolo11n.pt"
+    BASE_DIR / "models" / "moondream"
 )
+MOONDREAM_MODEL_NAME = "vikhyatk/moondream2"
+MOONDREAM_REVISION = "2025-01-09"
 
 # ================= AUDIO =================
 AUDIO_SAMPLE_RATE = 44100

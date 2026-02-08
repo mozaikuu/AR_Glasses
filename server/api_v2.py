@@ -33,6 +33,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from config.settings import API_HOST, API_PORT, API_URL
+from tools.speech.tts import text_to_speech, text_to_speech_sync
 
 
 # ==================== DATA MODELS ====================
@@ -298,17 +299,16 @@ async def _process_with_llm(command: str, history: list, context: dict) -> str:
 @app.post("/v2/vision/detect")
 async def detect_objects(request: ImageInput):
     """
-    Detect objects in image from glasses camera.
+    Detect and describe objects in image from glasses camera.
 
-    Uses YOLO for object detection.
-    Returns list of detected objects with bounding boxes.
+    Uses Moondream for enhanced vision-language understanding.
+    Returns detailed descriptions, objects, and scene analysis.
     """
     try:
         import cv2
         import base64
-        from ultralytics import YOLO
-        from pathlib import Path
-
+        from PIL import Image  # Added PIL import
+        
         # Decode image
         img_data = base64.b64decode(request.image)
         nparr = np.frombuffer(img_data, dtype=np.uint8)
@@ -316,16 +316,51 @@ async def detect_objects(request: ImageInput):
 
         if image is None:
             raise HTTPException(status_code=400, detail="Invalid image data")
-
-        # Load YOLO model
+        
+        # Check if Moondream should be used
+        from config.settings import USE_MOONDREAM
+        
+        if USE_MOONDREAM:
+            try:
+                from tools.vision.moondream import load_model
+                
+                # Load model once
+                model, tokenizer = load_model()
+                if model is not None:
+                    print("Using Moondream for vision detection", file=sys.stderr)
+                    
+                    # Convert frame to PIL Image for Moondream
+                    pil_image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+                    enc_image = model.encode_image(pil_image)
+                    
+                    # Get detailed description
+                    description = model.query(enc_image, "Describe what you see in detail")["answer"]
+                    
+                    # Get list of objects
+                    objects = model.query(enc_image, "List all objects you see")["answer"]
+                    
+                    # Get any text visible
+                    text = model.query(enc_image, "Extract any text visible")["answer"]
+                    
+                    return {
+                        "description": description,
+                        "objects": objects,
+                        "text": text if text else "No text detected",
+                        "model": "moondream"
+                    }
+            except Exception as moondream_error:
+                print(f"Moondream error: {moondream_error}, falling back to YOLO", file=sys.stderr)
+                import traceback
+                traceback.print_exc(file=sys.stderr)
+        
+        # Fallback to YOLO
+        from ultralytics import YOLO
         model_path = PROJECT_ROOT / "models" / "yolo11n.pt"
         if not model_path.exists():
-            # Use default model if not downloaded
             model = YOLO("yolo11n.pt")
         else:
             model = YOLO(str(model_path))
-
-        # Detect
+        
         results = model(image, conf=0.5)
 
         detections = []
@@ -337,16 +372,18 @@ async def detect_objects(request: ImageInput):
                     "bbox": box.xyxy[0].tolist()
                 })
 
-        # Update context
         _update_context({"last_vision": {"objects": [d["class"] for d in detections], "count": len(detections)}})
 
         return {
             "detections": detections,
             "object_count": len(detections),
-            "processing_time_ms": 0  # Could add timing
+            "model": "yolo"
         }
 
     except Exception as e:
+        print(f"Vision detection error: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -355,17 +392,76 @@ async def analyze_scene(request: ImageInput):
     """
     High-level scene analysis for context-aware understanding.
 
+    Uses Moondream for detailed scene description, activities, and context.
     Returns scene description, activities, and context.
     """
-    # Simplified scene analysis
-    return {
-        "scene_type": "indoor",  # Would use ML model
-        "activity": "unknown",
-        "objects_of_interest": [],
-        "safety_concerns": [],
-        "lighting": "adequate",
-        "description": "Scene analysis complete"
-    }
+    try:
+        import cv2
+        import base64
+        from PIL import Image
+        
+        # Decode image
+        img_data = base64.b64decode(request.image)
+        nparr = np.frombuffer(img_data, dtype=np.uint8)
+        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+        if image is None:
+            raise HTTPException(status_code=400, detail="Invalid image data")
+        
+        # Check if Moondream should be used
+        from config.settings import USE_MOONDREAM
+        
+        if USE_MOONDREAM:
+            try:
+                from tools.vision.moondream import load_model
+                
+                # Load model once
+                model, tokenizer = load_model()
+                if model is not None:
+                    print("Using Moondream for scene analysis", file=sys.stderr)
+                    
+                    # Convert to PIL Image
+                    pil_image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+                    enc_image = model.encode_image(pil_image)
+                    
+                    # Get comprehensive scene analysis
+                    scene_type = model.query(enc_image, "What type of environment is this?")["answer"]
+                    
+                    activity = model.query(enc_image, "What activities are happening?")["answer"]
+                    
+                    lighting = model.query(enc_image, "Describe the lighting conditions")["answer"]
+                    
+                    safety = model.query(enc_image, "Are there any safety concerns?")["answer"]
+                    
+                    description = model.query(enc_image, "Give a comprehensive description")["answer"]
+                    
+                    return {
+                        "scene_type": scene_type if scene_type else "unknown",
+                        "activity": activity if activity else "unknown",
+                        "objects_of_interest": [],
+                        "safety_concerns": [s.strip() for s in safety.split('\n') if s.strip() and 'none' not in s.lower()],
+                        "lighting": lighting if lighting else "adequate",
+                        "description": description,
+                        "model": "moondream"
+                    }
+            except Exception as moondream_error:
+                print(f"Moondream scene analysis error: {moondream_error}", file=sys.stderr)
+                import traceback
+                traceback.print_exc(file=sys.stderr)
+        
+        # Fallback
+        return {
+            "scene_type": "unknown",
+            "activity": "unknown",
+            "objects_of_interest": [],
+            "safety_concerns": [],
+            "lighting": "unknown",
+            "description": "Moondream not available, YOLO fallback would be needed for scene analysis",
+            "model": "none"
+        }
+    except Exception as e:
+        print(f"Scene analysis error: {e}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # -------------------- GESTURE ENDPOINTS --------------------
@@ -549,17 +645,18 @@ async def get_context_suggestions():
 @app.post("/v2/tts/synthesize")
 async def synthesize_speech(text: str, language: str = "en"):
     """
-    Synthesize speech from text (Piper TTS).
-
-    Returns URL to pre-generated audio for streaming.
+    Synthesize speech from text using Edge-TTS or Piper TTS.
+    
+    Returns immediately while TTS plays in background.
     """
-    # This would call Piper TTS and return audio URL
-    # For now, return placeholder
+    # Start TTS in background (non-blocking)
+    asyncio.create_task(text_to_speech(text))
+    
     return {
         "text": text,
         "language": language,
-        "audio_url": None,  # Would be URL to generated audio
-        "duration_ms": len(text) * 50  # Rough estimate
+        "status": "playing",
+        "message": "TTS started in background"
     }
 
 

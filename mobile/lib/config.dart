@@ -7,11 +7,26 @@
 
 class Config {
   // Server configuration
-  // Change this to your server's IP address
-  static const String serverUrl = 'http://192.168.1.X:8001';
+  // IMPORTANT: Replace YOUR_PC_IP with your computer's IP address
+  // You can find this by running `ipconfig` on Windows or `ifconfig` on Mac/Linux
+  // The server must be running on your PC for the app to work
+  static const String serverUrl = 'http://YOUR_PC_IP:8001';
 
-  // For local development
+  // For testing on PC (use localhost)
   static const String localServerUrl = 'http://localhost:8001';
+
+  // To auto-detect server IP, set this to true
+  // The app will try to detect the server automatically
+  static const bool autoDetectServer = true;
+
+  // List of possible server IPs to try (in order of likelihood)
+  static const List<String> possibleServerIPs = [
+    '192.168.1.100',  // Common PC IP
+    '192.168.1.101',  // Alternative
+    '192.168.1.102',
+    '10.0.0.1',
+    '10.0.0.100',
+  ];
 
   // BLE UUIDs (must match ESP32 firmware)
   static const String bleServiceUuid = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
