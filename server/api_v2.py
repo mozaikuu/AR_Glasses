@@ -307,10 +307,7 @@ async def detect_objects(request: ImageInput):
     try:
         import cv2
         import base64
-        from pathlib import Path
-        
-        # Check if Moondream should be used
-        from config.settings import USE_MOONDREAM
+        from PIL import Image  # Added PIL import
         
         # Decode image
         img_data = base64.b64decode(request.image)
@@ -320,42 +317,43 @@ async def detect_objects(request: ImageInput):
         if image is None:
             raise HTTPException(status_code=400, detail="Invalid image data")
         
+        # Check if Moondream should be used
+        from config.settings import USE_MOONDREAM
+        
         if USE_MOONDREAM:
-            # Use Moondream for enhanced vision
             try:
-                from tools.vision.moondream import load_model, answer_visual_question
+                from tools.vision.moondream import load_model
                 
+                # Load model once
                 model, tokenizer = load_model()
                 if model is not None:
+                    print("Using Moondream for vision detection", file=sys.stderr)
+                    
+                    # Convert frame to PIL Image for Moondream
+                    pil_image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+                    enc_image = model.encode_image(pil_image)
+                    
                     # Get detailed description
-                    description = answer_visual_question(
-                        "Describe what you see in detail, including objects, people, text, and activities",
-                        image_data=img_data
-                    )
+                    description = model.query(enc_image, "Describe what you see in detail")["answer"]
                     
                     # Get list of objects
-                    objects = answer_visual_question(
-                        "List all objects you see, be specific about what each object is",
-                        image_data=img_data
-                    )
+                    objects = model.query(enc_image, "List all objects you see")["answer"]
                     
                     # Get any text visible
-                    text = answer_visual_question(
-                        "Extract any text visible in this image",
-                        image_data=img_data
-                    )
+                    text = model.query(enc_image, "Extract any text visible")["answer"]
                     
                     return {
                         "description": description,
                         "objects": objects,
                         "text": text if text else "No text detected",
-                        "model": "moondream",
-                        "object_count": "See description for details"
+                        "model": "moondream"
                     }
             except Exception as moondream_error:
                 print(f"Moondream error: {moondream_error}, falling back to YOLO", file=sys.stderr)
+                import traceback
+                traceback.print_exc(file=sys.stderr)
         
-        # Fallback to YOLO if Moondream not available or failed
+        # Fallback to YOLO
         from ultralytics import YOLO
         model_path = PROJECT_ROOT / "models" / "yolo11n.pt"
         if not model_path.exists():
@@ -363,7 +361,6 @@ async def detect_objects(request: ImageInput):
         else:
             model = YOLO(str(model_path))
         
-        # Detect
         results = model(image, conf=0.5)
 
         detections = []
@@ -375,17 +372,18 @@ async def detect_objects(request: ImageInput):
                     "bbox": box.xyxy[0].tolist()
                 })
 
-        # Update context
         _update_context({"last_vision": {"objects": [d["class"] for d in detections], "count": len(detections)}})
 
         return {
             "detections": detections,
             "object_count": len(detections),
-            "processing_time_ms": 0,
             "model": "yolo"
         }
 
     except Exception as e:
+        print(f"Vision detection error: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -398,55 +396,58 @@ async def analyze_scene(request: ImageInput):
     Returns scene description, activities, and context.
     """
     try:
+        import cv2
         import base64
+        from PIL import Image
         
         # Decode image
         img_data = base64.b64decode(request.image)
+        nparr = np.frombuffer(img_data, dtype=np.uint8)
+        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+        if image is None:
+            raise HTTPException(status_code=400, detail="Invalid image data")
         
         # Check if Moondream should be used
         from config.settings import USE_MOONDREAM
         
         if USE_MOONDREAM:
             try:
-                from tools.vision.moondream import answer_visual_question
+                from tools.vision.moondream import load_model
                 
-                # Get comprehensive scene analysis
-                scene_type = answer_visual_question(
-                    "What type of environment is this? (indoor, outdoor, office, home, street, etc.)",
-                    image_data=img_data
-                )
-                
-                activity = answer_visual_question(
-                    "What activities are happening in this scene? What are people doing?",
-                    image_data=img_data
-                )
-                
-                lighting = answer_visual_question(
-                    "Describe the lighting conditions in this scene",
-                    image_data=img_data
-                )
-                
-                safety = answer_visual_question(
-                    "Are there any safety concerns or hazards in this scene? List them if any.",
-                    image_data=img_data
-                )
-                
-                description = answer_visual_question(
-                    "Give a comprehensive description of this scene including all relevant details",
-                    image_data=img_data
-                )
-                
-                return {
-                    "scene_type": scene_type if scene_type else "unknown",
-                    "activity": activity if activity else "unknown",
-                    "objects_of_interest": [],  # Could extract from description
-                    "safety_concerns": [s.strip() for s in safety.split('\n') if s.strip() and 'none' not in s.lower()],
-                    "lighting": lighting if lighting else "adequate",
-                    "description": description,
-                    "model": "moondream"
-                }
+                # Load model once
+                model, tokenizer = load_model()
+                if model is not None:
+                    print("Using Moondream for scene analysis", file=sys.stderr)
+                    
+                    # Convert to PIL Image
+                    pil_image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+                    enc_image = model.encode_image(pil_image)
+                    
+                    # Get comprehensive scene analysis
+                    scene_type = model.query(enc_image, "What type of environment is this?")["answer"]
+                    
+                    activity = model.query(enc_image, "What activities are happening?")["answer"]
+                    
+                    lighting = model.query(enc_image, "Describe the lighting conditions")["answer"]
+                    
+                    safety = model.query(enc_image, "Are there any safety concerns?")["answer"]
+                    
+                    description = model.query(enc_image, "Give a comprehensive description")["answer"]
+                    
+                    return {
+                        "scene_type": scene_type if scene_type else "unknown",
+                        "activity": activity if activity else "unknown",
+                        "objects_of_interest": [],
+                        "safety_concerns": [s.strip() for s in safety.split('\n') if s.strip() and 'none' not in s.lower()],
+                        "lighting": lighting if lighting else "adequate",
+                        "description": description,
+                        "model": "moondream"
+                    }
             except Exception as moondream_error:
                 print(f"Moondream scene analysis error: {moondream_error}", file=sys.stderr)
+                import traceback
+                traceback.print_exc(file=sys.stderr)
         
         # Fallback
         return {
@@ -455,10 +456,11 @@ async def analyze_scene(request: ImageInput):
             "objects_of_interest": [],
             "safety_concerns": [],
             "lighting": "unknown",
-            "description": "Scene analysis failed",
+            "description": "Moondream not available, YOLO fallback would be needed for scene analysis",
             "model": "none"
         }
     except Exception as e:
+        print(f"Scene analysis error: {e}", file=sys.stderr)
         raise HTTPException(status_code=500, detail=str(e))
 
 
