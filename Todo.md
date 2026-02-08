@@ -34,12 +34,8 @@ run all 3 previous unfinished tasks and fix all errors
 
 ### Abstract goals:
 
--  [ ] streamlit / flask
--  [ ] mobile test
--  [ ] fix nova
--  [ ] migrate to notion
--  [ ] hardware start
--  [ ] navigation start
+- [ ] mobile test
+- [ ] migrate to notion
 
 ### Current goal:
 
