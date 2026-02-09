@@ -1,0 +1,116 @@
+{
+	"building": {
+		"name": "Smart Building",
+		"address": "123 Tech Street, Cairo, Egypt"
+	},
+	"locations": [
+		{
+			"id": "entrance",
+			"name": "Main Entrance",
+			"floor": 0,
+			"coordinates": { "x": 0, "y": 0 },
+			"description": "Main building entrance with reception desk",
+			"additional_info": "Open 24/7, Security guard on duty",
+			"qr_code_filename": "qr_entrance.png"
+		},
+		{
+			"id": "lobby",
+			"name": "Central Lobby",
+			"floor": 0,
+			"coordinates": { "x": 5, "y": 0 },
+			"description": "Central lobby with information desk",
+			"additional_info": "Digital directory available, Seating area",
+			"qr_code_filename": "qr_lobby.png"
+		},
+		{
+			"id": "lab1",
+			"name": "Engineering Lab 1",
+			"floor": 1,
+			"coordinates": { "x": 0, "y": 10 },
+			"description": "Main engineering laboratory",
+			"additional_info": "Equipment sign-in required, Safety gear needed",
+			"qr_code_filename": "qr_lab1.png"
+		},
+		{
+			"id": "lab2",
+			"name": "Engineering Lab 2",
+			"floor": 1,
+			"coordinates": { "x": 10, "y": 10 },
+			"description": "Secondary engineering laboratory",
+			"additional_info": "Reserved for senior students, PCB fabrication available",
+			"qr_code_filename": "qr_lab2.png"
+		},
+		{
+			"id": "meeting_room",
+			"name": "Meeting Room A",
+			"floor": 1,
+			"coordinates": { "x": 15, "y": 0 },
+			"description": "Conference room for team meetings",
+			"additional_info": "Capacity: 12 people, AV equipment available",
+			"qr_code_filename": "qr_meeting_room.png"
+		},
+		{
+			"id": "office1",
+			"name": "Faculty Office 1",
+			"floor": 2,
+			"coordinates": { "x": 0, "y": 5 },
+			"description": "Professor's office",
+			"additional_info": "Office hours: Sun-Thu 9AM-2PM",
+			"qr_code_filename": "qr_office1.png"
+		},
+		{
+			"id": "office2",
+			"name": "Faculty Office 2",
+			"floor": 2,
+			"coordinates": { "x": 5, "y": 5 },
+			"description": "Professor's office",
+			"additional_info": "Office hours: Sun-Thu 10AM-3PM",
+			"qr_code_filename": "qr_office2.png"
+		},
+		{
+			"id": "cafeteria",
+			"name": "Cafeteria",
+			"floor": 0,
+			"coordinates": { "x": 20, "y": 0 },
+			"description": "Main cafeteria and dining area",
+			"additional_info": "Open 7AM-9PM, Vegan options available",
+			"qr_code_filename": "qr_cafeteria.png"
+		},
+		{
+			"id": "library",
+			"name": "Library",
+			"floor": 2,
+			"coordinates": { "x": 20, "y": 10 },
+			"description": "Main library with study spaces",
+			"additional_info": "Quiet zone, WiFi available, 200 study seats",
+			"qr_code_filename": "qr_library.png"
+		},
+		{
+			"id": "emergency_exit_north",
+			"name": "Emergency Exit - North",
+			"floor": 0,
+			"coordinates": { "x": 0, "y": 15 },
+			"description": "Emergency exit - North side",
+			"additional_info": "Do not block, Alarm connected",
+			"qr_code_filename": "qr_emergency_north.png"
+		},
+		{
+			"id": "elevator",
+			"name": "Elevator",
+			"floor": 0,
+			"coordinates": { "x": 10, "y": 0 },
+			"description": "Main elevator serving all floors",
+			"additional_info": "Capacity: 10 people, Wheelchair accessible",
+			"qr_code_filename": "qr_elevator.png"
+		},
+		{
+			"id": "staircase_a",
+			"name": "Staircase A",
+			"floor": 0,
+			"coordinates": { "x": 8, "y": 0 },
+			"description": "Main staircase",
+			"additional_info": "Emergency stairs, Do not smoke",
+			"qr_code_filename": "qr_staircase_a.png"
+		}
+	]
+}
