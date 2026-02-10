@@ -117,7 +117,7 @@ async def decide(query: str, history: list, used_tools: set, client, mode: str, 
 
     Args:
         query: User query text
-        history: Conversation history (will be limited to last 4 exchanges)
+        history: Conversation history as list of dicts (new format) or strings (legacy)
         used_tools: Set of (tool_name, args_json) tuples already used
         client: MCP client
         mode: "quick" or "thinking"
@@ -129,12 +129,40 @@ async def decide(query: str, history: list, used_tools: set, client, mode: str, 
     tools = await client.list_tools()
     tools_list = "\n".join(f"- {t.name}: {t.description}" for t in tools.tools)
     
-    # Limit history to last 4 exchanges to prevent context overflow
-    # Each exchange is 2 items (User + Agent)
-    history_text = "\n".join(history[-8:]) if history else "None"
+    # Convert legacy string history to structured format
+    if history and isinstance(history[0], str):
+        # Legacy format - convert to structured
+        structured_history = []
+        for item in history:
+            if item.startswith("User:"):
+                structured_history.append({"role": "user", "content": item[6:]})
+            elif item.startswith("Agent:"):
+                structured_history.append({"role": "assistant", "reasoning": item[7:]})
+            elif item.startswith("Tool("):
+                # Tool(tool_name): result
+                end_idx = item.index("):")
+                tool_name = item[5:end_idx]
+                structured_history.append({"role": "tool", "name": tool_name, "content": item[end_idx+2:]})
+            elif item.startswith("Error:"):
+                structured_history.append({"role": "error", "content": item[6:]})
+        history = structured_history
+    
+    # Build history text from structured history
+    history_parts = []
+    for h in history[-8:]:
+        role = h.get("role", "unknown")
+        if role == "user":
+            history_parts.append(f"User: {h.get('content', '')}")
+        elif role == "assistant":
+            history_parts.append(f"Agent: {h.get('reasoning', '')}")
+        elif role == "tool":
+            history_parts.append(f"Tool({h.get('name', 'unknown')}): {h.get('content', '')}")
+        elif role == "error":
+            history_parts.append(f"Error: {h.get('content', '')}")
+    history_text = "\n".join(history_parts) if history_parts else "None"
     
     # Count how many tool results are in history
-    tool_count = sum(1 for h in history if h.startswith("Tool("))
+    tool_count = sum(1 for h in history if h.get("role") == "tool")
     
     log(f"Available tools: {[t.name for t in tools.tools]}")
     log(f"History length: {len(history)}, Tool calls: {tool_count}")

@@ -2,7 +2,7 @@
 import sys
 import json
 import asyncio
-from typing import Set, Tuple
+from typing import Set, Tuple, List
 from agent.llm import decide, log
 from agent.modes import get_mode_continuation_check
 from config.settings import MAX_LOOPS
@@ -22,7 +22,7 @@ async def agent_loop(client, user_input: str, mode: str = "thinking", image: str
     Returns:
         Final answer string
     """
-    history = []
+    history: List[dict] = []  # Use structured history instead of strings
     used_tools: Set[Tuple] = set()
     current_input = user_input
     
@@ -30,7 +30,7 @@ async def agent_loop(client, user_input: str, mode: str = "thinking", image: str
     MAX_HISTORY = 4
     
     # Clear used_tools after this many iterations to allow retries
-    CLEAR_TOOLS_AFTER = 2
+    CLEAR_TOOLS_AFTER = 3
     
     # Get the appropriate continuation check for the mode
     should_continue = get_mode_continuation_check(mode)
@@ -41,11 +41,13 @@ async def agent_loop(client, user_input: str, mode: str = "thinking", image: str
         decision = await decide(current_input, history, used_tools, client, mode, image)
         log("Thought:", decision["reasoning"])
 
-        # Add to history (keep only last MAX_HISTORY exchanges)
-        history.append(f"User: {current_input}")
-        history.append(f"Agent: {decision['reasoning']}")
+        # Add to structured history (more efficient than strings)
+        history.append({"role": "user", "content": current_input})
+        history.append({"role": "assistant", "reasoning": decision["reasoning"]})
+        
+        # Trim history to keep only recent exchanges
         if len(history) > MAX_HISTORY * 2:
-            history = history[-MAX_HISTORY * 2:]
+            history = history[-(MAX_HISTORY * 2):]
 
         # Check if we should ask the user
         if decision["ask_user"]:
@@ -80,9 +82,9 @@ async def agent_loop(client, user_input: str, mode: str = "thinking", image: str
         if decision["tool"]:
             sig = (decision["tool"], json.dumps(decision["args"], sort_keys=True))
             
-            # If already used, skip and ask user for more info
+            # If already used, skip and ask user for more info (only if exact same args)
             if sig in used_tools:
-                log(f"Tool {decision['tool']} already used, asking for clarification")
+                log(f"Tool {decision['tool']} already used with same args, asking for clarification")
                 question = f"You've already used {decision['tool']}. What additional information do you need?"
                 if speak:
                     asyncio.create_task(text_to_speech("I've already checked that. What else would you like to know?"))
@@ -101,16 +103,17 @@ async def agent_loop(client, user_input: str, mode: str = "thinking", image: str
                     result_text = str(result.content[0].text) if result.content else str(result)
                 
                 # Truncate very long results for history
-                if len(result_text) > 500:
-                    result_text = result_text[:500] + "..."
+                max_result_len = 300  # Reduced from 500 to save context
+                if len(result_text) > max_result_len:
+                    result_text = result_text[:max_result_len] + "..."
                 
-                history.append(f"Tool({decision['tool']}): {result_text}")
+                history.append({"role": "tool", "name": decision["tool"], "content": result_text})
                 current_input = f"Tool result: {result_text}"
                 log(f"Tool {decision['tool']} result: {result_text[:100]}")
             except Exception as e:
                 error_msg = f"Tool error: {str(e)}"
                 log(error_msg)
-                history.append(f"Error: {error_msg}")
+                history.append({"role": "error", "content": error_msg})
                 current_input = f"Tool error occurred: {error_msg}"
                 # Continue loop to try again or provide answer
 
