@@ -1,0 +1,23 @@
+# WebSocket Audio Server Dependencies
+# Install: pip install -r requirements.txt
+
+# WebSocket server
+websockets>=10.0
+
+# Audio processing
+numpy>=1.21.0
+
+# Speech-to-Text
+openai-whisper>=20231117
+
+# HTTP client for API calls
+httpx>=0.24.0
+
+# Optional: Piper TTS (if using local TTS)
+# piper-tts>=1.0.0
+
+# Configuration
+PyYAML>=6.0
+
+# Logging
+colorlog>=6.7.0

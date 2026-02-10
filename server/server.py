@@ -53,6 +53,11 @@ try:
 except ImportError as e:
     print(f"ERROR: Failed to import nav_runner: {e}", file=sys.stderr, flush=True)
 
+try:
+    from tools.navigation.qr_location import update_location_from_qr, get_current_location_info, get_all_locations_info
+except ImportError as e:
+    print(f"ERROR: Failed to import qr_location: {e}", file=sys.stderr, flush=True)
+
 mcp = FastMCP(name="Cerebro")
 
 # LLM -> MCP -> Tools -> LLM
@@ -311,6 +316,83 @@ def cancel_navigation_session(session_id: str = None) -> dict:
     """
     result = cancel_navigation(session_id)
     return result
+
+
+# ==================== QR Code Location Tools ====================
+
+
+@mcp.tool()
+def update_location_from_qr_code(qr_data: str) -> dict:
+    """Update the current location when a QR code is scanned by the glasses.
+
+    Use this tool when the smart glasses camera detects a location QR code.
+    The QR code should contain JSON data with location information.
+
+    Args:
+        qr_data: JSON string from QR code containing location info
+
+    Returns:
+        Dictionary with:
+        - success: Whether location was updated successfully
+        - location: Location data including name, floor, coordinates
+        - message: Status message
+    """
+    location = update_location_from_qr(qr_data)
+    if location:
+        return {
+            "success": True,
+            "location": location,
+            "message": f"Location updated to: {location.get('name', 'Unknown')} (Floor {location.get('floor', 0)})"
+        }
+    else:
+        return {
+            "success": False,
+            "location": None,
+            "message": "Failed to parse QR code data"
+        }
+
+
+@mcp.tool()
+def get_current_location() -> dict:
+    """Get the current location of the smart glasses user.
+
+    Use this tool to retrieve the user's current position based on the last
+    scanned QR code.
+
+    Returns:
+        Dictionary with current location information or error if no location detected.
+    """
+    location = get_current_location_info()
+    if location:
+        return {
+            "success": True,
+            "current_location": location,
+            "message": "Current location retrieved"
+        }
+    else:
+        return {
+            "success": False,
+            "current_location": None,
+            "message": "No location detected yet. Scan a QR code first."
+        }
+
+
+@mcp.tool()
+def get_all_building_locations() -> dict:
+    """Get a list of all locations in the building from navigation data.
+
+    Use this tool to get all available locations for navigation purposes.
+
+    Returns:
+        Dictionary with list of all locations with their details.
+    """
+    locations = get_all_locations_info()
+    return {
+        "success": True,
+        "locations": locations,
+        "count": len(locations),
+        "message": f"Retrieved {len(locations)} locations"
+    }
 
 
 if __name__ == "__main__":

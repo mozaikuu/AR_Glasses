@@ -15,21 +15,24 @@
 
 ### Urgent:
 
+moussa
+
+-  [ ] android chat ask
+-  [ ] qrcode with name, place, additional info like lectures
+-  [ ] unity AR
+-  [ ] moondream
+-  [ ] hardware physical connection
+-  [ ] esp32 code
+-  [ ] building addition
+
+ydnas
+
+basma
+
+-  [ ] interrupt the bot speaking
+
 run all 3 previous unfinished tasks and fix all errors
 
--  [ ] docs
-   -  [ ] requirements
-   -  [ ] prototype
-   -  [ ] expectations
-   -  [ ] comparison
-   -  [ ] files
-      -  [ ] 4 pdf
-      -  [ ] 1 word
-      -  [ ] 1 img
-      -  [ ] multiple diagrams
-      -  [ ] sandy file
-      -  [ ] sandy chat
--  [ ] Presentation
 -  [ ] Code: DT_GB_148
 
 ### Abstract goals:
@@ -43,11 +46,7 @@ run all 3 previous unfinished tasks and fix all errors
 
 ### Test & Fix
 
--  [ ] model satisfaction
--  [ ] interrupt the bot speaking
--  [ ] Overthinking
 -  [ ] investigate how the model sees its own chain of thought
--  [ ] desync between tool use and model recall
 -  [ ] camera permissions murky
 -  [ ] investigate formatting (json)
 -  [ ] in case of refusal it should break the loop
@@ -58,6 +57,9 @@ run all 3 previous unfinished tasks and fix all errors
 -  [ ] are tools active?
 -  [ ] is history running correctly?
 -  [ ] generalize pathing
+-  [ ] desync between tool use and model recall
+-  [ ] model satisfaction
+-  [ ] Overthinking
        ~~~ take me from 46 to dean
        🤖 AI Assistant:
 

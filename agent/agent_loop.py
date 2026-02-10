@@ -1,8 +1,8 @@
-"""Main agent reasoning loop."""
+"""Main agent reasoning loop - Single LLM call with tool execution."""
 import sys
 import json
 import asyncio
-from typing import Set, Tuple
+from typing import Set, Tuple, List, Optional
 from agent.llm import decide, log
 from agent.modes import get_mode_continuation_check
 from config.settings import MAX_LOOPS
@@ -11,112 +11,97 @@ from tools.speech.tts import text_to_speech
 
 async def agent_loop(client, user_input: str, mode: str = "thinking", image: str = None, speak: bool = True):
     """
-    Main agent loop that processes user input and makes decisions.
-    
+    Main agent loop that processes user input with a SINGLE LLM call,
+    then executes tools as needed.
+
+    Flow:
+    1. Call LLM ONCE with user query
+    2. Execute tool if requested
+    3. Feed tool result back to LLM
+    4. Repeat until satisfied OR max iterations reached
+
     Args:
         client: MCP client for tool calls
         user_input: User query text
         mode: "quick" or "thinking"
         image: Optional base64 encoded image
-        
+
     Returns:
         Final answer string
     """
-    history = []
-    used_tools: Set[Tuple] = set()
     current_input = user_input
-    
-    # Limit history to last 4 exchanges to prevent context overflow
-    MAX_HISTORY = 4
-    
-    # Clear used_tools after this many iterations to allow retries
-    CLEAR_TOOLS_AFTER = 2
-    
-    # Get the appropriate continuation check for the mode
-    should_continue = get_mode_continuation_check(mode)
+    iteration = 0
+    max_iterations = MAX_LOOPS
 
-    for i in range(1, MAX_LOOPS + 1):
-        log(f"--- {mode.upper()} LOOP {i} ---")
+    log(f"--- STARTING AGENT LOOP (mode={mode}) ---")
+    log(f"User query: {user_input[:100]}...")
 
-        decision = await decide(current_input, history, used_tools, client, mode, image)
-        log("Thought:", decision["reasoning"])
+    while iteration < max_iterations:
+        iteration += 1
+        log(f"\n{'='*50}")
+        log(f"ITERATION {iteration}/{max_iterations}")
+        log(f"{'='*50}")
 
-        # Add to history (keep only last MAX_HISTORY exchanges)
-        history.append(f"User: {current_input}")
-        history.append(f"Agent: {decision['reasoning']}")
-        if len(history) > MAX_HISTORY * 2:
-            history = history[-MAX_HISTORY * 2:]
+        # Step 1: Make DECISION (LLM call)
+        decision = await decide(current_input, iteration, max_iterations, mode, image)
+        log(f"LLM Reasoning: {decision['reasoning'][:200]}...")
+        log(f"Tool requested: {decision['tool']}")
+        log(f"Is satisfied: {decision['is_satisfied']}")
+        log(f"Answer: {decision['answer'][:100] if decision['answer'] else 'None'}...")
 
-        # Check if we should ask the user
-        if decision["ask_user"]:
-            if speak:
-                asyncio.create_task(text_to_speech(decision["ask_user"]))
-            return decision["ask_user"]
-
-        # Check if we're satisfied
+        # Step 2: If satisfied, return answer
         if decision["is_satisfied"]:
-            answer = decision["answer"]
-            if not answer:
-                # If satisfied but no answer, try to construct one from reasoning
-                answer = decision["reasoning"] or "I've completed the task."
+            answer = decision["answer"] or decision["reasoning"] or "I've completed the task."
             if speak:
                 asyncio.create_task(text_to_speech(answer))
+            log(f"✅ Done! Final answer: {answer[:100]}...")
             return answer
 
-        # Check if we should continue
-        if not should_continue(decision, i, MAX_LOOPS, history, used_tools):
-            # Return what we have or a default message
-            answer = decision["answer"] or decision["reasoning"] or "I need more information."
+        # Step 3: If no tool requested, we're done
+        if not decision["tool"]:
+            answer = decision["answer"] or decision["reasoning"] or "I don't have enough information."
             if speak:
                 asyncio.create_task(text_to_speech(answer))
+            log(f"✅ Done! No tool needed. Answer: {answer[:100]}...")
             return answer
 
-        # Clear used_tools periodically to allow retrying
-        if i % CLEAR_TOOLS_AFTER == 0:
-            log(f"Clearing used_tools at iteration {i} to allow retries")
-            used_tools.clear()
+        # Step 4: Execute tool
+        tool_name = decision["tool"]
+        tool_args = decision["args"] or {}
 
-        # Execute tool if needed
-        if decision["tool"]:
-            sig = (decision["tool"], json.dumps(decision["args"], sort_keys=True))
-            
-            # If already used, skip and ask user for more info
-            if sig in used_tools:
-                log(f"Tool {decision['tool']} already used, asking for clarification")
-                question = f"You've already used {decision['tool']}. What additional information do you need?"
-                if speak:
-                    asyncio.create_task(text_to_speech("I've already checked that. What else would you like to know?"))
-                return "I've already checked that. Is there something specific you'd like me to look into further?"
-            
-            used_tools.add(sig)
+        log(f"🔧 Executing tool: {tool_name}")
+        log(f"   Args: {json.dumps(tool_args)}")
 
-            try:
-                result = await client.call_tool(
-                    name=decision["tool"],
-                    arguments=decision["args"]
-                )
-                # Extract text from result
-                result_text = str(result)
-                if hasattr(result, 'content') and result.content:
-                    result_text = str(result.content[0].text) if result.content else str(result)
-                
-                # Truncate very long results for history
-                if len(result_text) > 500:
-                    result_text = result_text[:500] + "..."
-                
-                history.append(f"Tool({decision['tool']}): {result_text}")
-                current_input = f"Tool result: {result_text}"
-                log(f"Tool {decision['tool']} result: {result_text[:100]}")
-            except Exception as e:
-                error_msg = f"Tool error: {str(e)}"
-                log(error_msg)
-                history.append(f"Error: {error_msg}")
-                current_input = f"Tool error occurred: {error_msg}"
-                # Continue loop to try again or provide answer
+        try:
+            # Call the tool
+            result = await client.call_tool(
+                name=tool_name,
+                arguments=tool_args
+            )
 
-    # Max loops reached
+            # Extract text from result
+            result_text = str(result)
+            if hasattr(result, 'content') and result.content:
+                result_text = str(result.content[0].text) if result.content else str(result)
+
+            # Truncate for logging
+            result_preview = result_text[:200] + "..." if len(result_text) > 200 else result_text
+            log(f"   Result: {result_preview}")
+
+            # Step 5: Feed result back to LLM for next iteration
+            current_input = f"Previous tool result from {tool_name}: {result_text}\n\nWhat is your final answer or do you need another tool?"
+            log(f"🔄 Feeding result back to LLM...")
+
+        except Exception as e:
+            error_msg = f"Tool error: {str(e)}"
+            log(f"❌ {error_msg}")
+            current_input = f"ERROR: {error_msg}. How should I proceed?"
+
+        # Continue loop for next iteration
+
+    # Max iterations reached
+    log(f"⚠️ Max iterations ({max_iterations}) reached")
     answer = decision.get("answer") or decision.get("reasoning") or "I need more information to complete this task."
     if speak:
         asyncio.create_task(text_to_speech(answer))
     return answer
-

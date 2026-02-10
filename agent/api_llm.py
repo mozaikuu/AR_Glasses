@@ -1,8 +1,8 @@
 """API-based LLM model handling using Cerebras API."""
 import sys
 import json
-import aiohttp
 import asyncio
+import aiohttp
 from typing import List, Dict, Any
 from config.settings import API_BASE_URL, API_KEY, MODEL_ID, MAX_RETRIES
 
@@ -68,7 +68,7 @@ async def get_api_client():
     global _api_client
     if _api_client is None:
         if not API_KEY:
-            raise ValueError("CEREBRAS_API_KEY environment variable is not set. Please set your Cerebras API key.")
+            raise ValueError("CEREBRAS_API_KEY environment variable is not set.")
         _api_client = CerebrasAPIClient(API_BASE_URL, API_KEY, MODEL_ID)
         await _api_client.__aenter__()
     return _api_client
@@ -86,15 +86,17 @@ def extract_json(text: str) -> dict:
     """Extract JSON from model output."""
     import re
     text = text.strip()
+    
+    # Remove code blocks
     if "```" in text:
         text = re.sub(r"```(?:json)?", "", text)
 
+    # Find JSON block
     match = re.search(r"<json>([\s\S]*?)</json>", text)
     if not match:
         raise ValueError("No <json> block found")
 
     raw = match.group(1)
-    raw = raw.replace(""", '"').replace(""", '"').replace("'", "'")
     return json.loads(raw)
 
 
@@ -111,116 +113,99 @@ def normalize(data: dict) -> dict:
 
 
 # ============== DECISION ==================
-async def decide(query: str, history: list, used_tools: set, client, mode: str, image: str = None):
+async def decide(query: str, iteration: int = 1, max_iterations: int = 10, mode: str = "thinking", image: str = None):
     """
-    Make a decision based on query, history, and available tools.
+    Make a SINGLE decision based on user query.
+
+    This is called ONCE per iteration of the agent loop.
+    The agent loop handles multiple iterations by feeding tool results back.
 
     Args:
-        query: User query text
-        history: Conversation history (will be limited to last 4 exchanges)
-        used_tools: Set of (tool_name, args_json) tuples already used
-        client: MCP client
+        query: User query OR tool result from previous iteration
+        iteration: Current iteration number (1-based)
+        max_iterations: Maximum iterations allowed
         mode: "quick" or "thinking"
         image: Optional base64 encoded image
 
     Returns:
-        Decision dictionary
+        Decision dictionary with: reasoning, tool, args, is_satisfied, answer
     """
-    tools = await client.list_tools()
-    tools_list = "\n".join(f"- {t.name}: {t.description}" for t in tools.tools)
-    
-    # Limit history to last 4 exchanges to prevent context overflow
-    # Each exchange is 2 items (User + Agent)
-    history_text = "\n".join(history[-8:]) if history else "None"
-    
-    # Count how many tool results are in history
-    tool_count = sum(1 for h in history if h.startswith("Tool("))
-    
-    log(f"Available tools: {[t.name for t in tools.tools]}")
-    log(f"History length: {len(history)}, Tool calls: {tool_count}")
+    # Tools description
+    tools_description = """
+Available tools:
+- search_web: Search the web for information. Args: {"query": "search terms"}
+- VisionDetect: Describe what you see in an image. Args: {}
+- navigation_get_directions: Get navigation directions. Args: {"from": "location", "to": "destination"}
+"""
 
-    # Build user content with optional image
+    # Build user content
     user_content = query
     if image:
-        user_content += f"\n[Image provided: {image[:50]}...]"
+        user_content += f"\n[Image provided: {image[:100]}...]"
 
-    # Build explicit tool usage instructions
-    tool_usage_instructions = ""
-    if "search" in query.lower() or "time" in query.lower() or "current" in query.lower():
-        tool_usage_instructions = "\n\nCRITICAL: The user is asking for real-time information (time, current events, web search). You MUST use the search_web tool to get this information. Set tool='search_web' with args={'query': 'user question here'}."
-    if "use" in query.lower() and "tool" in query.lower():
-        tool_usage_instructions = "\n\nCRITICAL: The user explicitly asked you to use a tool. You MUST use the tool they mentioned. Do not say you don't have access to tools - you do!"
-    
-    # Check if user explicitly asked for vision
-    vision_keywords = ["what do you see", "what is in front", "describe the view", "look at", "identify"]
-    if any(kw in query.lower() for kw in vision_keywords):
-        tool_usage_instructions = "\n\nCRITICAL: The user wants to see/identify something. You MUST use VisionDetect tool to describe what you see. Set tool='VisionDetect' with args={}.".format(
-            "{}" if mode == "quick" else "{}"
-        )
-    
-    # Only show used tools warning if they've already been used
-    used_tools_warning = ""
-    if used_tools:
-        used_tools_warning = f"\nNote: These tools have already been used in this session: {[sig[0] for sig in used_tools]}. Consider if you need to use them again with different parameters."
-    
-    system_prompt = f"""
-You are an intelligent agent running in {mode} mode with access to tools.
+    # Check if this is a follow-up (iteration > 1)
+    is_followup = iteration > 1
 
-Conversation history (last 4 exchanges):
-{history_text}
-{used_tools_warning}
+    if is_followup:
+        prompt_instruction = """
+This is a FOLLOW-UP iteration. Based on the previous tool result:
+- If the result answers the user's question, set is_satisfied=true and provide your answer
+- If you need MORE information, explain what and set is_satisfied=false
+- If you need a DIFFERENT tool, specify which one
+- Do NOT repeat tools that already failed
+"""
+    else:
+        prompt_instruction = """
+This is the FIRST iteration. Analyze the user's request:
+- If you can answer directly, set is_satisfied=true with your answer
+- If you need information from a tool, specify which tool and args
+- Choose the RIGHT tool for the job
+"""
 
-Available tools:
-{tools_list}
-{tool_usage_instructions}
+    # Remaining iterations message
+    remaining = max_iterations - iteration
+    iterations_msg = f"You have {remaining} iteration(s) remaining."
 
-RULES:
-- ONLY output JSON inside <json>
-- No text outside JSON
-- If the user asks you to use a tool, you MUST use that tool - DO NOT say you don't have it
-- If you need real-time information, use the appropriate tool
-- If you have a complete answer, set "is_satisfied" to true and provide it in "answer"
-- If you need to use a tool, specify "tool" and "args" (tool name must match exactly: search_web or VisionDetect)
-- In thinking mode, you can refine your approach based on tool results
-- If a tool was already used, try a DIFFERENT approach or ask for clarification
-- MAX {tool_count + 2} tool calls remaining before you must give an answer
+    system_prompt = f"""You are Nova, an intelligent assistant for smart glasses.
+
+{prompt_instruction}
+
+{iterations_msg}
+
+{tools_description}
+
+OUTPUT REQUIREMENTS:
+- You must output ONLY JSON inside <json> tags
+- No text outside the JSON block
+- Be concise - your reasoning should be brief
+- If satisfied, provide a clear answer suitable for audio playback
 
 <json>
 {{
-  "reasoning": "",
-  "tool": null,
+  "reasoning": "Brief explanation of your thought process",
+  "tool": null OR "exact_tool_name",
   "args": {{}},
-  "ask_user": null,
-  "is_satisfied": false,
-  "answer": ""
+  "is_satisfied": true OR false,
+  "answer": "Your answer OR null"
 }}
-</json>
-"""
+</json>"""
 
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_content}
     ]
 
+    log(f"LLM Call (iteration {iteration}/{max_iterations})")
+
     for attempt in range(MAX_RETRIES + 1):
         try:
-            raw = await generate_chat(messages)
-            log("RAW MODEL OUTPUT:", raw)
+            raw = await generate_chat(messages, max_tokens=512, temperature=0.1)
+            log(f"Raw LLM output: {raw[:200]}...")
 
             data = extract_json(raw)
             decision = normalize(data)
 
-            # If tool already used, try to proceed without it
-            if decision["tool"]:
-                sig = (decision["tool"], json.dumps(decision["args"], sort_keys=True))
-                if sig in used_tools:
-                    log(f"Tool {decision['tool']} already used, suggesting alternative approach")
-                    # Instead of blocking, suggest the LLM try a different approach
-                    decision["tool"] = None
-                    decision["is_satisfied"] = True
-                    if not decision["answer"]:
-                        decision["answer"] = "I've already checked that. Is there something else you'd like to know?"
-
+            log(f"Decision: tool={decision['tool']}, satisfied={decision['is_satisfied']}")
             return decision
 
         except Exception as e:
@@ -232,10 +217,10 @@ RULES:
                     "args": {},
                     "ask_user": None,
                     "is_satisfied": True,
-                    "answer": "I encountered an issue processing your request. Please try again."
+                    "answer": "I encountered an issue. Please try again."
                 }
 
             messages.append({
                 "role": "system",
-                "content": "FORMAT ERROR. OUTPUT VALID JSON ONLY."
+                "content": "FORMAT ERROR. Output must be valid JSON inside <json> tags."
             })
