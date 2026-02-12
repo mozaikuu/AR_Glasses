@@ -14,7 +14,7 @@ import sys
 import os
 import json
 import time
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, AsyncExitStack
 from pathlib import Path
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,7 +22,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse
 from models.requests import MultimodalRequest, TextRequest
 from tools.speech.transcription import transcribe_audio_bytes
-from tools.speech.tts import text_to_speech, text_to_speech_sync
 
 # Project root for static files
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -46,66 +45,54 @@ async def lifespan(app: FastAPI):
     global mcp_client, mcp_connected, _stdio_transport_context, _mcp_session_context, _keepalive_task
 
     print("[HTTP] Starting gateway server...", file=sys.stderr)
-
-    # Start keepalive heartbeat task
     _keepalive_task = asyncio.create_task(_keepalive_heartbeat())
+    stack = AsyncExitStack()
 
     try:
         from mcp import ClientSession, StdioServerParameters
         from mcp.client.stdio import stdio_client
 
         print(f"[HTTP] Initializing MCP client connection to {mcp_server_path}", file=sys.stderr)
-
-        # Create MCP server parameters
         server_params = StdioServerParameters(
             command=sys.executable,
             args=[str(mcp_server_path)],
             env=dict(os.environ, PYTHONPATH=str(project_root))
         )
 
-        # Use nested async context managers properly
-        async with stdio_client(server_params) as (read_stream, write_stream):
-            async with ClientSession(read_stream, write_stream) as mcp_session:
-                # Initialize the session
-                await mcp_session.initialize()
+        read_stream, write_stream = await stack.enter_async_context(stdio_client(server_params))
+        mcp_session = await stack.enter_async_context(ClientSession(read_stream, write_stream))
+        await mcp_session.initialize()
 
-                # List available tools
-                tools = await mcp_session.list_tools()
-                print(f"[HTTP] MCP connected successfully! Available tools: {[t.name for t in tools.tools]}", file=sys.stderr)
+        tools = await mcp_session.list_tools()
+        print(f"[HTTP] MCP connected successfully! Available tools: {[t.name for t in tools.tools]}", file=sys.stderr)
 
-                # Store references
-                mcp_client = mcp_session
-                mcp_connected = True
-                _stdio_transport_context = stdio_client(server_params)  # Keep reference
-                _mcp_session_context = mcp_session  # Keep reference
-
-                # Yield - context managers stay alive until we exit
-                yield
-
-                # Cleanup happens automatically when exiting context
+        mcp_client = mcp_session
+        mcp_connected = True
+        _stdio_transport_context = True
+        _mcp_session_context = mcp_session
 
     except Exception as e:
-        print(f"[ERROR] Failed to connect to MCP server: {e}", file=sys.stderr)
-        import traceback
-        traceback.print_exc(file=sys.stderr)
+        print(f"[WARNING] MCP unavailable, running gateway in fallback mode: {e}", file=sys.stderr)
         mcp_connected = False
         mcp_client = None
 
-    # Final cleanup
-    print("[HTTP] Shutting down gateway", file=sys.stderr)
+    try:
+        yield
+    finally:
+        print("[HTTP] Shutting down gateway", file=sys.stderr)
+        await stack.aclose()
 
-    # Cancel keepalive task
-    if _keepalive_task:
-        _keepalive_task.cancel()
-        try:
-            await _keepalive_task
-        except asyncio.CancelledError:
-            pass
+        if _keepalive_task:
+            _keepalive_task.cancel()
+            try:
+                await _keepalive_task
+            except asyncio.CancelledError:
+                pass
 
-    mcp_connected = False
-    mcp_client = None
-    _stdio_transport_context = None
-    _mcp_session_context = None
+        mcp_connected = False
+        mcp_client = None
+        _stdio_transport_context = None
+        _mcp_session_context = None
 
 
 async def _keepalive_heartbeat():
@@ -327,11 +314,14 @@ async def process_multimodal(req: MultimodalRequest):
             
             # Run agent loop with MCP client
             agent_result = await agent_loop(mcp_client, user_query, mode, image=req.image)
-
-            # Extract the answer from the result dict
-            result = agent_result.get("answer", "")
-            tool_used = agent_result.get("tool_used")
-            iterations = agent_result.get("iterations", 0)
+            if isinstance(agent_result, dict):
+                result = agent_result.get("answer", "")
+                tool_used = agent_result.get("tool_calls")
+                iterations = agent_result.get("iterations", 0)
+            else:
+                result = str(agent_result)
+                tool_used = None
+                iterations = 1
 
             print(f"[HTTP] Agent loop completed in {iterations} iteration(s), tool_used={tool_used}, result length: {len(result) if result else 0}", file=sys.stderr)
 
@@ -367,8 +357,6 @@ async def process_multimodal(req: MultimodalRequest):
                 ]
                 result = await generate_chat(messages, max_tokens=512, temperature=0.1)
                 print(f"[HTTP] Fallback LLM response received: {result[:100]}...", file=sys.stderr)
-                # Speak the response
-                asyncio.create_task(text_to_speech(result))
             except Exception as e2:
                 return {
                     "response": f"Error: Both MCP agent loop and direct LLM failed. MCP error: {error_msg}. LLM error: {str(e2)}",
@@ -385,8 +373,6 @@ async def process_multimodal(req: MultimodalRequest):
             ]
             result = await generate_chat(messages, max_tokens=512, temperature=0.1)
             print(f"[HTTP] Direct LLM response received: {result[:100]}...", file=sys.stderr)
-            # Speak the response
-            asyncio.create_task(text_to_speech(result))
         except Exception as e:
             error_msg = f"LLM processing failed: {str(e)}"
             print(f"[ERROR] {error_msg}", file=sys.stderr)
@@ -671,6 +657,7 @@ async def generate_tts_endpoint(req: dict):
         return {"error": "No text provided"}
 
     try:
+        from tools.speech.tts import text_to_speech_sync
         # Generate TTS audio
         text_to_speech_sync(text)
         return {"status": "generated", "text": text}
@@ -803,23 +790,11 @@ async def web_process_text(req: dict):
         # Extract response
         response_text = result.get("response", "")
 
-        # Generate TTS
-        audio_url = None
-        if response_text:
-            import tempfile
-            import time
-            temp_dir = tempfile.gettempdir()
-            filename = f"tts_{int(time.time())}.mp3"
-            # Generate TTS (runs in background)
-            asyncio.create_task(text_to_speech(response_text))
-            audio_url = f"/tts/{filename}"
-
         # Update state with response
         _update_state(system_state="idle", ai_response=response_text)
 
         return {
             "response": response_text,
-            "audio_url": audio_url,
             "transcription": result.get("transcription")
         }
 

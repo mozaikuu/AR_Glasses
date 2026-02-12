@@ -31,10 +31,12 @@ MAX_LOOPS = int(os.getenv("MAX_LOOPS", "8"))
 MAX_RETRIES = int(os.getenv("MAX_RETRIES", "2"))
 
 # ================= API CONFIGURATION =================
-# Unified server runs on port 8000 (merged gateway + api_v2 + web dashboard)
+# Unified server runs on port 8000 (gateway + web dashboard + API routes)
 API_HOST = os.getenv("API_HOST", "0.0.0.0")
 API_PORT = int(os.getenv("API_PORT", "8000"))
-API_URL = f"http://{API_HOST}:{API_PORT}"
+# API_URL is used by internal HTTP clients (Flask/web bridge), so it must be routable.
+# Do not default to 0.0.0.0 for outbound requests.
+API_URL = os.getenv("API_URL", f"http://127.0.0.1:{API_PORT}")
 
 # ================= MCP SERVER =================
 MCP_SERVER_PATH = BASE_DIR / "server" / "server.py"

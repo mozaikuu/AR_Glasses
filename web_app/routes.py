@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, jsonify, request, send_file
+from flask import Blueprint, render_template, jsonify, request
 from web_app.services import wakeword_service
 from config.settings import API_URL, WAKE_WORDS
 import requests
@@ -6,9 +6,6 @@ import sys
 import base64
 import numpy as np
 import time
-import os
-import tempfile
-from tools.speech.tts import text_to_speech_sync
 
 main = Blueprint('main', __name__)
 
@@ -63,14 +60,7 @@ def process_text():
         
         if response.status_code == 200:
             result = response.json()
-            
-            # Generate TTS on SERVER and return audio
-            answer_text = result.get('answer', '')
-            if answer_text:
-                # Generate TTS audio on server
-                audio_path = generate_tts_audio(answer_text)
-                result['audio_url'] = f"/tts/{audio_path}"
-            
+            result["response"] = result.get("response") or result.get("answer") or ""
             return jsonify(result)
         else:
             return jsonify({'error': f"AI Error: {response.status_code} - {response.text}"}), 500
@@ -80,50 +70,6 @@ def process_text():
     finally:
         if wakeword_service.wakeword_system:
              wakeword_service.wakeword_system.return_to_idle()
-
-def generate_tts_audio(text):
-    """Generate TTS audio file and return the filename."""
-    # Create temp file for TTS output
-    temp_dir = tempfile.gettempdir()
-    filename = f"tts_{int(time.time())}.mp3"
-    filepath = os.path.join(temp_dir, filename)
-    
-    # Generate TTS audio (this plays locally on server too)
-    text_to_speech_sync(text)
-    
-    # Return just the filename for URL construction
-    return filename
-
-@main.route('/tts/<filename>')
-def serve_tts(filename):
-    """Serve generated TTS audio file."""
-    temp_dir = tempfile.gettempdir()
-    filepath = os.path.join(temp_dir, filename)
-    
-    if os.path.exists(filepath):
-        return send_file(
-            filepath,
-            mimetype='audio/mp3',
-            as_attachment=False
-        )
-    else:
-        return jsonify({'error': 'Audio file not found'}), 404
-
-@main.route('/speak', methods=['POST'])
-def speak_text():
-    """Endpoint to trigger TTS on server."""
-    data = request.json
-    text = data.get('text', '')
-    
-    if not text:
-        return jsonify({'error': 'No text provided'}), 400
-    
-    try:
-        # Play TTS on server
-        text_to_speech_sync(text)
-        return jsonify({'status': 'playing', 'text': text})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
 @main.route('/record', methods=['POST'])
 def record_audio():
@@ -193,13 +139,7 @@ def record_audio():
         
         if response.status_code == 200:
             result = response.json()
-            
-            # Generate TTS on SERVER
-            answer_text = result.get('answer', '')
-            if answer_text:
-                audio_path = generate_tts_audio(answer_text)
-                result['audio_url'] = f"/tts/{audio_path}"
-            
+            result["response"] = result.get("response") or result.get("answer") or ""
             return jsonify(result)
         else:
             return jsonify({'error': f"Processing failed: {response.status_code}"}), 500

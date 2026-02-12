@@ -31,6 +31,7 @@ In `server/api_v2.py`:
 2. Add `BackendApiClient` component.
 3. Set `baseUrl` to your running gateway, for example:
    - `http://<YOUR_PC_IP>:8000`
+   - Start it with one command from repo root: `python start.py`
 4. Create a world-space `Canvas` with a panel and text elements.
 5. Add `QrModalController` to a `GameObject` and assign:
    - `modalRoot`: panel object

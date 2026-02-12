@@ -166,10 +166,7 @@ async function manualRecord() {
 			}
 			if (data.response) {
 				addMessage("ai", data.response);
-				// Play TTS from server
-				if (data.audio_url) {
-					playAudioFromServer(data.audio_url);
-				}
+				speakInBrowser(data.response);
 			}
 		}
 	} catch (e) {
@@ -208,10 +205,7 @@ async function processText(text) {
 			addMessage("ai", `❌ Error: ${data.error}`);
 		} else {
 			addMessage("ai", data.response);
-			// Play TTS from server
-			if (data.audio_url) {
-				playAudioFromServer(data.audio_url);
-			}
+			speakInBrowser(data.response);
 		}
 	} catch (e) {
 		addMessage("ai", `❌ Error: ${e.message}`);
@@ -235,6 +229,19 @@ function playAudioFromServer(audioUrl) {
 		.catch((e) => {
 			console.error("Failed to play audio:", e);
 		});
+}
+
+function speakInBrowser(text) {
+	if (!text || !window.speechSynthesis) return;
+	try {
+		window.speechSynthesis.cancel();
+		const utterance = new SpeechSynthesisUtterance(text);
+		utterance.rate = 1.0;
+		utterance.pitch = 1.0;
+		window.speechSynthesis.speak(utterance);
+	} catch (e) {
+		console.error("Browser TTS failed:", e);
+	}
 }
 
 function handleKeyPress(event) {

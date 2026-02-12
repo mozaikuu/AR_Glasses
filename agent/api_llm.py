@@ -166,7 +166,7 @@ RULES:
 - ONLY output JSON inside <json>
 - If user asks for a tool, use it
 - If satisfied, set is_satisfied=true and provide answer
-- If tool already used with same args, ask user what else they need
+- Avoid repeating the same tool call unless new evidence requires re-checking
 - MAX {tool_count + 2} tool calls remaining
 
 <json>
@@ -192,16 +192,6 @@ RULES:
 
             data = extract_json(raw)
             decision = normalize(data)
-
-            # Check if tool already used
-            if decision["tool"]:
-                sig = (decision["tool"], json.dumps(decision["args"], sort_keys=True))
-                if sig in used_tools:
-                    log(f"Tool {decision['tool']} already used")
-                    decision["tool"] = None
-                    decision["is_satisfied"] = True
-                    if not decision["answer"]:
-                        decision["answer"] = "Already checked that. What else?"
 
             return decision
 

@@ -1,8 +1,6 @@
-"""Original agent loop with proper tool execution."""
-import sys
+"""Main agent reasoning loop with bounded repeated tool calls."""
 import json
-import asyncio
-from typing import Set, Tuple
+from typing import Dict, Set, Tuple
 from agent.llm import decide, log
 from agent.modes import get_mode_continuation_check
 from config.settings import MAX_LOOPS
@@ -10,23 +8,32 @@ from config.settings import MAX_LOOPS
 
 async def agent_loop(client, user_input: str, mode: str = "thinking", image: str = None):
     """
-    Original agent loop that processes user input and executes tools.
-    
+    Run the agent self-loop and return structured output.
+
     Returns:
-        Final answer string
+        dict with:
+        - answer: final response text
+        - iterations: number of loops executed
+        - tool_calls: list of called tools with args
+        - stop_reason: why the loop stopped
+        - ask_user: optional clarification prompt
     """
     history = []
     used_tools: Set[Tuple] = set()
+    tool_call_counts: Dict[Tuple, int] = {}
+    tool_calls = []
     current_input = user_input
     
     MAX_HISTORY = 4
-    CLEAR_TOOLS_AFTER = 3
+    MAX_REPEAT_SAME_TOOL_ARGS = 2
     should_continue = get_mode_continuation_check(mode)
+    last_decision = {"answer": "", "reasoning": ""}
 
     for i in range(1, MAX_LOOPS + 1):
         log(f"--- {mode.upper()} LOOP {i} ---")
 
         decision = await decide(current_input, history, used_tools, client, mode, image)
+        last_decision = decision
         log("Thought:", decision["reasoning"])
 
         # Add to history
@@ -37,26 +44,48 @@ async def agent_loop(client, user_input: str, mode: str = "thinking", image: str
 
         # Check if done
         if decision["ask_user"]:
-            return decision["ask_user"]
+            return {
+                "answer": decision["ask_user"],
+                "iterations": i,
+                "tool_calls": tool_calls,
+                "stop_reason": "ask_user",
+                "ask_user": decision["ask_user"],
+            }
 
         if decision["is_satisfied"]:
-            return decision["answer"] or decision["reasoning"] or "Done."
+            return {
+                "answer": decision["answer"] or decision["reasoning"] or "Done.",
+                "iterations": i,
+                "tool_calls": tool_calls,
+                "stop_reason": "satisfied",
+                "ask_user": None,
+            }
 
         if not should_continue(decision, i, MAX_LOOPS, history, used_tools):
-            return decision["answer"] or decision["reasoning"] or "Need more info."
-
-        # Clear tools periodically
-        if i % CLEAR_TOOLS_AFTER == 0:
-            used_tools.clear()
+            return {
+                "answer": decision["answer"] or decision["reasoning"] or "Need more info.",
+                "iterations": i,
+                "tool_calls": tool_calls,
+                "stop_reason": "mode_stop",
+                "ask_user": None,
+            }
 
         # Execute tool
         if decision["tool"]:
             sig = (decision["tool"], json.dumps(decision["args"], sort_keys=True))
-            
-            if sig in used_tools:
-                return "Already checked that. What else?"
-            
+            call_count = tool_call_counts.get(sig, 0)
+
+            if call_count >= MAX_REPEAT_SAME_TOOL_ARGS:
+                history.append("Guard: repeated identical tool call blocked after bounded retries.")
+                current_input = (
+                    "Previous tool call was repeated with identical args too many times. "
+                    "Use existing tool results to answer, or ask user for more specific input."
+                )
+                continue
+
+            tool_call_counts[sig] = call_count + 1
             used_tools.add(sig)
+            tool_calls.append({"tool": decision["tool"], "args": decision["args"]})
 
             try:
                 result = await client.call_tool(
@@ -81,4 +110,10 @@ async def agent_loop(client, user_input: str, mode: str = "thinking", image: str
                 history.append(f"Error: {error_msg}")
                 current_input = f"Error: {error_msg}"
 
-    return decision.get("answer") or decision.get("reasoning") or "Max loops reached."
+    return {
+        "answer": last_decision.get("answer") or last_decision.get("reasoning") or "Max loops reached.",
+        "iterations": MAX_LOOPS,
+        "tool_calls": tool_calls,
+        "stop_reason": "max_loops",
+        "ask_user": None,
+    }
