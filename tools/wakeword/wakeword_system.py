@@ -14,8 +14,11 @@ import queue
 import enum
 from pathlib import Path
 import speech_recognition as sr
-import pygame
 import numpy as np
+try:
+    import pygame
+except Exception:
+    pygame = None
 
 # Add the project root to Python path
 sys.path.append(str(Path(__file__).parent.parent.parent))
@@ -65,7 +68,13 @@ class WakeWordSystem:
         self.microphone = sr.Microphone(device_index=self.device_index)
 
         # Audio playback for acknowledgment
-        pygame.mixer.init()
+        self._audio_enabled = pygame is not None
+        if self._audio_enabled:
+            try:
+                pygame.mixer.init()
+            except Exception as e:
+                print(f"Warning: pygame mixer init failed: {e}")
+                self._audio_enabled = False
         self.acknowledgment_sound = None
         self._load_acknowledgment_sound()
 
@@ -109,7 +118,8 @@ class WakeWordSystem:
 
             # Create pygame sound (convert numpy array to bytes)
             beep_bytes = beep.tobytes()
-            self.acknowledgment_sound = pygame.mixer.Sound(beep_bytes)
+            if self._audio_enabled:
+                self.acknowledgment_sound = pygame.mixer.Sound(beep_bytes)
 
         except Exception as e:
             print(f"Warning: Failed to create acknowledgment sound: {e}")
@@ -305,7 +315,11 @@ class WakeWordSystem:
         if self.listen_thread and self.listen_thread.is_alive():
             self.listen_thread.join(timeout=2)
 
-        pygame.mixer.quit()
+        if self._audio_enabled:
+            try:
+                pygame.mixer.quit()
+            except Exception:
+                pass
         print("Wake word system stopped")
 
     def pause(self):

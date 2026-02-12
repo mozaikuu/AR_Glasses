@@ -41,10 +41,13 @@ def test_imports():
         return False
 
     try:
-        import edge_tts
-        print("  [OK] edge-tts")
+        import shutil
+        if shutil.which("piper"):
+            print("  [OK] piper executable")
+        else:
+            raise ImportError("piper executable not found in PATH")
     except ImportError as e:
-        print(f"  [FAIL] edge-tts: {e}")
+        print(f"  [FAIL] piper: {e}")
         return False
 
     try:
@@ -91,17 +94,12 @@ def test_config():
     """Test configuration settings."""
     print("\nTesting configuration...")
     try:
-        from config.settings import USE_PIPER_TTS, TTS_ENGLISH_VOICE, API_URL
+        from config.settings import TTS_PIPER_EXE, TTS_PIPER_EN_MODEL, API_URL
 
-        print(f"  [OK] USE_PIPER_TTS = {USE_PIPER_TTS}")
-        print(f"  [OK] TTS voice = {TTS_ENGLISH_VOICE}")
+        print(f"  [OK] Piper exe = {TTS_PIPER_EXE}")
+        print(f"  [OK] Piper model = {TTS_PIPER_EN_MODEL}")
         print(f"  [OK] API URL = {API_URL}")
-
-        # Check TTS setting
-        if USE_PIPER_TTS:
-            print("  [INFO] Using offline Piper TTS (models required)")
-        else:
-            print("  [INFO] Using cloud-based Edge-TTS (no models required)")
+        print("  [INFO] Using Piper backend")
 
         return True
     except Exception as e:
@@ -132,10 +130,8 @@ def test_tts_config():
     """Test TTS configuration."""
     print("\nTesting TTS configuration...")
     try:
-        from config.settings import USE_PIPER_TTS
         from tools.speech.tts import text_to_speech
 
-        print(f"  [OK] USE_PIPER_TTS = {USE_PIPER_TTS}")
         print("  [OK] TTS module imports successfully")
 
         # Don't actually run TTS in test

@@ -11,47 +11,44 @@ dependencies = [
  "fastapi",
  "uvicorn",
  "aiohttp",
-
  # Web UI
  "flask",
  "streamlit",
  "streamlit-webrtc",
-
  # ML/AI
- "torch",
- "transformers",
+ "torch==2.5.1+cu124",
+ "transformers>=4.46,<5",
+ "tokenizers<0.21",
  "ultralytics",
- "whisper",
  "mediapipe",
  "scikit-learn",
- "bitsandbytes",  # For Moondream quantization
-
  # Computer Vision
  "numpy",
  "opencv-python",
- "pillow",
- "Pillow",
-
  # Audio
- "edge-tts",
+ "piper-tts",
  "mutagen",
  "pygame",
  "pyaudio",
  "speechrecognition",
-
  # Navigation & Graphs
  "networkx",
  "matplotlib",
-
  # Web & Data
-    "requests",
-    "duckduckgo-search",
-    "beautifulsoup4",
+ "requests",
+ "duckduckgo-search",
+ "beautifulsoup4",
  "python-dotenv",
-
  # Utilities
  "pydantic",
  "python-dateutil",
+ "openai-whisper",
+ "pyvips>=3.1.1",
+ "numba>=0.59",
+ "torchvision==0.20.1+cu124",
+ "torchaudio==2.5.1+cu124",
+ "einops>=0.8.2",
+ "accelerate>=1.12.0",
 ]
 [[project.authors]]
 name = "Ahmed Moussa"
@@ -64,8 +61,24 @@ build-backend = "uv_build"
 [project.scripts]
 mcp-server = "mcp_server:main"
 
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+default = true
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
 [tool.setuptools]
 py-modules = ["mcp_server"]
 
 [tool.uv]
 package = false
+
+[tool.uv.sources]
+openai-whisper = { git = "https://github.com/openai/whisper.git" }
+torch = { index = "pytorch-cu124" }
+torchvision = { index = "pytorch-cu124" }
+torchaudio = { index = "pytorch-cu124" }

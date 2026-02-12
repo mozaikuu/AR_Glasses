@@ -69,18 +69,21 @@ WAKE_WORD_SENSITIVITY = 0.6  # Slightly higher sensitivity for better accuracy
 # ================= TTS =================
 TTS_OUTPUT_DIR = BASE_DIR / "tools" / "speech" / "output"
 
-# Edge-TTS (cloud-based, requires internet)
-TTS_ENGLISH_VOICE = "en-US-AriaNeural"
-TTS_ARABIC_VOICE = "ar-EG-SalmaNeural"
-
-# Piper TTS (offline, open source)
-PIPER_MODEL_DIR = BASE_DIR / "models" / "piper"
-PIPER_ENGLISH_VOICE = str(PIPER_MODEL_DIR / "en_US-lessac-medium" / "en_US-lessac-medium.onnx")
-PIPER_ARABIC_VOICE = str(PIPER_MODEL_DIR / "ar_JO-karlovery" / "ar_JO-karlovery.onnx")
-
-# Use Piper TTS by default (set to False to use Edge-TTS)
-# Edge-TTS is recommended as primary (cloud-based, always works, no model download needed)
-USE_PIPER_TTS = False
+# Piper TTS (local, offline)
+TTS_PIPER_DIR = BASE_DIR / "models" / "piper"
+TTS_PIPER_EXE = os.getenv(
+    "TTS_PIPER_EXE",
+    str(TTS_PIPER_DIR / ("piper.exe" if os.name == "nt" else "piper")),
+)
+TTS_PIPER_EN_MODEL = os.getenv(
+    "TTS_PIPER_EN_MODEL",
+    str(TTS_PIPER_DIR / "en_US-lessac-medium.onnx"),
+)
+# Optional Arabic Piper model path; falls back to English model if not set/found.
+TTS_PIPER_AR_MODEL = os.getenv(
+    "TTS_PIPER_AR_MODEL",
+    "",
+)
 
 # ================= LOGGING =================
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

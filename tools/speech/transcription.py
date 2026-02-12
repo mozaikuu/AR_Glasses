@@ -1,6 +1,5 @@
 """Audio transcription using Google Speech Recognition with Whisper fallback."""
 import numpy as np
-from typing import Union
 import io
 
 # Import speech recognition libraries
@@ -30,6 +29,47 @@ def get_whisper_model():
     return _whisper_model
 
 
+def _decode_audio_bytes_to_float32(audio_bytes: bytes, dtype: str) -> np.ndarray:
+    """Decode raw audio bytes into mono float32 in [-1, 1]."""
+    if dtype == "int16":
+        audio_array = np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32)
+        audio_array /= np.float32(np.iinfo(np.int16).max)
+    elif dtype == "int32":
+        audio_array = np.frombuffer(audio_bytes, dtype=np.int32).astype(np.float32)
+        audio_array /= np.float32(np.iinfo(np.int32).max)
+    elif dtype == "float32":
+        audio_array = np.frombuffer(audio_bytes, dtype=np.float32).astype(np.float32, copy=True)
+    else:
+        raise ValueError(f"Unsupported dtype: {dtype}")
+
+    if audio_array.size == 0:
+        return audio_array
+
+    # sanitize invalid values
+    audio_array = np.nan_to_num(audio_array, nan=0.0, posinf=0.0, neginf=0.0)
+
+    peak = float(np.max(np.abs(audio_array)))
+    if peak > 1.0:
+        audio_array = audio_array / peak
+        peak = 1.0
+
+    # Mild gain for low-level captures from browser Web Audio pipelines.
+    if 0.0 < peak < 0.2:
+        gain = min(20.0, 0.5 / max(peak, 1e-6))
+        audio_array = np.clip(audio_array * gain, -1.0, 1.0)
+
+    return audio_array
+
+
+def _float32_to_pcm16_bytes(audio_array: np.ndarray) -> bytes:
+    """Convert float32 audio in [-1,1] to raw PCM16 little-endian bytes."""
+    if audio_array.size == 0:
+        return b""
+    clipped = np.clip(audio_array, -1.0, 1.0)
+    pcm16 = (clipped * 32767.0).astype(np.int16)
+    return pcm16.tobytes()
+
+
 def transcribe_audio_bytes(audio_bytes: bytes, sample_rate: int = 16000, dtype: str = "float32") -> str:
     """
     Transcribe audio from bytes using Google Speech Recognition with Whisper fallback.
@@ -44,19 +84,23 @@ def transcribe_audio_bytes(audio_bytes: bytes, sample_rate: int = 16000, dtype: 
     """
     print(f"DEBUG: Transcribing audio_bytes with dtype={dtype}, length={len(audio_bytes)}, sample_rate={sample_rate}", file=__import__('sys').stderr)
 
+    audio_array = _decode_audio_bytes_to_float32(audio_bytes, dtype)
+    if audio_array.size == 0:
+        return ""
+
     # Try Google Speech Recognition first (fast and accurate for short clips)
     if GOOGLE_SPEECH_AVAILABLE:
         print(f"DEBUG: Attempting Google Speech Recognition...", file=__import__('sys').stderr)
         try:
-            # Convert audio bytes to WAV format for Google Speech Recognition
-            print(f"DEBUG: Converting audio to WAV format...", file=__import__('sys').stderr)
-            wav_data = convert_to_wav(audio_bytes, sample_rate, dtype)
-            print(f"DEBUG: WAV conversion successful, size: {len(wav_data)} bytes", file=__import__('sys').stderr)
+            # speech_recognition.AudioData expects RAW PCM bytes, not WAV container bytes.
+            pcm16_bytes = _float32_to_pcm16_bytes(audio_array)
+            if not pcm16_bytes:
+                return ""
 
             # Create speech recognition object
             print(f"DEBUG: Creating speech recognition objects...", file=__import__('sys').stderr)
             recognizer = sr.Recognizer()
-            audio_data = sr.AudioData(wav_data, sample_rate, 2)  # 16-bit
+            audio_data = sr.AudioData(pcm16_bytes, sample_rate, 2)  # 16-bit sample width
             print(f"DEBUG: AudioData created successfully", file=__import__('sys').stderr)
 
             # Recognize
@@ -82,10 +126,15 @@ def transcribe_audio_bytes(audio_bytes: bytes, sample_rate: int = 16000, dtype: 
 
     # Fallback to Whisper if Google Speech fails
     print(f"DEBUG: Falling back to Whisper transcription...", file=__import__('sys').stderr)
-    return transcribe_audio_bytes_whisper(audio_bytes, sample_rate, dtype)
+    return transcribe_audio_bytes_whisper(audio_bytes, sample_rate, dtype, predecoded=audio_array)
 
 
-def transcribe_audio_bytes_whisper(audio_bytes: bytes, sample_rate: int = 16000, dtype: str = "float32") -> str:
+def transcribe_audio_bytes_whisper(
+    audio_bytes: bytes,
+    sample_rate: int = 16000,
+    dtype: str = "float32",
+    predecoded: np.ndarray = None,
+) -> str:
     """
     Transcribe audio using Whisper (fallback method).
     """
@@ -96,19 +145,9 @@ def transcribe_audio_bytes_whisper(audio_bytes: bytes, sample_rate: int = 16000,
         print("DEBUG: Whisper not available", file=__import__('sys').stderr)
         return ""
 
-    # Convert bytes to numpy array based on dtype
-    if dtype == "int16":
-        audio_array = np.frombuffer(audio_bytes, dtype=np.int16)
-        audio_array = audio_array.astype(np.float32) / np.iinfo(np.int16).max
-    elif dtype == "int32":
-        audio_array = np.frombuffer(audio_bytes, dtype=np.int32)
-        audio_array = audio_array.astype(np.float32) / np.iinfo(np.int32).max
-    elif dtype == "float32":
-        audio_array = np.frombuffer(audio_bytes, dtype=np.float32).copy()
-        if np.max(np.abs(audio_array)) > 1.0:
-            audio_array = audio_array / np.max(np.abs(audio_array))
-    else:
-        raise ValueError(f"Unsupported dtype: {dtype}")
+    audio_array = predecoded if predecoded is not None else _decode_audio_bytes_to_float32(audio_bytes, dtype)
+    if audio_array.size == 0:
+        return ""
 
     print(f"DEBUG: Whisper audio shape: {audio_array.shape}, range: [{audio_array.min():.3f}, {audio_array.max():.3f}]", file=__import__('sys').stderr)
 
@@ -116,7 +155,7 @@ def transcribe_audio_bytes_whisper(audio_bytes: bytes, sample_rate: int = 16000,
     if len(audio_array) < 8000:
         print(f"DEBUG: Audio too short ({len(audio_array)} samples)", file=__import__('sys').stderr)
         return ""
-    if np.max(np.abs(audio_array)) < 0.005:
+    if np.max(np.abs(audio_array)) < 0.001:
         print(f"DEBUG: Audio too quiet (max amplitude: {np.max(np.abs(audio_array)):.6f})", file=__import__('sys').stderr)
         return ""
 
@@ -185,11 +224,12 @@ def transcribe_audio_array(audio_array: np.ndarray, sample_rate: int = 16000) ->
     print(f"DEBUG: GOOGLE_SPEECH_AVAILABLE = {GOOGLE_SPEECH_AVAILABLE}", file=__import__('sys').stderr)
     if GOOGLE_SPEECH_AVAILABLE:
         try:
-            # Convert numpy array to WAV bytes
-            wav_data = convert_numpy_to_wav(audio_array, sample_rate)
+            pcm16_bytes = _float32_to_pcm16_bytes(audio_array.astype(np.float32, copy=False))
+            if not pcm16_bytes:
+                return ""
 
             recognizer = sr.Recognizer()
-            audio_data = sr.AudioData(wav_data, sample_rate, 2)  # 16-bit
+            audio_data = sr.AudioData(pcm16_bytes, sample_rate, 2)  # 16-bit sample width
 
             print(f"DEBUG: Using Google Speech Recognition for array...", file=__import__('sys').stderr)
             result = recognizer.recognize_google(audio_data, language="en-US")

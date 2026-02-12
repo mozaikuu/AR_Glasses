@@ -14,8 +14,10 @@ import sys
 import os
 import json
 import time
+import base64
 from contextlib import asynccontextmanager, AsyncExitStack
 from pathlib import Path
+import numpy as np
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -75,6 +77,17 @@ async def lifespan(app: FastAPI):
         print(f"[WARNING] MCP unavailable, running gateway in fallback mode: {e}", file=sys.stderr)
         mcp_connected = False
         mcp_client = None
+
+    # Start wakeword listening by default when dependencies are available.
+    try:
+        service = _get_wakeword_service()
+        if service:
+            service.initialize()
+            if service.wakeword_system and not service.wakeword_system.is_running:
+                service.start_listening()
+            print("[HTTP] Wakeword auto-start attempted", file=sys.stderr)
+    except Exception as e:
+        print(f"[WARNING] Wakeword auto-start failed: {e}", file=sys.stderr)
 
     try:
         yield
@@ -228,6 +241,44 @@ async def run_agent(req: TextRequest):
         return {"response": f"Error: {error_msg}"}
 
 
+def _return_wakeword_to_idle():
+    """Best-effort reset of wakeword state after request processing."""
+    service = _get_wakeword_service()
+    if service and service.wakeword_system:
+        try:
+            service.wakeword_system.return_to_idle()
+        except Exception as e:
+            print(f"[WARNING] Failed to return wakeword to idle: {e}", file=sys.stderr)
+
+
+def _maybe_speak_response(text: str, req: MultimodalRequest) -> None:
+    """
+    Optionally trigger server-side TTS after inference.
+
+    Enabled by default for voice/audio requests and controllable with:
+    SERVER_TTS_AFTER_INFERENCE=0
+    """
+    if not text or not text.strip():
+        return
+
+    # Default ON now that browser speech synthesis is disabled.
+    enabled = os.getenv("SERVER_TTS_AFTER_INFERENCE", "1").strip() not in {"0", "false", "False"}
+    if not enabled:
+        return
+
+    # By default, speak both text and audio inference responses.
+    # Set SERVER_TTS_FOR_TEXT=0 to mute text-only requests.
+    if req.audio is None and os.getenv("SERVER_TTS_FOR_TEXT", "1").strip() in {"0", "false", "False"}:
+        return
+
+    try:
+        from tools.speech.tts import text_to_speech
+        asyncio.create_task(text_to_speech(text))
+        print("[HTTP] TTS task scheduled", file=sys.stderr)
+    except Exception as e:
+        print(f"[WARNING] TTS trigger failed: {e}", file=sys.stderr)
+
+
 @app.post("/process")
 async def process_multimodal(req: MultimodalRequest):
     """
@@ -275,6 +326,7 @@ async def process_multimodal(req: MultimodalRequest):
     # Determine mode
     mode = req.mode or "quick"
     if not combined_text.strip():
+        _return_wakeword_to_idle()
         return {"response": "No input provided. Please provide text or audio."}
 
     # Process with MCP agent loop (if connected) or fallback to direct LLM
@@ -358,6 +410,7 @@ async def process_multimodal(req: MultimodalRequest):
                 result = await generate_chat(messages, max_tokens=512, temperature=0.1)
                 print(f"[HTTP] Fallback LLM response received: {result[:100]}...", file=sys.stderr)
             except Exception as e2:
+                _return_wakeword_to_idle()
                 return {
                     "response": f"Error: Both MCP agent loop and direct LLM failed. MCP error: {error_msg}. LLM error: {str(e2)}",
                     "transcription": transcribed_text if transcribed_text else None
@@ -376,11 +429,14 @@ async def process_multimodal(req: MultimodalRequest):
         except Exception as e:
             error_msg = f"LLM processing failed: {str(e)}"
             print(f"[ERROR] {error_msg}", file=sys.stderr)
+            _return_wakeword_to_idle()
             return {
                 "response": f"Error: {error_msg}",
                 "transcription": transcribed_text if transcribed_text else None
             }
 
+    _maybe_speak_response(result, req)
+    _return_wakeword_to_idle()
     return {
         "response": result,
         "transcription": transcribed_text if transcribed_text else None
@@ -681,21 +737,19 @@ async def serve_tts_file(filename: str):
 async def get_config():
     """Get wake word configuration."""
     from config.settings import WAKE_WORDS
-    return {"wake_words": WAKE_WORDS}
+    return {
+        "wake_words": WAKE_WORDS,
+        "selected_mic_index": _get_selected_mic_index(),
+    }
 
 
 # ==================== WEB APP COMPATIBILITY ENDPOINTS ====================
 
-# Simple in-memory state for web dashboard (no Flask dependency)
+# Simple in-memory state for web dashboard transient UI flags
 _webapp_state = {
-    "is_running": False,
-    "system_state": "idle",  # idle, active, processing
-    "wake_word_detected": False,
-    "last_wake_word": None,
-    "command_received": False,
-    "command_text": None,
     "ai_response": None,
     "error_message": None,
+    "selected_mic_index": None,
     "last_updated": None
 }
 
@@ -712,57 +766,148 @@ def _update_state(**kwargs):
     _webapp_state["last_updated"] = time.time()
 
 
-def _consume_flags():
-    """Consume one-time flags (reset after reading)."""
+def _consume_ui_flags():
     flags = {
-        "wake_word_detected": _webapp_state["wake_word_detected"],
-        "last_wake_word": _webapp_state["last_wake_word"],
-        "command_received": _webapp_state["command_received"],
-        "command_text": _webapp_state["command_text"],
         "ai_response": _webapp_state["ai_response"],
         "error_message": _webapp_state["error_message"],
     }
-    # Reset one-time flags
-    _webapp_state["wake_word_detected"] = False
-    _webapp_state["command_received"] = False
     _webapp_state["ai_response"] = None
     _webapp_state["error_message"] = None
     return flags
 
 
+def _get_wakeword_service():
+    try:
+        from web_app.services import wakeword_service
+        return wakeword_service
+    except Exception as e:
+        _update_state(error_message=f"Wakeword service unavailable: {e}")
+        return None
+
+
+def _list_input_devices():
+    """List available input microphones."""
+    devices = []
+    try:
+        import pyaudio
+        p = pyaudio.PyAudio()
+        for i in range(p.get_device_count()):
+            info = p.get_device_info_by_index(i)
+            if info.get("maxInputChannels", 0) > 0:
+                devices.append({
+                    "index": i,
+                    "name": info.get("name", f"Input {i}"),
+                    "channels": int(info.get("maxInputChannels", 0)),
+                    "default_rate": int(info.get("defaultSampleRate", 16000)),
+                })
+        p.terminate()
+    except Exception as e:
+        _update_state(error_message=f"Failed to list microphones: {e}")
+    return devices
+
+
+def _get_selected_mic_index():
+    service = _get_wakeword_service()
+    if service and service.device_index is not None:
+        return int(service.device_index)
+    return _webapp_state.get("selected_mic_index")
+
+
+@app.get("/audio/devices")
+async def get_audio_devices():
+    devices = _list_input_devices()
+    selected = _get_selected_mic_index()
+    return {"devices": devices, "selected_index": selected}
+
+
+@app.post("/audio/select")
+async def select_audio_device(req: dict):
+    raw_index = req.get("device_index", None)
+    if raw_index in ("", None):
+        return {"success": False, "error": "device_index is required"}
+
+    try:
+        device_index = int(raw_index)
+    except Exception:
+        return {"success": False, "error": "device_index must be an integer"}
+
+    devices = _list_input_devices()
+    valid_indices = {d["index"] for d in devices}
+    if device_index not in valid_indices:
+        return {"success": False, "error": f"Invalid microphone index: {device_index}", "devices": devices}
+
+    _update_state(selected_mic_index=device_index)
+    service = _get_wakeword_service()
+    if service:
+        try:
+            service.set_input_device(device_index)
+        except Exception as e:
+            return {"success": False, "error": f"Failed to apply mic to wakeword: {e}", "selected_index": device_index}
+
+    return {"success": True, "selected_index": device_index}
+
+
 @app.get("/status")
 async def get_status(consume: bool = False):
     """Get web dashboard status (replaces Flask /status)."""
-    if consume:
-        flags = _consume_flags()
-        return {
-            "is_running": _webapp_state["is_running"],
-            "system_state": _webapp_state["system_state"],
-            **flags
+    service = _get_wakeword_service()
+    if service:
+        service.initialize()
+        status_data = service.get_status()
+    else:
+        status_data = {
+            "is_running": False,
+            "system_state": "idle",
+            "wake_word_detected": False,
+            "last_wake_word": None,
+            "command_received": False,
+            "command_text": None,
+            "error_message": _webapp_state.get("error_message"),
         }
-    return {
-        "is_running": _webapp_state["is_running"],
-        "system_state": _webapp_state["system_state"],
-        "wake_word_detected": False,
-        "last_wake_word": None,
-        "command_received": False,
-        "command_text": None,
-        "ai_response": None,
-        "error_message": None
-    }
+
+    if consume:
+        if service:
+            service.clear_flags()
+        status_data = {**status_data, **_consume_ui_flags()}
+    else:
+        status_data = {
+            **status_data,
+            "ai_response": None,
+            "error_message": _webapp_state.get("error_message"),
+        }
+    return status_data
 
 
 @app.post("/control/start")
 async def start_listening():
     """Start wake word listening (replaces Flask /control/start)."""
-    _update_state(is_running=True, system_state="idle")
+    service = _get_wakeword_service()
+    if not service:
+        return {"status": "error", "error": _webapp_state.get("error_message")}
+
+    selected_mic = _webapp_state.get("selected_mic_index")
+    if selected_mic is not None and service.device_index != selected_mic:
+        try:
+            service.set_input_device(int(selected_mic))
+        except Exception as e:
+            return {"status": "error", "error": f"Selected mic failed: {e}"}
+
+    service.initialize()
+    if service.wakeword_system is None:
+        return {"status": "error", "error": service.results.get("error_message", "Wakeword init failed")}
+    service.start_listening()
     return {"status": "started"}
 
 
 @app.post("/control/stop")
 async def stop_listening():
     """Stop wake word listening (replaces Flask /control/stop)."""
-    _update_state(is_running=False, system_state="idle")
+    service = _get_wakeword_service()
+    if not service:
+        return {"status": "error", "error": _webapp_state.get("error_message")}
+    if service.wakeword_system is None:
+        return {"status": "error", "error": service.results.get("error_message", "Wakeword not initialized")}
+    service.stop_listening()
     return {"status": "stopped"}
 
 
@@ -803,14 +948,101 @@ async def web_process_text(req: dict):
         return {"error": str(e)}
 
 
+@app.post("/record")
+async def record_audio(req: dict = None):
+    """Record audio from server microphone and process it."""
+    service = _get_wakeword_service()
+    was_running = False
+    if service and service.wakeword_system and service.wakeword_system.is_running:
+        service.pause()
+        was_running = True
+        await asyncio.sleep(0.3)
+
+    try:
+        import pyaudio
+
+        format_ = pyaudio.paInt16
+        channels = 1
+        rate = 16000
+        chunk = 1024
+        record_seconds = 5
+
+        p = pyaudio.PyAudio()
+        device_index = None
+        requested_index = None
+        if req and req.get("device_index") is not None:
+            try:
+                requested_index = int(req.get("device_index"))
+            except Exception:
+                requested_index = None
+
+        preferred_indices = []
+        if requested_index is not None:
+            preferred_indices.append(requested_index)
+        selected_index = _webapp_state.get("selected_mic_index")
+        if selected_index is not None:
+            preferred_indices.append(int(selected_index))
+        if service and service.device_index is not None:
+            preferred_indices.append(int(service.device_index))
+
+        for idx in preferred_indices:
+            try:
+                info = p.get_device_info_by_index(idx)
+                if info.get("maxInputChannels", 0) > 0:
+                    device_index = idx
+                    break
+            except Exception:
+                continue
+
+        if device_index is None:
+            for i in range(p.get_device_count()):
+                info = p.get_device_info_by_index(i)
+                if info.get("maxInputChannels", 0) > 0:
+                    device_index = i
+                    break
+
+        if device_index is None:
+            return {"error": "No microphone found"}
+
+        stream = p.open(
+            format=format_,
+            channels=channels,
+            rate=rate,
+            input=True,
+            input_device_index=device_index,
+            frames_per_buffer=chunk,
+        )
+
+        frames = []
+        for _ in range(int(rate / chunk * record_seconds)):
+            frames.append(stream.read(chunk, exception_on_overflow=False))
+
+        stream.stop_stream()
+        stream.close()
+        p.terminate()
+
+        audio_data = b"".join(frames)
+        audio_array = np.frombuffer(audio_data, dtype=np.int16).astype(np.float32) / 32767.0
+        if np.max(np.abs(audio_array)) > 1.0:
+            audio_array = audio_array / np.max(np.abs(audio_array))
+
+        b64_audio = base64.b64encode(audio_array.tobytes()).decode("utf-8")
+        request = MultimodalRequest(mode="quick", audio=b64_audio, audio_dtype="float32")
+        result = await process_multimodal(request)
+        result["response"] = result.get("response") or result.get("answer") or ""
+
+        _update_state(ai_response=result.get("response"))
+        return result
+    except Exception as e:
+        _update_state(error_message=str(e))
+        return {"error": str(e)}
+    finally:
+        if was_running and service:
+            service.resume()
+
+
 @app.post("/web/record")
 async def web_record_audio():
-    """
-    Record audio from web dashboard (replaces Flask /record).
-    Note: This is a simplified version that prompts the user to use the /process endpoint instead.
-    """
-    return {
-        "error": "Direct recording not supported in unified server. Please use text input or the /process endpoint with audio data.",
-        "suggestion": "Use the text input or upload audio to /process endpoint"
-    }
+    """Alias for web dashboard compatibility."""
+    return await record_audio()
 

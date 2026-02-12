@@ -38,10 +38,11 @@ except ImportError as e:
     yolo_infer = None
 
 try:
-    from tools.vision.moondream import detect_and_describe, load_model
+    from tools.vision.moondream import detect_and_describe, infer_from_image, load_model
 except ImportError as e:
     print(f"ERROR: Failed to import moondream: {e}", file=sys.stderr, flush=True)
     detect_and_describe = None
+    infer_from_image = None
 
 try:
     from tools.navigation.navigation import navigate, load_graph, get_all_locations, visualize_graph, astar, navigate_steps
@@ -64,15 +65,18 @@ mcp = FastMCP(name="Cerebro")
 
 
 @mcp.tool()
-def VisionDetect() -> str:
-    """Detect and identify objects in the camera view using Moondream vision-language model.
+def VisionDetect(query: str = "Describe what you see in detail") -> str:
+    """Capture an image from camera and answer a vision prompt with Moondream.
 
     Requirements:
     - Camera must be connected and accessible
     - Camera permissions must be granted
-    - Moondream model will provide detailed scene descriptions
+    - Moondream model available for visual Q&A
 
-    Returns detailed description of what the camera sees, including objects, activities, and text.
+    Args:
+    - query: Prompt/question to ask about the captured image.
+
+    Returns answer grounded in what the camera currently sees.
     """
     from config.settings import USE_MOONDREAM
     
@@ -80,7 +84,11 @@ def VisionDetect() -> str:
         # Try Moondream first if enabled
         if USE_MOONDREAM and detect_and_describe is not None:
             try:
-                result = detect_and_describe()
+                clean_query = (query or "").strip() or "Describe what you see in detail"
+                if infer_from_image is not None:
+                    result = infer_from_image(query=clean_query)
+                else:
+                    result = detect_and_describe(clean_query)
                 if result and "not available" not in result.lower():
                     return result
             except Exception as moondream_error:
@@ -397,4 +405,3 @@ def get_all_building_locations() -> dict:
 
 if __name__ == "__main__":
     mcp.run()
-

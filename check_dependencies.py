@@ -1,5 +1,6 @@
 """Check if all required dependencies are installed."""
 import sys
+import shutil
 
 required_packages = [
     "fastapi",
@@ -15,7 +16,6 @@ required_packages = [
     "cv2",
     "ultralytics",
     "whisper",
-    "edge_tts",
     "mutagen",
     "pygame",
     "pyaudio",
@@ -23,6 +23,7 @@ required_packages = [
     "bs4",
     "requests",
     "fastmcp",
+    "piper",
 ]
 
 missing_packages = []
@@ -39,6 +40,9 @@ for package in required_packages:
             __import__("bs4")
         elif package == "streamlit_webrtc":
             __import__("streamlit_webrtc")
+        elif package == "piper":
+            if not shutil.which("piper"):
+                raise ImportError("piper executable not found in PATH")
         else:
             __import__(package)
         print(f"✅ {package}")
@@ -61,4 +65,3 @@ else:
     print("\n✅ All dependencies are installed!")
     print("🚀 You can now start the gateway with: python start_gateway.py")
     sys.exit(0)
-

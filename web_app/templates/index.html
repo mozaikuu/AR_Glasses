@@ -49,6 +49,13 @@
 						<i class="fas fa-microphone"></i> Manual Record (5s)
 					</button>
 				</div>
+				<div class="mic-controls">
+					<label for="micSelect"><i class="fas fa-microphone-alt"></i> Input Mic</label>
+					<select id="micSelect"></select>
+					<button id="btnRefreshMics" class="btn btn-secondary" onclick="loadMicrophones()">
+						<i class="fas fa-sync"></i> Refresh
+					</button>
+				</div>
 
 				<div class="chat-container" id="chatContainer">
 					<!-- Messages will be added here dynamically -->

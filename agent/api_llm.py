@@ -120,7 +120,14 @@ async def decide(query: str, history: list, used_tools: set, client, mode: str, 
     This is called by agent_loop for each iteration.
     """
     tools = await client.list_tools()
-    tools_list = "\n".join(f"- {t.name}: {t.description}" for t in tools.tools)
+    tool_lines = []
+    for t in tools.tools:
+        input_schema = getattr(t, "inputSchema", None) or getattr(t, "input_schema", None)
+        if input_schema:
+            tool_lines.append(f"- {t.name}: {t.description}\n  input_schema: {json.dumps(input_schema, ensure_ascii=True)}")
+        else:
+            tool_lines.append(f"- {t.name}: {t.description}")
+    tools_list = "\n".join(tool_lines)
     
     # Build history text
     history_text = "\n".join(history[-8:]) if history else "None"
