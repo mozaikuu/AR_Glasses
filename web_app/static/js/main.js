@@ -4,6 +4,7 @@ let browserWakewordEnabled = false;
 let browserRecognition = null;
 let browserAwaitingCommand = false;
 let selectedMicIndex = null;
+let activeProcessController = null;
 
 document.addEventListener("DOMContentLoaded", () => {
 	fetchConfig();
@@ -166,13 +167,28 @@ function updateStatusDisplay(className, title, message) {
 }
 
 function handleEvents(data) {
-	if (data.wake_word_detected) addMessage("user", `Wake word detected: "${data.last_wake_word}"`);
+	if (data.wake_word_detected) {
+		interruptActiveProcessing();
+		addMessage("user", `Wake word detected: "${data.last_wake_word}"`);
+	}
 	if (data.command_received) {
 		addMessage("user", data.command_text);
 		processText(data.command_text);
 	}
 	if (data.ai_response) addMessage("ai", data.ai_response);
 	if (data.error_message) addMessage("ai", `Error: ${data.error_message}`);
+}
+
+function interruptActiveProcessing() {
+	if (activeProcessController) {
+		try {
+			activeProcessController.abort();
+			addMessage("ai", "Interrupted. Listening for your new prompt.");
+		} catch {
+			// no-op
+		}
+		activeProcessController = null;
+	}
 }
 
 async function startListening() {
@@ -293,26 +309,17 @@ async function manualRecord() {
 		let data = null;
 		try {
 			// Preferred path: Web Audio API capture from selected browser mic.
-			data = await browserManualRecordWebAudio(5000);
+			// It keeps recording while speech is detected and stops after silence.
+			data = await browserManualRecordWebAudio();
 		} catch (browserErr) {
 			console.warn("Web Audio manual record failed, trying browser speech recognition", browserErr);
-			try {
-				const transcript = await browserManualSpeechToText(6000);
-				if (!transcript) {
-					throw new Error("No speech recognized");
-				}
-				addMessage("user", transcript);
-				await processText(transcript);
-				return;
-			} catch (speechErr) {
-				console.warn("Browser speech recognition failed, fallback to /record", speechErr);
-				const response = await fetch("/record", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ device_index: selectedMicIndex }),
-				});
-				data = await response.json();
+			const transcript = await browserManualSpeechToText(6000);
+			if (!transcript) {
+				throw new Error("No speech recognized");
 			}
+			addMessage("user", transcript);
+			await processText(transcript);
+			return;
 		}
 
 		if (data.error) {
@@ -340,10 +347,15 @@ async function manualRecord() {
 	}
 }
 
-async function browserManualRecordWebAudio(recordMs = 5000) {
+async function browserManualRecordWebAudio(options = {}) {
 	if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
 		throw new Error("Web Audio capture not supported");
 	}
+
+	const voiceThreshold = Number.isFinite(options.voiceThreshold) ? options.voiceThreshold : 0.012;
+	const silenceMs = Number.isFinite(options.silenceMs) ? options.silenceMs : 1200;
+	const noSpeechTimeoutMs = Number.isFinite(options.noSpeechTimeoutMs) ? options.noSpeechTimeoutMs : 7000;
+	const maxRecordMs = Number.isFinite(options.maxRecordMs) ? options.maxRecordMs : 30000;
 
 	const constraints = {
 		audio: {
@@ -364,21 +376,45 @@ async function browserManualRecordWebAudio(recordMs = 5000) {
 
 	const chunks = [];
 	let peak = 0;
+	let speakingStarted = false;
+	let speakingStartAt = 0;
+	let lastVoiceAt = 0;
 	processor.onaudioprocess = (event) => {
 		const input = event.inputBuffer.getChannelData(0);
 		const copy = new Float32Array(input.length);
 		copy.set(input);
 		chunks.push(copy);
+		let framePeak = 0;
 		for (let i = 0; i < copy.length; i++) {
 			const a = Math.abs(copy[i]);
 			if (a > peak) peak = a;
+			if (a > framePeak) framePeak = a;
+		}
+
+		const now = Date.now();
+		if (framePeak >= voiceThreshold) {
+			lastVoiceAt = now;
+			if (!speakingStarted) {
+				speakingStarted = true;
+				speakingStartAt = now;
+			}
 		}
 	};
 
 	source.connect(processor);
 	processor.connect(mute);
 	mute.connect(audioCtx.destination);
-	await new Promise((r) => setTimeout(r, recordMs));
+
+	const startedAt = Date.now();
+	while (true) {
+		await new Promise((r) => setTimeout(r, 50));
+		const now = Date.now();
+		const elapsed = now - startedAt;
+
+		if (elapsed >= maxRecordMs) break;
+		if (!speakingStarted && elapsed >= noSpeechTimeoutMs) break;
+		if (speakingStarted && lastVoiceAt > 0 && now - lastVoiceAt >= silenceMs) break;
+	}
 
 	try {
 		processor.disconnect();
@@ -392,6 +428,9 @@ async function browserManualRecordWebAudio(recordMs = 5000) {
 	const inputRate = audioCtx.sampleRate || 48000;
 	await audioCtx.close();
 	const merged = mergeFloat32Chunks(chunks);
+	if (!speakingStarted || merged.length < 1600) {
+		throw new Error("No speech detected");
+	}
 	const downsampled = downsampleTo16k(merged, inputRate);
 	const b64Audio = float32ToBase64(downsampled);
 
@@ -410,6 +449,8 @@ async function browserManualRecordWebAudio(recordMs = 5000) {
 		output_rate: 16000,
 		samples: downsampled.length,
 		peak: Number(peak.toFixed(4)),
+		voice_threshold: voiceThreshold,
+		speaking_duration_ms: speakingStarted ? Date.now() - speakingStartAt : 0,
 	};
 	return data;
 }
@@ -598,10 +639,19 @@ async function sendText() {
 
 async function processText(text) {
 	try {
+		if (activeProcessController) {
+			try {
+				activeProcessController.abort();
+			} catch {
+				// no-op
+			}
+		}
+		activeProcessController = new AbortController();
 		const response = await fetch("/process", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ text }),
+			signal: activeProcessController.signal,
 		});
 		const data = await response.json();
 		if (data.error) {
@@ -611,7 +661,12 @@ async function processText(text) {
 			speakInBrowser(data.response);
 		}
 	} catch (e) {
+		if (e && e.name === "AbortError") {
+			return;
+		}
 		addMessage("ai", `Error: ${e.message}`);
+	} finally {
+		activeProcessController = null;
 	}
 }
 

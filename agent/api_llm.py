@@ -143,8 +143,11 @@ async def decide(query: str, history: list, used_tools: set, client, mode: str, 
 
     # Tool instructions
     tool_usage_instructions = ""
-    if "search" in query.lower() or "time" in query.lower():
-        tool_usage_instructions = "\n\nCRITICAL: Use search_web tool for real-time info."
+    ql = query.lower()
+    # Do not force tool use for basic local date/time questions.
+    # Real-time external lookups are still valid for explicit web/news/price intent.
+    if any(k in ql for k in ("news", "latest", "stock", "price", "weather", "search web")):
+        tool_usage_instructions = "\n\nCRITICAL: Use search_web tool for real-time external info."
     if "use" in query.lower() and "tool" in query.lower():
         tool_usage_instructions = "\n\nCRITICAL: User asked for a tool - use it!"
     

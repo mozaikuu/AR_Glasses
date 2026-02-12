@@ -27,6 +27,7 @@ dependencies = [
  "opencv-python",
  # Audio
  "piper-tts",
+ "onnxruntime<1.24",
  "mutagen",
  "pygame",
  "pyaudio",
@@ -49,6 +50,7 @@ dependencies = [
  "torchaudio==2.5.1+cu124",
  "einops>=0.8.2",
  "accelerate>=1.12.0",
+ "ddgs>=9.10.0",
 ]
 [[project.authors]]
 name = "Ahmed Moussa"

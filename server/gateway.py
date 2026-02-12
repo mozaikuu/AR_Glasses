@@ -14,6 +14,7 @@ import sys
 import os
 import json
 import time
+import datetime
 import base64
 from contextlib import asynccontextmanager, AsyncExitStack
 from pathlib import Path
@@ -271,12 +272,45 @@ def _maybe_speak_response(text: str, req: MultimodalRequest) -> None:
     if req.audio is None and os.getenv("SERVER_TTS_FOR_TEXT", "1").strip() in {"0", "false", "False"}:
         return
 
+    def _on_tts_done(task: asyncio.Task) -> None:
+        try:
+            exc = task.exception()
+            if exc:
+                print(f"[WARNING] TTS task failed: {exc}", file=sys.stderr)
+        except asyncio.CancelledError:
+            pass
+        except Exception as cb_err:
+            print(f"[WARNING] TTS callback failed: {cb_err}", file=sys.stderr)
+
     try:
         from tools.speech.tts import text_to_speech
-        asyncio.create_task(text_to_speech(text))
+        task = asyncio.create_task(text_to_speech(text))
+        task.add_done_callback(_on_tts_done)
         print("[HTTP] TTS task scheduled", file=sys.stderr)
     except Exception as e:
         print(f"[WARNING] TTS trigger failed: {e}", file=sys.stderr)
+
+
+def _local_time_date_answer(user_query: str) -> str | None:
+    """Handle simple local date/time questions without invoking tool loops."""
+    q = (user_query or "").strip().lower()
+    if not q:
+        return None
+
+    is_time = any(k in q for k in ("time", "clock", "what time"))
+    is_day = any(k in q for k in ("what day", "day is it", "today", "date"))
+    has_external_intent = any(k in q for k in ("news", "stock", "price", "weather", "search", "web"))
+
+    if has_external_intent or (not is_time and not is_day):
+        return None
+
+    now = datetime.datetime.now().astimezone()
+    parts = []
+    if is_day:
+        parts.append(f"Today is {now.strftime('%A, %B %d, %Y')}.")
+    if is_time:
+        parts.append(f"The current local time is {now.strftime('%I:%M %p %Z').lstrip('0')}.")
+    return " ".join(parts).strip() or None
 
 
 @app.post("/process")
@@ -328,6 +362,16 @@ async def process_multimodal(req: MultimodalRequest):
     if not combined_text.strip():
         _return_wakeword_to_idle()
         return {"response": "No input provided. Please provide text or audio."}
+
+    # Fast-path basic local time/date questions to avoid unnecessary tool loops.
+    local_time_answer = _local_time_date_answer(" ".join(text_parts))
+    if local_time_answer:
+        _maybe_speak_response(local_time_answer, req)
+        _return_wakeword_to_idle()
+        return {
+            "response": local_time_answer,
+            "transcription": transcribed_text if transcribed_text else None
+        }
 
     # Process with MCP agent loop (if connected) or fallback to direct LLM
     print(f"[HTTP] Processing request with mode='{mode}'", file=sys.stderr)

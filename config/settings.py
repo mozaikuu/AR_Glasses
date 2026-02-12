@@ -77,7 +77,7 @@ TTS_PIPER_EXE = os.getenv(
 )
 TTS_PIPER_EN_MODEL = os.getenv(
     "TTS_PIPER_EN_MODEL",
-    str(TTS_PIPER_DIR / "en_US-lessac-medium.onnx"),
+    str(TTS_PIPER_DIR / "en_US-libritts-high.onnx"),
 )
 # Optional Arabic Piper model path; falls back to English model if not set/found.
 TTS_PIPER_AR_MODEL = os.getenv(

@@ -87,6 +87,8 @@ class WakeWordSystem:
         self.listen_thread = None
         self.is_running = False
         self.is_paused = False
+        self._command_seq = 0
+        self._command_lock = threading.Lock()
 
         # Audio calibration
         self._calibrate_microphone()
@@ -191,8 +193,9 @@ class WakeWordSystem:
         print(f"Wake word detection active. Say '{self.wake_words[0]}' or others to activate.")
 
         while self.is_running:
-            # Check if paused or not in IDLE state
-            if self.is_paused or self.state != SystemState.IDLE:
+            # Check if paused or in ACTIVE (command capture owns the mic).
+            # Keep listening during PROCESSING to allow wake-word interruption.
+            if self.is_paused or self.state == SystemState.ACTIVE:
                 # Watchdog: If in PROCESSING state for too long (e.g., > 60s), force reset to IDLE
                 # This prevents the system from getting stuck if the external processor fails to call return_to_idle()
                 if self.state == SystemState.PROCESSING and (time.time() - self.last_state_change > 60):
@@ -223,6 +226,10 @@ class WakeWordSystem:
                                 if self.on_wake_word_detected:
                                     self.on_wake_word_detected(wake_word, confidence, text)
 
+                                # Wake-word during PROCESSING means "interrupt and listen for new command".
+                                if self.state == SystemState.PROCESSING:
+                                    print("[INTERRUPT] Wake word detected during processing. Starting new command capture.")
+
                                 # Transition to ACTIVE state
                                 self._change_state(SystemState.ACTIVE)
 
@@ -230,8 +237,13 @@ class WakeWordSystem:
                                 self._play_acknowledgment()
 
                                 # Start command listening in a separate thread (non-blocking)
+                                with self._command_lock:
+                                    self._command_seq += 1
+                                    seq = self._command_seq
+
                                 command_thread = threading.Thread(
                                     target=self._listen_for_command,
+                                    args=(seq,),
                                     daemon=True
                                 )
                                 command_thread.start()
@@ -251,7 +263,7 @@ class WakeWordSystem:
                 print(f"[WARNING] Wake word listening error: {e}")
                 time.sleep(0.5)
 
-    def _listen_for_command(self):
+    def _listen_for_command(self, seq: int):
         """Listen for command after wake word detection (ACTIVE state)"""
         print("[MIC] Listening for command...")
 
@@ -263,6 +275,12 @@ class WakeWordSystem:
             try:
                 # Recognize the command
                 command_text = self.recognizer.recognize_google(audio).strip()
+
+                # If a newer wake event exists, ignore this stale command.
+                with self._command_lock:
+                    if seq != self._command_seq:
+                        print("[MIC] Stale command capture ignored (newer wake word detected).")
+                        return
 
                 # Check if command is empty or just whitespace
                 if not command_text:

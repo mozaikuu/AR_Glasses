@@ -55,10 +55,10 @@ def should_continue_thinking_mode(
     if decision.get("tool"):
         return True
     
-    # Continue if we have reasoning but no answer yet
-    if decision.get("reasoning") and not decision.get("answer"):
-        return True
-    
+    # If there is no tool and no final answer, stop to avoid infinite self-talk loops.
+    if not decision.get("tool") and not decision.get("answer"):
+        return False
+
     return False
 
 

@@ -787,8 +787,14 @@ async def synthesize_speech(text: str, language: str = "en"):
     
     Returns immediately while TTS plays in background.
     """
-    # Start TTS in background (non-blocking)
-    asyncio.create_task(text_to_speech(text))
+    # Start TTS in background (non-blocking) with safe exception handling.
+    task = asyncio.create_task(text_to_speech(text))
+    def _on_tts_done(t):
+        try:
+            _ = t.exception()
+        except Exception:
+            pass
+    task.add_done_callback(_on_tts_done)
     
     return {
         "text": text,
