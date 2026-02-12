@@ -1,14 +1,31 @@
-"""HTTP gateway for Streamlit to connect to AI via MCP."""
+"""
+Unified Smart Glasses Server
+
+Consolidated server that provides:
+- HTTP API endpoints (merged from api_v2)
+- Web dashboard with static files (replaces Flask on port 5000)
+- MCP agent integration
+- TTS and speech processing
+
+This replaces the previous 4-process architecture with a single server.
+"""
 import asyncio
 import sys
 import os
+import json
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse, FileResponse
 from models.requests import MultimodalRequest, TextRequest
 from tools.speech.transcription import transcribe_audio_bytes
-from tools.speech.tts import text_to_speech
+from tools.speech.tts import text_to_speech, text_to_speech_sync
+
+# Project root for static files
+PROJECT_ROOT = Path(__file__).parent.parent
 
 # MCP client for tool access
 mcp_client = None # try mcp_session 
@@ -305,32 +322,19 @@ async def process_multimodal(req: MultimodalRequest):
             
             # Remove the instruction prefix for agent loop - we'll add it to the final response instead
             user_query = combined_text.replace("INSTRUCTION: Answer this question in ONE SINGLE PARAGRAPH with no headers, no bullet points, no lists, and no formatting. Keep it brief. QUESTION: ", "")
-            
-            # Check if user explicitly requests tool usage
-            tool_requested = False
-            tool_name = None
-            if "use" in user_query.lower() and "search_web" in user_query.lower():
-                tool_requested = True
-                tool_name = "search_web"
-            elif "use" in user_query.lower() and ("vision" in user_query.lower() or "VisionDetect" in user_query):
-                tool_requested = True
-                tool_name = "VisionDetect"
-            elif any(p in user_query.lower() for p in ["what is in front", "what's in front", "what do you see", "look at", "describe the view", "describe what you see", "identify object", "vision", "camera"]):
-                tool_requested = True
-                tool_name = "VisionDetect"
-            elif ("search" in user_query.lower() and ("web" in user_query.lower() or "internet" in user_query.lower())) or "current time" in user_query.lower():
-                tool_requested = True
-                tool_name = "search_web"
-            
-            if tool_requested:
-                user_query = f"CRITICAL INSTRUCTION: The user explicitly requested to use the {tool_name} tool. You MUST use this tool to answer their question. Do not say you don't have access to tools - you have access to {tool_name}. Original question: {user_query}"
-                print(f"[HTTP] Tool usage explicitly requested: {tool_name}", file=sys.stderr)
-            
+
             print(f"[HTTP] User query (after cleanup): '{user_query[:200]}...'", file=sys.stderr)
             
             # Run agent loop with MCP client
-            result = await agent_loop(mcp_client, user_query, mode, image=req.image)
-            
+            agent_result = await agent_loop(mcp_client, user_query, mode, image=req.image)
+
+            # Extract the answer from the result dict
+            result = agent_result.get("answer", "")
+            tool_used = agent_result.get("tool_used")
+            iterations = agent_result.get("iterations", 0)
+
+            print(f"[HTTP] Agent loop completed in {iterations} iteration(s), tool_used={tool_used}, result length: {len(result) if result else 0}", file=sys.stderr)
+
             # Add one-paragraph instruction to the final result if it's too long
             if result and ('\n\n' in result or result.count('\n') > 3):
                 # Try to extract first paragraph
@@ -341,13 +345,11 @@ async def process_multimodal(req: MultimodalRequest):
                     # Split by single newlines and take first few sentences
                     lines = result.split('\n')
                     result = ' '.join(lines[:3])
-            
+
             # Ensure one-paragraph response
             if result and '\n\n' in result:
                 # Take first paragraph only
                 result = result.split('\n\n')[0]
-            
-            print(f"[HTTP] Agent loop completed, result length: {len(result) if result else 0}", file=sys.stderr)
             
         except Exception as e:
             error_msg = f"MCP agent loop failed: {str(e)}"
@@ -516,4 +518,324 @@ async def cancel_navigation(req: dict = None):
         import traceback
         traceback.print_exc(file=sys.stderr)
         return {"success": False, "error": str(e)}
+
+
+# ----------------------------
+# QR PRESENCE ENDPOINTS
+# ----------------------------
+
+@app.post("/qr/visible")
+async def qr_visible(req: dict):
+    """
+    Register that a QR marker is visible and return modal-friendly display info.
+    """
+    qr_data = req.get("qr_data")
+    tracking_id = req.get("tracking_id")
+    source = req.get("source", "hololens2")
+    event_ts = req.get("timestamp", time.time())
+
+    if not qr_data:
+        return {"success": False, "error": "qr_data is required"}
+
+    try:
+        from tools.navigation.qr_location import update_location_from_qr
+
+        location = update_location_from_qr(qr_data)
+        if not location:
+            location = json.loads(qr_data)
+
+        if not tracking_id:
+            tracking_id = location.get("id") or f"qr_{int(time.time() * 1000)}"
+
+        marker = {
+            "tracking_id": tracking_id,
+            "source": source,
+            "visible": True,
+            "seen_at": event_ts,
+            "location": location,
+        }
+        _gateway_active_qr[tracking_id] = marker
+
+        display = {
+            "id": location.get("id"),
+            "name": location.get("name", "Unknown location"),
+            "building": location.get("building", ""),
+            "floor": location.get("floor"),
+            "description": location.get("description", ""),
+            "additional_info": location.get("additional_info", ""),
+        }
+
+        return {
+            "success": True,
+            "tracking_id": tracking_id,
+            "visible": True,
+            "display": display,
+            "active_count": len(_gateway_active_qr),
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/qr/hidden")
+async def qr_hidden(req: dict):
+    """Register that a QR marker is no longer visible."""
+    tracking_id = req.get("tracking_id")
+    qr_id = req.get("qr_id")
+
+    if not tracking_id and not qr_id:
+        return {"success": False, "error": "tracking_id or qr_id is required"}
+
+    removed = None
+    if tracking_id:
+        removed = _gateway_active_qr.pop(tracking_id, None)
+
+    if removed is None and qr_id:
+        for tid, marker in list(_gateway_active_qr.items()):
+            location = marker.get("location", {})
+            if location.get("id") == qr_id:
+                removed = _gateway_active_qr.pop(tid)
+                break
+
+    return {
+        "success": True,  # idempotent behavior for clients
+        "visible": False,
+        "was_active": removed is not None,
+        "active_count": len(_gateway_active_qr),
+    }
+
+
+@app.get("/qr/active")
+async def qr_active():
+    """Get currently visible QR markers."""
+    return {
+        "active_count": len(_gateway_active_qr),
+        "markers": list(_gateway_active_qr.values()),
+    }
+
+
+@app.post("/qr/telemetry")
+async def qr_telemetry(req: dict):
+    """Store QR-modal telemetry from clients."""
+    tracking_id = req.get("tracking_id")
+    if not tracking_id:
+        return {"success": False, "error": "tracking_id is required"}
+
+    entry = {
+        "tracking_id": tracking_id,
+        "qr_id": req.get("qr_id"),
+        "event": req.get("event", "displayed"),
+        "payload": req.get("payload", {}),
+        "source": req.get("source", "hololens2"),
+        "timestamp": req.get("timestamp", time.time()),
+    }
+    _gateway_qr_telemetry.append(entry)
+    if len(_gateway_qr_telemetry) > _MAX_GATEWAY_QR_TELEMETRY:
+        del _gateway_qr_telemetry[:-_MAX_GATEWAY_QR_TELEMETRY]
+
+    return {
+        "success": True,
+        "logged": True,
+        "telemetry_count": len(_gateway_qr_telemetry),
+    }
+
+
+# ==================== WEB DASHBOARD (REPLACES FLASK) ====================
+
+# Mount static files
+static_path = PROJECT_ROOT / "web_app" / "static"
+if static_path.exists():
+    app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
+
+templates_path = PROJECT_ROOT / "web_app" / "templates"
+
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard():
+    """Serve the web dashboard (replaces Flask app on port 5000)."""
+    index_path = templates_path / "index.html"
+    if index_path.exists():
+        return FileResponse(str(index_path))
+    return HTMLResponse(content="<h1>Smart Glasses Dashboard</h1><p>Template not found.</p>")
+
+
+@app.get("/web", response_class=HTMLResponse)
+async def web_interface():
+    """Alternative route for web interface."""
+    return await dashboard()
+
+
+@app.post("/tts/generate")
+async def generate_tts_endpoint(req: dict):
+    """Generate TTS audio and return file path."""
+    text = req.get("text", "")
+    if not text:
+        return {"error": "No text provided"}
+
+    try:
+        # Generate TTS audio
+        text_to_speech_sync(text)
+        return {"status": "generated", "text": text}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/tts/{filename}")
+async def serve_tts_file(filename: str):
+    """Serve generated TTS audio file."""
+    import tempfile
+    temp_dir = tempfile.gettempdir()
+    filepath = Path(temp_dir) / filename
+
+    if filepath.exists():
+        return FileResponse(str(filepath), media_type="audio/mp3")
+    return {"error": "Audio file not found"}, 404
+
+
+@app.get("/config")
+async def get_config():
+    """Get wake word configuration."""
+    from config.settings import WAKE_WORDS
+    return {"wake_words": WAKE_WORDS}
+
+
+# ==================== WEB APP COMPATIBILITY ENDPOINTS ====================
+
+# Simple in-memory state for web dashboard (no Flask dependency)
+_webapp_state = {
+    "is_running": False,
+    "system_state": "idle",  # idle, active, processing
+    "wake_word_detected": False,
+    "last_wake_word": None,
+    "command_received": False,
+    "command_text": None,
+    "ai_response": None,
+    "error_message": None,
+    "last_updated": None
+}
+
+# QR marker state for gateway-facing clients (e.g., Unity on HoloLens 2)
+_gateway_active_qr = {}
+_gateway_qr_telemetry = []
+_MAX_GATEWAY_QR_TELEMETRY = 200
+
+
+def _update_state(**kwargs):
+    """Update web app state."""
+    import time
+    _webapp_state.update(kwargs)
+    _webapp_state["last_updated"] = time.time()
+
+
+def _consume_flags():
+    """Consume one-time flags (reset after reading)."""
+    flags = {
+        "wake_word_detected": _webapp_state["wake_word_detected"],
+        "last_wake_word": _webapp_state["last_wake_word"],
+        "command_received": _webapp_state["command_received"],
+        "command_text": _webapp_state["command_text"],
+        "ai_response": _webapp_state["ai_response"],
+        "error_message": _webapp_state["error_message"],
+    }
+    # Reset one-time flags
+    _webapp_state["wake_word_detected"] = False
+    _webapp_state["command_received"] = False
+    _webapp_state["ai_response"] = None
+    _webapp_state["error_message"] = None
+    return flags
+
+
+@app.get("/status")
+async def get_status(consume: bool = False):
+    """Get web dashboard status (replaces Flask /status)."""
+    if consume:
+        flags = _consume_flags()
+        return {
+            "is_running": _webapp_state["is_running"],
+            "system_state": _webapp_state["system_state"],
+            **flags
+        }
+    return {
+        "is_running": _webapp_state["is_running"],
+        "system_state": _webapp_state["system_state"],
+        "wake_word_detected": False,
+        "last_wake_word": None,
+        "command_received": False,
+        "command_text": None,
+        "ai_response": None,
+        "error_message": None
+    }
+
+
+@app.post("/control/start")
+async def start_listening():
+    """Start wake word listening (replaces Flask /control/start)."""
+    _update_state(is_running=True, system_state="idle")
+    return {"status": "started"}
+
+
+@app.post("/control/stop")
+async def stop_listening():
+    """Stop wake word listening (replaces Flask /control/stop)."""
+    _update_state(is_running=False, system_state="idle")
+    return {"status": "stopped"}
+
+
+@app.post("/web/process")
+async def web_process_text(req: dict):
+    """
+    Process text from web dashboard (replaces Flask /process).
+    Note: Using /web/process to avoid conflict with the main /process endpoint.
+    """
+    text = req.get("text", "")
+    mode = req.get("mode", "quick")
+
+    if not text:
+        return {"error": "No text provided"}
+
+    try:
+        # Update state
+        _update_state(system_state="processing")
+
+        # Call the main process endpoint logic
+        from models.requests import MultimodalRequest
+        request = MultimodalRequest(text=text, mode=mode)
+        result = await process_multimodal(request)
+
+        # Extract response
+        response_text = result.get("response", "")
+
+        # Generate TTS
+        audio_url = None
+        if response_text:
+            import tempfile
+            import time
+            temp_dir = tempfile.gettempdir()
+            filename = f"tts_{int(time.time())}.mp3"
+            # Generate TTS (runs in background)
+            asyncio.create_task(text_to_speech(response_text))
+            audio_url = f"/tts/{filename}"
+
+        # Update state with response
+        _update_state(system_state="idle", ai_response=response_text)
+
+        return {
+            "response": response_text,
+            "audio_url": audio_url,
+            "transcription": result.get("transcription")
+        }
+
+    except Exception as e:
+        _update_state(system_state="idle", error_message=str(e))
+        return {"error": str(e)}
+
+
+@app.post("/web/record")
+async def web_record_audio():
+    """
+    Record audio from web dashboard (replaces Flask /record).
+    Note: This is a simplified version that prompts the user to use the /process endpoint instead.
+    """
+    return {
+        "error": "Direct recording not supported in unified server. Please use text input or the /process endpoint with audio data.",
+        "suggestion": "Use the text input or upload audio to /process endpoint"
+    }
 

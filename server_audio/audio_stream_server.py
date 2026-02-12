@@ -36,11 +36,20 @@ except ImportError:
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+# Import only existing settings from config
 from config.settings import (
-    WS_HOST, WS_PORT, WS_SSL,
-    STT_MODEL, TTS_ENGINE,
-    BLE_ENABLED, API_BASE_URL
+    API_BASE_URL
 )
+
+# WebSocket server configuration (not in config/settings.py)
+WS_HOST = "0.0.0.0"
+WS_PORT = 8765
+WS_SSL = False
+
+# STT/TTS configuration
+STT_MODEL = "base"
+TTS_ENGINE = "edge"  # edge-tts or piper
+BLE_ENABLED = True
 
 # Configure logging
 logging.basicConfig(
@@ -275,8 +284,9 @@ class AudioStreamServer:
 
             response_text = await generate_chat(messages)
 
-            # Generate audio
-            audio_base64 = await self.text_to_speech(response_text)
+            # Generate TTS audio on SERVER
+            audio_bytes = await self.generate_tts(response_text)
+            audio_base64 = base64.b64encode(audio_bytes).decode('utf-8') if audio_bytes else ""
 
             return {
                 "type": "response",
@@ -380,7 +390,7 @@ class AudioStreamServer:
             response: Response dictionary
         """
         try:
-            # Send as JSON
+            # Send as JSON first
             await session.websocket.send(json.dumps(response))
 
             # If audio is included, also send binary
@@ -390,6 +400,36 @@ class AudioStreamServer:
 
         except Exception as e:
             logger.error(f"Failed to send response: {e}")
+
+    async def generate_tts(self, text: str) -> bytes:
+        """
+        Generate TTS audio on server.
+
+        Args:
+            text: Text to convert to speech
+
+        Returns:
+            Audio bytes (WAV format)
+        """
+        try:
+            # Use Edge-TTS or Piper to generate audio
+            import edge_tts
+            import io
+
+            voice = "en-US-AriaNeural"
+            communicate = edge_tts.Communicate(text, voice)
+
+            # Generate to memory
+            audio_buffer = io.BytesIO()
+            async for chunk in communicate.stream():
+                if chunk["type"] == "audio":
+                    audio_buffer.write(chunk["data"])
+
+            return audio_buffer.getvalue()
+
+        except Exception as e:
+            logger.error(f"TTS generation error: {e}")
+            return b""
 
     async def broadcast_to_glasses(self, data: dict):
         """

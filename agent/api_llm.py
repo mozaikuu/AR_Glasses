@@ -113,80 +113,70 @@ def normalize(data: dict) -> dict:
 
 
 # ============== DECISION ==================
-async def decide(query: str, iteration: int = 1, max_iterations: int = 10, mode: str = "thinking", image: str = None):
+async def decide(query: str, history: list, used_tools: set, client, mode: str, image: str = None):
     """
-    Make a SINGLE decision based on user query.
-
-    This is called ONCE per iteration of the agent loop.
-    The agent loop handles multiple iterations by feeding tool results back.
-
-    Args:
-        query: User query OR tool result from previous iteration
-        iteration: Current iteration number (1-based)
-        max_iterations: Maximum iterations allowed
-        mode: "quick" or "thinking"
-        image: Optional base64 encoded image
-
-    Returns:
-        Decision dictionary with: reasoning, tool, args, is_satisfied, answer
+    Make a decision based on query, history, and available tools.
+    
+    This is called by agent_loop for each iteration.
     """
-    # Tools description
-    tools_description = """
-Available tools:
-- search_web: Search the web for information. Args: {"query": "search terms"}
-- VisionDetect: Describe what you see in an image. Args: {}
-- navigation_get_directions: Get navigation directions. Args: {"from": "location", "to": "destination"}
-"""
+    tools = await client.list_tools()
+    tools_list = "\n".join(f"- {t.name}: {t.description}" for t in tools.tools)
+    
+    # Build history text
+    history_text = "\n".join(history[-8:]) if history else "None"
+    tool_count = sum(1 for h in history if h.startswith("Tool("))
+    
+    log(f"Available tools: {[t.name for t in tools.tools]}")
+    log(f"History length: {len(history)}, Tool calls: {tool_count}")
 
-    # Build user content
+    # User content
     user_content = query
     if image:
-        user_content += f"\n[Image provided: {image[:100]}...]"
+        user_content += f"\n[Image provided: {image[:50]}...]"
 
-    # Check if this is a follow-up (iteration > 1)
-    is_followup = iteration > 1
+    # Tool instructions
+    tool_usage_instructions = ""
+    if "search" in query.lower() or "time" in query.lower():
+        tool_usage_instructions = "\n\nCRITICAL: Use search_web tool for real-time info."
+    if "use" in query.lower() and "tool" in query.lower():
+        tool_usage_instructions = "\n\nCRITICAL: User asked for a tool - use it!"
+    
+    # Vision keywords
+    vision_keywords = ["what do you see", "what is in front", "describe", "look at", "identify"]
+    if any(kw in query.lower() for kw in vision_keywords):
+        tool_usage_instructions = "\n\nCRITICAL: User wants vision - use VisionDetect tool."
 
-    if is_followup:
-        prompt_instruction = """
-This is a FOLLOW-UP iteration. Based on the previous tool result:
-- If the result answers the user's question, set is_satisfied=true and provide your answer
-- If you need MORE information, explain what and set is_satisfied=false
-- If you need a DIFFERENT tool, specify which one
-- Do NOT repeat tools that already failed
-"""
-    else:
-        prompt_instruction = """
-This is the FIRST iteration. Analyze the user's request:
-- If you can answer directly, set is_satisfied=true with your answer
-- If you need information from a tool, specify which tool and args
-- Choose the RIGHT tool for the job
-"""
+    # Used tools warning
+    used_tools_warning = ""
+    if used_tools:
+        used_tools_warning = f"\nNote: Already used: {[sig[0] for sig in used_tools]}"
+    
+    system_prompt = f"""
+You are an intelligent agent in {mode} mode with access to tools.
 
-    # Remaining iterations message
-    remaining = max_iterations - iteration
-    iterations_msg = f"You have {remaining} iteration(s) remaining."
+Conversation history (last 4 exchanges):
+{history_text}
+{used_tools_warning}
 
-    system_prompt = f"""You are Nova, an intelligent assistant for smart glasses.
+Available tools:
+{tools_list}
+{tool_usage_instructions}
 
-{prompt_instruction}
-
-{iterations_msg}
-
-{tools_description}
-
-OUTPUT REQUIREMENTS:
-- You must output ONLY JSON inside <json> tags
-- No text outside the JSON block
-- Be concise - your reasoning should be brief
-- If satisfied, provide a clear answer suitable for audio playback
+RULES:
+- ONLY output JSON inside <json>
+- If user asks for a tool, use it
+- If satisfied, set is_satisfied=true and provide answer
+- If tool already used with same args, ask user what else they need
+- MAX {tool_count + 2} tool calls remaining
 
 <json>
 {{
-  "reasoning": "Brief explanation of your thought process",
-  "tool": null OR "exact_tool_name",
+  "reasoning": "",
+  "tool": null,
   "args": {{}},
-  "is_satisfied": true OR false,
-  "answer": "Your answer OR null"
+  "ask_user": null,
+  "is_satisfied": false,
+  "answer": ""
 }}
 </json>"""
 
@@ -195,24 +185,31 @@ OUTPUT REQUIREMENTS:
         {"role": "user", "content": user_content}
     ]
 
-    log(f"LLM Call (iteration {iteration}/{max_iterations})")
-
     for attempt in range(MAX_RETRIES + 1):
         try:
-            raw = await generate_chat(messages, max_tokens=512, temperature=0.1)
-            log(f"Raw LLM output: {raw[:200]}...")
+            raw = await generate_chat(messages)
+            log("RAW MODEL OUTPUT:", raw)
 
             data = extract_json(raw)
             decision = normalize(data)
 
-            log(f"Decision: tool={decision['tool']}, satisfied={decision['is_satisfied']}")
+            # Check if tool already used
+            if decision["tool"]:
+                sig = (decision["tool"], json.dumps(decision["args"], sort_keys=True))
+                if sig in used_tools:
+                    log(f"Tool {decision['tool']} already used")
+                    decision["tool"] = None
+                    decision["is_satisfied"] = True
+                    if not decision["answer"]:
+                        decision["answer"] = "Already checked that. What else?"
+
             return decision
 
         except Exception as e:
             log(f"Error in decide (attempt {attempt + 1}): {e}")
             if attempt == MAX_RETRIES:
                 return {
-                    "reasoning": "API error or malformed output",
+                    "reasoning": "API error",
                     "tool": None,
                     "args": {},
                     "ask_user": None,
@@ -222,5 +219,5 @@ OUTPUT REQUIREMENTS:
 
             messages.append({
                 "role": "system",
-                "content": "FORMAT ERROR. Output must be valid JSON inside <json> tags."
+                "content": "FORMAT ERROR. OUTPUT VALID JSON ONLY."
             })

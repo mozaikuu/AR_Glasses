@@ -24,10 +24,7 @@ moussa
 -  [ ] hardware physical connection
 -  [ ] esp32 code
 -  [ ] building addition
-
-ydnas
-
-basma
+-
 
 -  [ ] interrupt the bot speaking
 
@@ -37,8 +34,8 @@ run all 3 previous unfinished tasks and fix all errors
 
 ### Abstract goals:
 
-- [ ] mobile test
-- [ ] migrate to notion
+-  [ ] mobile test
+-  [ ] migrate to notion
 
 ### Current goal:
 

@@ -1,6 +1,7 @@
 let isPolling = true;
 let lastStatus = "unknown";
 let wakeWords = ["Computer"]; // Default
+let currentAudio = null;
 
 document.addEventListener("DOMContentLoaded", () => {
 	fetchConfig();
@@ -163,7 +164,13 @@ async function manualRecord() {
 			if (data.transcription) {
 				addMessage("user", data.transcription);
 			}
-			addMessage("ai", data.response);
+			if (data.response) {
+				addMessage("ai", data.response);
+				// Play TTS from server
+				if (data.audio_url) {
+					playAudioFromServer(data.audio_url);
+				}
+			}
 		}
 	} catch (e) {
 		addMessage("ai", `❌ Connection Error: ${e.message}`);
@@ -201,10 +208,33 @@ async function processText(text) {
 			addMessage("ai", `❌ Error: ${data.error}`);
 		} else {
 			addMessage("ai", data.response);
+			// Play TTS from server
+			if (data.audio_url) {
+				playAudioFromServer(data.audio_url);
+			}
 		}
 	} catch (e) {
 		addMessage("ai", `❌ Error: ${e.message}`);
 	}
+}
+
+function playAudioFromServer(audioUrl) {
+	// Stop any currently playing audio
+	if (currentAudio) {
+		currentAudio.pause();
+		currentAudio.currentTime = 0;
+	}
+
+	// Create new audio element
+	currentAudio = new Audio(audioUrl);
+	currentAudio
+		.play()
+		.then(() => {
+			console.log("Playing TTS audio from server");
+		})
+		.catch((e) => {
+			console.error("Failed to play audio:", e);
+		});
 }
 
 function handleKeyPress(event) {
