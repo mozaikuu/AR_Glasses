@@ -96,6 +96,33 @@ async def agent_loop(client, user_input: str, mode: str = "thinking", image: str
                 result_text = str(result)
                 if hasattr(result, 'content') and result.content:
                     result_text = str(result.content[0].text) if result.content else str(result)
+
+                # Guard: do not let the model pretend search succeeded when it returned no docs.
+                if decision["tool"] == "search_web":
+                    parsed = None
+                    try:
+                        parsed = json.loads(result_text)
+                    except Exception:
+                        parsed = None
+                    if isinstance(parsed, dict):
+                        result_count = int(parsed.get("result_count", 0) or 0)
+                        docs = parsed.get("documents") or []
+                        search_unavailable = any(
+                            isinstance(d, dict) and d.get("error") == "search_unavailable"
+                            for d in docs
+                        )
+                        if result_count == 0 or search_unavailable:
+                            return {
+                                "answer": (
+                                    "I could not retrieve reliable web results right now, so I cannot verify "
+                                    "recent buffs accurately. Please retry in a moment or include a specific patch "
+                                    "version (for example, 26.3) and I will summarize it."
+                                ),
+                                "iterations": i,
+                                "tool_calls": tool_calls,
+                                "stop_reason": "search_unavailable",
+                                "ask_user": None,
+                            }
                 
                 # Truncate
                 if len(result_text) > 500:

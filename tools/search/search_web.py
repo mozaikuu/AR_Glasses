@@ -6,6 +6,8 @@ from pathlib import Path
 import re
 import datetime
 from urllib.parse import quote_plus
+from urllib.parse import urlparse, parse_qs, unquote
+from html import unescape
 
 # Add project root to Python path
 project_root = Path(__file__).parent.parent.parent
@@ -102,6 +104,58 @@ def _instant_answer_fallback(query: str, max_results: int = 5) -> List[Dict]:
     return results[:max_results]
 
 
+def _extract_ddg_redirect_url(raw_href: str) -> str:
+    href = unescape((raw_href or "").strip())
+    if href.startswith("//"):
+        href = "https:" + href
+    parsed = urlparse(href)
+    if "duckduckgo.com" in parsed.netloc and parsed.path.startswith("/l/"):
+        qs = parse_qs(parsed.query)
+        uddg = qs.get("uddg", [])
+        if uddg:
+            return unquote(uddg[0])
+    return href
+
+
+def _ddg_lite_fallback(query: str, max_results: int = 5) -> List[Dict]:
+    """
+    Fallback search using DuckDuckGo Lite HTML results.
+    Works even when DDGS python clients are unavailable.
+    """
+    url = "https://lite.duckduckgo.com/lite/"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    r = requests.get(url, params={"q": query}, headers=headers, timeout=12)
+    r.raise_for_status()
+    html = r.text or ""
+
+    link_pattern = re.compile(
+        r'<a\s+rel="nofollow"\s+href="([^"]+)"[^>]*>(.*?)</a>',
+        re.IGNORECASE | re.DOTALL,
+    )
+    snippet_pattern = re.compile(
+        r'<td[^>]*class="result-snippet"[^>]*>(.*?)</td>',
+        re.IGNORECASE | re.DOTALL,
+    )
+
+    links = list(link_pattern.finditer(html))
+    snippets = [re.sub(r"<[^>]+>", " ", s).strip() for s in snippet_pattern.findall(html)]
+
+    results: List[Dict] = []
+    for idx, m in enumerate(links[:max_results]):
+        raw_href = m.group(1)
+        raw_title = m.group(2)
+        title = re.sub(r"<[^>]+>", " ", unescape(raw_title)).strip()
+        href = _extract_ddg_redirect_url(raw_href)
+        snippet = snippets[idx] if idx < len(snippets) else ""
+        if href:
+            results.append({
+                "title": title,
+                "url": href,
+                "snippet": snippet,
+            })
+    return results
+
+
 def fetch_page_text(url: str, timeout: int = 10, max_chars: int = 4000) -> str:
     headers = {"User-Agent": "MCP-Web-Context/1.0"}
     r = requests.get(url, headers=headers, timeout=timeout)
@@ -160,6 +214,11 @@ def retrieve_web_context(query: str) -> Dict:
             search_results = _instant_answer_fallback(query)
         except Exception as e:
             errors.append(f"instant_answer_fallback: {e}")
+    if not search_results:
+        try:
+            search_results = _ddg_lite_fallback(query)
+        except Exception as e:
+            errors.append(f"ddg_lite_fallback: {e}")
     for r in search_results:
         url = r["url"]
         if not url:
