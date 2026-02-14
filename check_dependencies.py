@@ -1,5 +1,10 @@
-"""Check if all required dependencies are installed."""
+"""Check if core runtime dependencies are installed."""
+import shutil
 import sys
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(__file__).resolve().parent
 
 required_packages = [
     "fastapi",
@@ -15,7 +20,6 @@ required_packages = [
     "cv2",
     "ultralytics",
     "whisper",
-    "edge_tts",
     "mutagen",
     "pygame",
     "pyaudio",
@@ -23,42 +27,54 @@ required_packages = [
     "bs4",
     "requests",
     "fastmcp",
+    "piper",
 ]
 
-missing_packages = []
 
-print("🔍 Checking dependencies...\n")
+def _has_piper() -> bool:
+    local = PROJECT_ROOT / "models" / "piper" / ("piper.exe" if sys.platform.startswith("win") else "piper")
+    return local.exists() or bool(shutil.which("piper"))
 
-for package in required_packages:
-    try:
-        if package == "PIL":
-            __import__("PIL")
-        elif package == "cv2":
-            __import__("cv2")
-        elif package == "bs4":
-            __import__("bs4")
-        elif package == "streamlit_webrtc":
-            __import__("streamlit_webrtc")
-        else:
-            __import__(package)
-        print(f"✅ {package}")
-    except ImportError:
-        print(f"❌ {package} - MISSING")
-        missing_packages.append(package)
 
-print("\n" + "="*50)
+def main() -> int:
+    missing_packages = []
+    print("Checking dependencies...\n")
 
-if missing_packages:
-    print(f"\n❌ {len(missing_packages)} package(s) missing:")
-    for pkg in missing_packages:
-        print(f"   - {pkg}")
-    print("\n💡 Install dependencies with:")
-    print("   uv sync")
-    print("   or")
-    print("   pip install -r requirements.txt")
-    sys.exit(1)
-else:
-    print("\n✅ All dependencies are installed!")
-    print("🚀 You can now start the gateway with: python start_gateway.py")
-    sys.exit(0)
+    for package in required_packages:
+        try:
+            if package == "PIL":
+                __import__("PIL")
+            elif package == "cv2":
+                __import__("cv2")
+            elif package == "bs4":
+                __import__("bs4")
+            elif package == "streamlit_webrtc":
+                __import__("streamlit_webrtc")
+            elif package == "piper":
+                if not _has_piper():
+                    raise ImportError("piper executable not found in models/piper or PATH")
+            else:
+                __import__(package)
+            print(f"[OK] {package}")
+        except ImportError:
+            print(f"[MISS] {package}")
+            missing_packages.append(package)
 
+    print("\n" + "=" * 50)
+    if missing_packages:
+        print(f"\n{len(missing_packages)} package(s) missing:")
+        for pkg in missing_packages:
+            print(f" - {pkg}")
+        print("\nInstall dependencies with:")
+        print(" uv sync")
+        print(" or")
+        print(" pip install -r requirements.txt")
+        return 1
+
+    print("\nAll dependencies are installed.")
+    print("You can now start the gateway with: python start_gateway.py")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

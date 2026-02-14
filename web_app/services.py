@@ -2,7 +2,7 @@ import queue
 import threading
 import sys
 import time
-from tools.wakeword.wakeword_system import create_wakeword_system, SystemState
+import traceback
 
 class WakeWordService:
     _instance = None
@@ -38,20 +38,37 @@ class WakeWordService:
 
     def initialize(self):
         if self.wakeword_system is None:
-            self.device_index = self._get_valid_audio_device_index()
-            self.wakeword_system = create_wakeword_system(device_index=self.device_index)
-            self._setup_callbacks()
-            print("WakeWordService initialized", file=sys.stderr)
-            
-            # Auto-start listening by default
-            self.start_listening()
+            try:
+                from tools.wakeword.wakeword_system import create_wakeword_system
 
-    def _get_valid_audio_device_index(self):
-        """Find a valid audio input device index."""
+                self.device_index = self._get_valid_audio_device_index(self.device_index)
+                self.wakeword_system = create_wakeword_system(device_index=self.device_index)
+                self._setup_callbacks()
+                print("WakeWordService initialized", file=sys.stderr)
+
+                # Auto-start listening by default
+                self.start_listening()
+            except Exception as e:
+                print(f"WakeWordService initialize failed: {e}", file=sys.stderr)
+                traceback.print_exc(file=sys.stderr)
+                self.results["error_message"] = f"Wakeword init failed: {e}"
+
+    def _get_valid_audio_device_index(self, preferred_index=None):
+        """Find a valid audio input device index, preferring `preferred_index` when possible."""
         try:
             import pyaudio
             p = pyaudio.PyAudio()
             device_index = None
+
+            if preferred_index is not None:
+                try:
+                    preferred = p.get_device_info_by_index(int(preferred_index))
+                    if preferred.get('maxInputChannels', 0) > 0:
+                        p.terminate()
+                        return int(preferred_index)
+                except Exception:
+                    pass
+
             for i in range(p.get_device_count()):
                 device_info = p.get_device_info_by_index(i)
                 if device_info.get('maxInputChannels', 0) > 0:
@@ -63,6 +80,46 @@ class WakeWordService:
         except Exception as e:
             print(f"Error finding audio device: {e}", file=sys.stderr)
             return None
+
+    def list_input_devices(self):
+        """List available input devices."""
+        devices = []
+        try:
+            import pyaudio
+            p = pyaudio.PyAudio()
+            for i in range(p.get_device_count()):
+                info = p.get_device_info_by_index(i)
+                if info.get('maxInputChannels', 0) > 0:
+                    devices.append({
+                        "index": i,
+                        "name": info.get("name", f"Input {i}"),
+                        "channels": int(info.get("maxInputChannels", 0)),
+                        "default_rate": int(info.get("defaultSampleRate", 16000)),
+                    })
+            p.terminate()
+        except Exception as e:
+            print(f"Error listing input devices: {e}", file=sys.stderr)
+        return devices
+
+    def set_input_device(self, device_index):
+        """Set input device and reinitialize wakeword with the selected mic."""
+        validated = self._get_valid_audio_device_index(device_index)
+        if validated is None:
+            raise ValueError(f"Input device {device_index} is not valid or not available")
+
+        was_running = bool(self.wakeword_system and self.wakeword_system.is_running)
+        if self.wakeword_system:
+            try:
+                self.wakeword_system.stop()
+            except Exception:
+                pass
+            self.wakeword_system = None
+
+        self.device_index = int(validated)
+        self.initialize()
+        if was_running and self.wakeword_system and not self.wakeword_system.is_running:
+            self.start_listening()
+        return self.device_index
 
     def _setup_callbacks(self):
         def on_wake_word_detected(wake_word, confidence, text):

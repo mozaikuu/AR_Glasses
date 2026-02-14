@@ -13,6 +13,10 @@ import torch
 from PIL import Image
 import base64
 import io
+import os
+
+# Optional: suppress Windows symlink cache warning (non-fatal).
+os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 
 # Moondream model configuration
 MODEL_NAME = "vikhyatk/moondream2"
@@ -23,6 +27,62 @@ MODEL_PATH = BASE_DIR / "models" / "moondream"
 _cached_model = None
 _cached_tokenizer = None
 _model_lock = threading.Lock()
+
+
+def _patch_transformers_tied_weights_compat():
+    """
+    Patch transformers to tolerate custom model classes that expose only
+    `_tied_weights_keys` (older remote-code convention) instead of the newer
+    `all_tied_weights_keys`.
+    """
+    from transformers.modeling_utils import PreTrainedModel
+    if getattr(PreTrainedModel, "_sg_tied_weights_patch_applied", False):
+        return
+
+    # Newer transformers expects `all_tied_weights_keys`; older remote-code
+    # models often provide only `_tied_weights_keys`.
+    if not hasattr(PreTrainedModel, "all_tied_weights_keys"):
+        def _all_tied_weights_keys(self):
+            legacy = getattr(self, "_tied_weights_keys", None)
+            if isinstance(legacy, dict):
+                return legacy
+            if isinstance(legacy, (list, tuple, set)):
+                return {k: True for k in legacy}
+            return {}
+
+        PreTrainedModel.all_tied_weights_keys = property(_all_tied_weights_keys)
+
+    original = getattr(PreTrainedModel, "mark_tied_weights_as_initialized", None)
+
+    # Some transformers versions do not expose this hook at all.
+    if original is not None:
+        def _patched_mark_tied_weights_as_initialized(self):
+            all_tied = getattr(self, "all_tied_weights_keys", None)
+            if isinstance(all_tied, dict):
+                for tied_param in all_tied.keys():
+                    param = self.get_parameter(tied_param)
+                    param._is_hf_initialized = True
+                return
+
+            legacy_tied = getattr(self, "_tied_weights_keys", None)
+            if isinstance(legacy_tied, dict):
+                keys = legacy_tied.keys()
+            elif isinstance(legacy_tied, (list, tuple, set)):
+                keys = legacy_tied
+            else:
+                return
+
+            for tied_param in keys:
+                try:
+                    param = self.get_parameter(tied_param)
+                    param._is_hf_initialized = True
+                except Exception:
+                    # Ignore stale or incompatible tied-weight paths from remote code.
+                    continue
+
+        PreTrainedModel.mark_tied_weights_as_initialized = _patched_mark_tied_weights_as_initialized
+    PreTrainedModel._sg_tied_weights_patch_applied = True
+    PreTrainedModel._sg_original_mark_tied_weights_as_initialized = original
 
 
 def load_model():
@@ -40,31 +100,54 @@ def load_model():
     
     try:
         from transformers import AutoModelForCausalLM, AutoTokenizer
-        from transformers import BitsAndBytesConfig
+        _patch_transformers_tied_weights_compat()
         
         print(f"Loading Moondream model: {MODEL_NAME}", file=sys.stderr)
         
-        # Quantization config for lower memory usage
-        quantization_config = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_compute_dtype=torch.float16
-        )
-        
+        force_cpu = os.environ.get("MOONDREAM_FORCE_CPU", "").lower() in {"1", "true", "yes"}
+        device = "cpu" if force_cpu else ("cuda" if torch.cuda.is_available() else "cpu")
+        print(f"Moondream: Using device: {device}", file=sys.stderr)
+
         tokenizer = AutoTokenizer.from_pretrained(
             MODEL_NAME, 
             revision=MODEL_REVISION
         )
-        
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        print(f"Moondream: Using device: {device}", file=sys.stderr)
-        
-        model = AutoModelForCausalLM.from_pretrained(
-            MODEL_NAME,
-            revision=MODEL_REVISION,
-            quantization_config=quantization_config,
-            device_map={"": device},
-            trust_remote_code=True
-        )
+        # NOTE:
+        # Do not use BitsAndBytes 4-bit quantization with this Moondream class.
+        # It triggers transformers quantizer assumptions (all_tied_weights_keys) that
+        # are incompatible with trust_remote_code model classes.
+        model_kwargs = {
+            "revision": MODEL_REVISION,
+            "trust_remote_code": True,
+            "low_cpu_mem_usage": True,
+        }
+        if device == "cuda":
+            model_kwargs["torch_dtype"] = torch.float16
+        else:
+            model_kwargs["torch_dtype"] = torch.float32
+
+        # Prefer local cache directory if available.
+        if MODEL_PATH.exists():
+            os.environ.setdefault("HF_HOME", str(MODEL_PATH))
+
+        try:
+            model = AutoModelForCausalLM.from_pretrained(
+                MODEL_NAME,
+                **model_kwargs,
+            )
+        except OSError as e:
+            if device == "cuda":
+                print(f"Moondream CUDA load failed ({e}). Retrying on CPU...", file=sys.stderr)
+                model_kwargs["torch_dtype"] = torch.float32
+                model = AutoModelForCausalLM.from_pretrained(
+                    MODEL_NAME,
+                    **model_kwargs,
+                )
+            else:
+                raise
+        if device == "cuda":
+            model = model.to("cuda")
+        model.eval()
         
         with _model_lock:
             _cached_model = model
@@ -118,7 +201,10 @@ def infer_from_image(image_path: str = None, image_data: bytes = None, query: st
         print(f"Running Moondream query: {query}", file=sys.stderr)
         
         enc_image = model.encode_image(image)
-        answer = model.query(enc_image, query)["answer"]
+        if hasattr(model, "answer_question"):
+            answer = model.answer_question(enc_image, query, tokenizer)
+        else:
+            answer = model.query(enc_image, query).get("answer", "")
         
         return answer
         
@@ -129,7 +215,7 @@ def infer_from_image(image_path: str = None, image_data: bytes = None, query: st
         return f"Vision processing failed: {e}"
 
 
-def detect_and_describe():
+def detect_and_describe(query: str = "Describe what you see in detail"):
     """
     Capture image from camera and get detailed description.
     
@@ -170,30 +256,27 @@ def detect_and_describe():
         # Convert to PIL Image
         image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
         
-        # Get detailed description
+        # Get description/answer based on the caller-provided query.
         model, tokenizer = load_model()
         if model is None or tokenizer is None:
             print("Moondream not available, falling back to YOLO", file=sys.stderr)
             return _fallback_yolo(frame)
-        
+
         print("Encoding image with Moondream...", file=sys.stderr)
         enc_image = model.encode_image(image)
-        
-        # Get object detection
-        print("Querying for objects...", file=sys.stderr)
-        objects = model.query(enc_image, "List all objects you see")["answer"]
-        
-        # Get scene description
-        print("Querying for scene description...", file=sys.stderr)
-        scene = model.query(enc_image, "Describe the overall scene")["answer"]
-        
-        # Get text detected
-        print("Querying for text...", file=sys.stderr)
-        text = model.query(enc_image, "Extract any text visible")["answer"]
-        
-        result = f"Objects: {objects}\n\nScene: {scene}\n\nText: {text if text else 'None'}"
-        print(f"Moondream result: {result[:100]}...", file=sys.stderr)
-        return result
+
+        print(f"Querying Moondream with: {query}", file=sys.stderr)
+        if hasattr(model, "answer_question"):
+            answer = model.answer_question(enc_image, query, tokenizer)
+        else:
+            answer = model.query(enc_image, query).get("answer", "")
+
+        answer = (answer or "").strip()
+        if not answer:
+            return "I captured an image but could not extract a confident answer."
+
+        print(f"Moondream result: {answer[:100]}...", file=sys.stderr)
+        return answer
         
     except Exception as e:
         print(f"Vision processing error: {e}", file=sys.stderr)
@@ -254,7 +337,10 @@ def answer_visual_question(question: str, image_path: str = None, image_data: by
             return "No image provided"
         
         enc_image = model.encode_image(image)
-        answer = model.query(enc_image, question)["answer"]
+        if hasattr(model, "answer_question"):
+            answer = model.answer_question(enc_image, question, tokenizer)
+        else:
+            answer = model.query(enc_image, question).get("answer", "")
         
         return answer
         

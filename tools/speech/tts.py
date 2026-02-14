@@ -1,194 +1,227 @@
-"""Text-to-speech using Edge-TTS (primary, cloud-based) with Piper TTS fallback (offline)."""
+"""TTS utilities using Piper (offline)."""
 import asyncio
 import os
-import tempfile
+import shutil
+import subprocess
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor
-import pygame
+from uuid import uuid4
+
 from config.settings import (
-    BASE_DIR,
     TTS_OUTPUT_DIR,
-    TTS_ENGLISH_VOICE,
-    TTS_ARABIC_VOICE,
-    PIPER_ENGLISH_VOICE,
-    PIPER_ARABIC_VOICE,
-    USE_PIPER_TTS,
+    TTS_PIPER_EXE,
+    TTS_PIPER_EN_MODEL,
+    TTS_PIPER_AR_MODEL,
 )
 
-# Ensure output directory exists
+
 TTS_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-# Thread pool for synchronous synthesis
-_executor = ThreadPoolExecutor(max_workers=2)
-
-# Track mixer initialization state
+_pygame = None
 _mixer_initialized = False
-
-# Edge-TTS voice (cloud-based, Microsoft Azure)
-EDGE_VOICE = TTS_ENGLISH_VOICE
-
-
-def _get_edge_voice_for_text(text: str) -> str:
-    """Get the appropriate Edge-TTS voice for the text language."""
-    # Check for Arabic characters
-    is_arabic = any('\u0600' <= ch <= '\u06FF' for ch in text)
-    return TTS_ARABIC_VOICE if is_arabic else TTS_ENGLISH_VOICE
+_warned_missing_ar_model = False
+_tts_lock = asyncio.Lock()
+_failed_models: set[str] = set()
 
 
-async def _synthesize_and_play_edge_tts(text: str) -> None:
-    """Synthesize and play using Edge-TTS (cloud-based)."""
-    import edge_tts
+def _detect_language(text: str) -> str:
+    """
+    Detect dominant language in text for TTS voice selection.
+    Returns 'ar' or 'en' (default).
+    """
+    text = text or ""
+    arabic_count = 0
+    latin_count = 0
+    for ch in text:
+        if "\u0600" <= ch <= "\u06FF":
+            arabic_count += 1
+        elif ("A" <= ch <= "Z") or ("a" <= ch <= "z"):
+            latin_count += 1
 
-    voice = _get_edge_voice_for_text(text)
+    # If Arabic script dominates, use Arabic voice/model.
+    if arabic_count > latin_count and arabic_count > 0:
+        return "ar"
+    return "en"
 
-    # Generate audio to temp file
-    temp_file = TTS_OUTPUT_DIR / f"tts_{os.getpid()}.mp3"
+
+def _resolve_piper_executable() -> str | None:
+    configured = (TTS_PIPER_EXE or "").strip()
+    if configured:
+        p = Path(configured)
+        if p.exists():
+            return str(p)
+
+    auto = shutil.which("piper")
+    if auto:
+        return auto
+    return None
+
+
+def _resolve_model_path(text: str) -> Path | None:
+    global _warned_missing_ar_model
+    ar_path = Path(TTS_PIPER_AR_MODEL) if TTS_PIPER_AR_MODEL else None
+    en_path = Path(TTS_PIPER_EN_MODEL) if TTS_PIPER_EN_MODEL else None
+
+    detected_lang = _detect_language(text)
+    if detected_lang == "ar":
+        if ar_path and ar_path.exists():
+            return ar_path
+        if not _warned_missing_ar_model:
+            print("[TTS] Arabic text detected, but TTS_PIPER_AR_MODEL is missing. Falling back to English model.")
+            _warned_missing_ar_model = True
+    if en_path and en_path.exists():
+        return en_path
+    if ar_path and ar_path.exists():
+        return ar_path
+    return None
+
+
+def _model_candidates(text: str) -> list[Path]:
+    """Return preferred model first, then compatible fallbacks."""
+    candidates: list[Path] = []
+    preferred = _resolve_model_path(text)
+    if preferred is not None:
+        candidates.append(preferred)
+
+    # Known-safe fallback on this repo's current Piper binary.
+    default_fallback = Path(TTS_PIPER_EN_MODEL).parent / "en_US-lessac-medium.onnx"
+    if default_fallback.exists() and default_fallback not in candidates:
+        candidates.append(default_fallback)
+
+    return candidates
+
+
+def _ensure_mixer() -> bool:
+    global _pygame, _mixer_initialized
+    if _mixer_initialized:
+        return True
 
     try:
-        communicate = edge_tts.Communicate(text, voice)
-        await communicate.save(str(temp_file))
+        import pygame  # type: ignore
 
-        # Initialize pygame mixer once and keep it
-        global _mixer_initialized
-        if not _mixer_initialized:
-            pygame.mixer.init(frequency=44100, size=-16, channels=2)
-            _mixer_initialized = True
+        _pygame = pygame
+        _pygame.mixer.init(frequency=22050, size=-16, channels=1)
+        _mixer_initialized = True
+        return True
+    except Exception as e:
+        print(f"[TTS] pygame audio unavailable: {e}")
+        return False
 
-        # Play audio
-        pygame.mixer.music.load(str(temp_file))
-        pygame.mixer.music.play()
 
-        # Wait for playback to finish
-        while pygame.mixer.music.get_busy():
-            pygame.time.Clock().tick(10)
+def _play_file(path: Path) -> None:
+    if not _ensure_mixer():
+        return
 
+    try:
+        _pygame.mixer.music.load(str(path))
+        _pygame.mixer.music.play()
+        while _pygame.mixer.music.get_busy():
+            _pygame.time.Clock().tick(10)
     finally:
-        # Cleanup
         try:
-            pygame.mixer.music.unload()
-        except:
-            pass
-        try:
-            if temp_file.exists():
-                temp_file.unlink()
-        except:
+            _pygame.mixer.music.unload()
+        except Exception:
             pass
 
 
-def _get_piper_voice_for_text(text: str) -> Path:
-    """Get the appropriate Piper voice model for the text language."""
-    # Check for Arabic characters
-    is_arabic = any('\u0600' <= ch <= '\u06FF' for ch in text)
+def _synthesize_piper_to_file(text: str, output_wav: Path) -> bool:
+    piper_exe = _resolve_piper_executable()
+    if not piper_exe:
+        print("[TTS] Piper executable not found. Set TTS_PIPER_EXE or install `piper`.")
+        return False
 
-    voice_path = Path(PIPER_ARABIC_VOICE if is_arabic else PIPER_ENGLISH_VOICE)
+    model_paths = _model_candidates(text)
+    if not model_paths:
+        print("[TTS] Piper model not found. Set TTS_PIPER_EN_MODEL / TTS_PIPER_AR_MODEL to valid .onnx files.")
+        return False
 
-    if not voice_path.exists():
-        # Fall back to English if Arabic not available
-        if is_arabic:
-            voice_path = Path(PIPER_ENGLISH_VOICE)
-        # Fall back to a default if needed
-        if not voice_path.exists():
-            raise FileNotFoundError(
-                f"Piper voice not found at {voice_path}. "
-                "Please download Piper voices using scripts/download_piper_models.py"
+    exe_path = Path(piper_exe)
+    env = dict(os.environ)
+    env["PATH"] = str(exe_path.parent) + os.pathsep + env.get("PATH", "")
+
+    last_error = ""
+    for model_path in model_paths:
+        model_key = str(model_path.resolve())
+        if model_key in _failed_models:
+            continue
+
+        cmd = [
+            piper_exe,
+            "--model",
+            str(model_path),
+            "--output_file",
+            str(output_wav),
+        ]
+        config_path = model_path.with_suffix(model_path.suffix + ".json")
+        if config_path.exists():
+            cmd.extend(["--config", str(config_path)])
+
+        try:
+            proc = subprocess.run(
+                cmd,
+                input=(text.strip() + "\n").encode("utf-8"),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+                cwd=str(exe_path.parent),
+                env=env,
             )
+            if proc.returncode == 0 and output_wav.exists() and output_wav.stat().st_size > 0:
+                _failed_models.discard(model_key)
+                if model_path.name != Path(TTS_PIPER_EN_MODEL).name:
+                    print(f"[TTS] Piper fallback model in use: {model_path.name}")
+                return True
+            err = proc.stderr.decode("utf-8", errors="ignore").strip()
+            last_error = err or f"return code {proc.returncode}"
+            print(f"[TTS] Piper synthesis failed with {model_path.name}: {last_error}")
+            _failed_models.add(model_key)
+        except Exception as e:
+            last_error = str(e)
+            print(f"[TTS] Piper invocation error with {model_path.name}: {last_error}")
+            _failed_models.add(model_key)
 
-    return voice_path
+    print(f"[TTS] All Piper model attempts failed: {last_error}")
+    return False
 
 
 def _synthesize_and_play_piper(text: str) -> None:
-    """Synchronous wrapper for Piper TTS synthesis and playback."""
-    import piper
-
-    voice_path = _get_piper_voice_for_text(text)
-    voice = piper.PiperVoice.load(str(voice_path))
-
-    # Generate audio to temp file
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
-        temp_file = f.name
-
+    temp_file = TTS_OUTPUT_DIR / f"tts_{os.getpid()}_{uuid4().hex}.wav"
     try:
-        # Synthesize speech
-        with voice.synthesize_async(text) as synth:
-            synth.forward(temp_file)
-
-        # Initialize pygame mixer once and keep it
-        global _mixer_initialized
-        if not _mixer_initialized:
-            pygame.mixer.init(frequency=44100, size=-16, channels=2)
-            _mixer_initialized = True
-
-        # Play audio
-        pygame.mixer.music.load(temp_file)
-        pygame.mixer.music.play()
-
-        # Wait for playback to finish
-        while pygame.mixer.music.get_busy():
-            pygame.time.Clock().tick(10)
-
+        ok = _synthesize_piper_to_file(text, temp_file)
+        if not ok:
+            return
+        _play_file(temp_file)
     finally:
-        # Cleanup
         try:
-            pygame.mixer.music.unload()
-        except:
-            pass
-        try:
-            if os.path.exists(temp_file):
-                os.remove(temp_file)
-        except:
+            temp_file.unlink(missing_ok=True)
+        except Exception:
             pass
 
 
 async def text_to_speech(text: str) -> None:
-    """Convert text to speech and play it asynchronously."""
+    """Convert text to speech and play it asynchronously via Piper."""
     if not text or not text.strip():
-        print("TTS received empty text. Skipping.")
         return
-
-    print(f"🔊 TTS: {text[:50]}..." if len(text) > 50 else f"🔊 TTS: {text}")
-
-    if USE_PIPER_TTS:
-        # Use offline Piper TTS
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(_executor, _synthesize_and_play_piper, text)
-    else:
-        # Use cloud-based Edge-TTS (primary)
-        try:
-            await _synthesize_and_play_edge_tts(text)
-        except Exception as e:
-            print(f"Edge-TTS failed: {e}, falling back to Piper TTS...")
-            try:
-                loop = asyncio.get_event_loop()
-                await loop.run_in_executor(_executor, _synthesize_and_play_piper, text)
-            except Exception as piper_error:
-                print(f"Piper TTS also failed: {piper_error}")
-                raise
+    try:
+        async with _tts_lock:
+            await asyncio.to_thread(_synthesize_and_play_piper, text)
+    except Exception as e:
+        print(f"[TTS] text_to_speech failed: {e}")
 
 
 def text_to_speech_sync(text: str) -> None:
-    """Synchronous version of text_to_speech for non-async callers."""
+    """Synchronous wrapper."""
     if not text or not text.strip():
-        print("TTS received empty text. Skipping.")
         return
-
-    if USE_PIPER_TTS:
-        _synthesize_and_play_piper(text)
-    else:
-        # Use Edge-TTS
-        try:
-            asyncio.run(_synthesize_and_play_edge_tts(text))
-        except Exception as e:
-            print(f"Edge-TTS failed: {e}, falling back to Piper TTS...")
-            _synthesize_and_play_piper(text)
+    asyncio.run(text_to_speech(text))
 
 
 def cleanup_tts() -> None:
-    """Cleanup TTS resources."""
+    """Release TTS resources."""
     global _mixer_initialized
     try:
-        pygame.mixer.music.stop()
-        pygame.mixer.quit()
-        _mixer_initialized = False
-    except:
+        if _pygame and _mixer_initialized:
+            _pygame.mixer.music.stop()
+            _pygame.mixer.quit()
+    except Exception:
         pass
-    _executor.shutdown(wait=False)
+    _mixer_initialized = False

@@ -31,9 +31,12 @@ MAX_LOOPS = int(os.getenv("MAX_LOOPS", "8"))
 MAX_RETRIES = int(os.getenv("MAX_RETRIES", "2"))
 
 # ================= API CONFIGURATION =================
-API_HOST = os.getenv("API_HOST", "localhost")
+# Unified server runs on port 8000 (gateway + web dashboard + API routes)
+API_HOST = os.getenv("API_HOST", "0.0.0.0")
 API_PORT = int(os.getenv("API_PORT", "8000"))
-API_URL = f"http://{API_HOST}:{API_PORT}"
+# API_URL is used by internal HTTP clients (Flask/web bridge), so it must be routable.
+# Do not default to 0.0.0.0 for outbound requests.
+API_URL = os.getenv("API_URL", f"http://127.0.0.1:{API_PORT}")
 
 # ================= MCP SERVER =================
 MCP_SERVER_PATH = BASE_DIR / "server" / "server.py"
@@ -66,18 +69,21 @@ WAKE_WORD_SENSITIVITY = 0.6  # Slightly higher sensitivity for better accuracy
 # ================= TTS =================
 TTS_OUTPUT_DIR = BASE_DIR / "tools" / "speech" / "output"
 
-# Edge-TTS (cloud-based, requires internet)
-TTS_ENGLISH_VOICE = "en-US-AriaNeural"
-TTS_ARABIC_VOICE = "ar-EG-SalmaNeural"
-
-# Piper TTS (offline, open source)
-PIPER_MODEL_DIR = BASE_DIR / "models" / "piper"
-PIPER_ENGLISH_VOICE = str(PIPER_MODEL_DIR / "en_US-lessac-medium" / "en_US-lessac-medium.onnx")
-PIPER_ARABIC_VOICE = str(PIPER_MODEL_DIR / "ar_JO-karlovery" / "ar_JO-karlovery.onnx")
-
-# Use Piper TTS by default (set to False to use Edge-TTS)
-# Edge-TTS is recommended as primary (cloud-based, always works, no model download needed)
-USE_PIPER_TTS = False
+# Piper TTS (local, offline)
+TTS_PIPER_DIR = BASE_DIR / "models" / "piper"
+TTS_PIPER_EXE = os.getenv(
+    "TTS_PIPER_EXE",
+    str(TTS_PIPER_DIR / ("piper.exe" if os.name == "nt" else "piper")),
+)
+TTS_PIPER_EN_MODEL = os.getenv(
+    "TTS_PIPER_EN_MODEL",
+    str(TTS_PIPER_DIR / "en_US-libritts-high.onnx"),
+)
+# Optional Arabic Piper model path; falls back to English model if not set/found.
+TTS_PIPER_AR_MODEL = os.getenv(
+    "TTS_PIPER_AR_MODEL",
+    "",
+)
 
 # ================= LOGGING =================
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

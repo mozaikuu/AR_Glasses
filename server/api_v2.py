@@ -91,6 +91,32 @@ class NavigationRequest(BaseModel):
     accessibility: bool = Field(default=False, description="Accessible route needed")
 
 
+class QRVisibleRequest(BaseModel):
+    """QR marker detected and currently visible in camera."""
+    qr_data: str = Field(..., description="Raw QR payload (JSON string)")
+    tracking_id: Optional[str] = Field(default=None, description="Stable tracker ID from Unity")
+    source: str = Field(default="hololens2", description="Client source identifier")
+    timestamp: Optional[float] = Field(default=None, description="Client timestamp (epoch seconds)")
+
+
+class QRHiddenRequest(BaseModel):
+    """QR marker is no longer visible."""
+    tracking_id: str = Field(..., description="Stable tracker ID from Unity")
+    qr_id: Optional[str] = Field(default=None, description="Optional QR location ID")
+    source: str = Field(default="hololens2", description="Client source identifier")
+    timestamp: Optional[float] = Field(default=None, description="Client timestamp (epoch seconds)")
+
+
+class QRTelemetryRequest(BaseModel):
+    """Client telemetry while QR modal is shown."""
+    tracking_id: str = Field(..., description="Stable tracker ID from Unity")
+    qr_id: Optional[str] = Field(default=None, description="QR location ID")
+    event: str = Field(default="displayed", description="Telemetry event name")
+    payload: dict = Field(default_factory=dict, description="Additional event payload")
+    source: str = Field(default="hololens2", description="Client source identifier")
+    timestamp: Optional[float] = Field(default=None, description="Client timestamp (epoch seconds)")
+
+
 class ResponseOutput(BaseModel):
     """Response to send back to glasses."""
     text: str = Field(..., description="Text response for TTS")
@@ -112,6 +138,13 @@ _conversation_memory: list = []
 
 # Active navigation sessions
 _navigation_sessions: dict = {}
+
+# Active QR markers currently visible by tracking_id
+_active_qr_markers: dict = {}
+
+# Recent QR telemetry events from clients
+_qr_telemetry_log: list = []
+_MAX_QR_TELEMETRY = 200
 
 
 # ==================== LIFESPAN ====================
@@ -553,6 +586,111 @@ async def get_locations():
         return {"locations": [], "error": str(e)}
 
 
+# -------------------- QR PRESENCE ENDPOINTS --------------------
+
+@app.post("/v2/qr/visible")
+async def qr_visible(request: QRVisibleRequest):
+    """
+    Register a QR marker as visible and return modal-ready display data.
+
+    Unity should call this when QR is first detected and on updates while visible.
+    """
+    from tools.navigation.qr_location import update_location_from_qr
+
+    location = update_location_from_qr(request.qr_data)
+    if not location:
+        try:
+            location = json.loads(request.qr_data)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="Invalid QR payload")
+
+    tracking_id = request.tracking_id or location.get("id") or f"qr_{int(time.time() * 1000)}"
+    event_ts = request.timestamp or time.time()
+
+    marker = {
+        "tracking_id": tracking_id,
+        "source": request.source,
+        "visible": True,
+        "seen_at": event_ts,
+        "location": location,
+    }
+    _active_qr_markers[tracking_id] = marker
+    _update_context({"last_qr": marker})
+
+    display = {
+        "id": location.get("id"),
+        "name": location.get("name", "Unknown location"),
+        "building": location.get("building", ""),
+        "floor": location.get("floor"),
+        "description": location.get("description", ""),
+        "additional_info": location.get("additional_info", ""),
+    }
+
+    return {
+        "success": True,
+        "tracking_id": tracking_id,
+        "visible": True,
+        "display": display,
+        "active_count": len(_active_qr_markers),
+    }
+
+
+@app.post("/v2/qr/hidden")
+async def qr_hidden(request: QRHiddenRequest):
+    """Register a QR marker as no longer visible."""
+    removed = _active_qr_markers.pop(request.tracking_id, None)
+
+    # Fallback: remove by qr_id if tracking_id was not found
+    if removed is None and request.qr_id:
+        for tid, marker in list(_active_qr_markers.items()):
+            location = marker.get("location", {})
+            if location.get("id") == request.qr_id:
+                removed = _active_qr_markers.pop(tid)
+                break
+
+    return {
+        "success": True,  # Idempotent for client simplicity
+        "tracking_id": request.tracking_id,
+        "visible": False,
+        "was_active": removed is not None,
+        "active_count": len(_active_qr_markers),
+    }
+
+
+@app.get("/v2/qr/active")
+async def qr_active():
+    """List currently visible QR markers."""
+    return {
+        "active_count": len(_active_qr_markers),
+        "markers": list(_active_qr_markers.values()),
+    }
+
+
+@app.post("/v2/qr/telemetry")
+async def qr_telemetry(request: QRTelemetryRequest):
+    """Receive QR-modal telemetry from Unity clients."""
+    entry = {
+        "tracking_id": request.tracking_id,
+        "qr_id": request.qr_id,
+        "event": request.event,
+        "payload": request.payload,
+        "source": request.source,
+        "timestamp": request.timestamp or time.time(),
+    }
+
+    _qr_telemetry_log.append(entry)
+    if len(_qr_telemetry_log) > _MAX_QR_TELEMETRY:
+        del _qr_telemetry_log[:-_MAX_QR_TELEMETRY]
+
+    _update_context({"last_qr_event": {"event": request.event, "tracking_id": request.tracking_id}})
+
+    return {
+        "success": True,
+        "logged": True,
+        "telemetry_count": len(_qr_telemetry_log),
+    }
+
+
 # -------------------- CONTEXT AWARENESS --------------------
 
 @app.post("/v2/context/update")
@@ -649,8 +787,14 @@ async def synthesize_speech(text: str, language: str = "en"):
     
     Returns immediately while TTS plays in background.
     """
-    # Start TTS in background (non-blocking)
-    asyncio.create_task(text_to_speech(text))
+    # Start TTS in background (non-blocking) with safe exception handling.
+    task = asyncio.create_task(text_to_speech(text))
+    def _on_tts_done(t):
+        try:
+            _ = t.exception()
+        except Exception:
+            pass
+    task.add_done_callback(_on_tts_done)
     
     return {
         "text": text,

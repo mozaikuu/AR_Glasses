@@ -8,3 +8,14 @@ smart_home_web/node_modules
 smart_home_app/node_modules
 Temp/RealTimeObjectDetection
 env.py
+
+
+AR_Cerebro/[Ll]ibrary/
+AR_Cerebro/[Tt]emp/
+AR_Cerebro/[Oo]bj/
+AR_Cerebro/[Bb]uild/
+AR_Cerebro/[Logs]/
+AR_Cerebro/[MemoryCaptures]/
+AR_Cerebro/*.7z
+AR_Cerebro/*.zip
+

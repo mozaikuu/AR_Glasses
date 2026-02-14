@@ -85,6 +85,29 @@ header p {
     justify-content: center;
 }
 
+.mic-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.mic-controls label {
+    font-size: 0.95rem;
+    color: #444;
+}
+
+.mic-controls select {
+    min-width: 320px;
+    max-width: 520px;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #ced4da;
+    border-radius: var(--border-radius);
+    background-color: #fff;
+}
+
 .btn {
     padding: 0.75rem 1.5rem;
     border: none;

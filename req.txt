@@ -110,7 +110,6 @@ dnspython==2.7.0
 docstring-to-markdown @ file:///C:/Users/dev-admin/perseverance-python-buildout/croot/docstring-to-markdown_1699484265167/work
 docstring_parser==0.17.0
 docutils @ file:///C:/Users/dev-admin/perseverance-python-buildout/croot/docutils_1699474820579/work
-edge-tts==7.2.7
 email-validator==2.3.0
 et-xmlfile @ file:///C:/Users/dev-admin/perseverance-python-buildout/croot/et_xmlfile_1699500373144/work
 exceptiongroup==1.3.1

@@ -11,13 +11,10 @@ main = Blueprint('main', __name__)
 
 @main.route('/')
 def index():
-    # Ensure service is initialized
-    wakeword_service.initialize()
     return render_template('index.html')
 
 @main.route('/config')
 def get_config():
-    """Return frontend configuration"""
     return jsonify({
         'wake_words': WAKE_WORDS
     })
@@ -25,11 +22,6 @@ def get_config():
 @main.route('/status')
 def status():
     status_data = wakeword_service.get_status()
-    # Clear one-time flags is handled by the service or we do it here?
-    # Service.get_status doesn't clear flags.
-    # We should probably clear flags after the client has consumed them.
-    # But for polling, we might miss them if we clear immediately.
-    # Let's add a 'consume' query param to clear flags.
     if request.args.get('consume') == 'true':
         wakeword_service.clear_flags()
     return jsonify(status_data)
@@ -53,13 +45,8 @@ def process_text():
     if not text:
         return jsonify({'error': 'No text provided'}), 400
 
-    # Pause wakeword if running to avoid self-triggering from TTS (if any)
-    # or just general resource safety
     was_running = wakeword_service.wakeword_system and wakeword_service.wakeword_system.is_running
     if was_running:
-        # We don't necessarily need to pause for text processing, 
-        # but if there's TTS output it might trigger the wakeword.
-        # For now, let's leave it running unless we need audio output.
         pass
 
     try:
@@ -73,6 +60,7 @@ def process_text():
         
         if response.status_code == 200:
             result = response.json()
+            result["response"] = result.get("response") or result.get("answer") or ""
             return jsonify(result)
         else:
             return jsonify({'error': f"AI Error: {response.status_code} - {response.text}"}), 500
@@ -80,14 +68,12 @@ def process_text():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        # Always attempt to return to idle state after processing
-        # This ensures the wakeword system doesn't get stuck in PROCESSING state
         if wakeword_service.wakeword_system:
              wakeword_service.wakeword_system.return_to_idle()
 
 @main.route('/record', methods=['POST'])
 def record_audio():
-    # Pause wakeword system to release microphone
+    """Record audio and process with AI."""
     was_running = False
     if wakeword_service.wakeword_system and wakeword_service.wakeword_system.is_running:
         wakeword_service.pause()
@@ -97,7 +83,6 @@ def record_audio():
     try:
         import pyaudio
         
-        # Audio recording parameters
         FORMAT = pyaudio.paInt16
         CHANNELS = 1
         RATE = 16000
@@ -106,7 +91,6 @@ def record_audio():
         
         p = pyaudio.PyAudio()
         
-        # Find device
         device_index = None
         for i in range(p.get_device_count()):
             device_info = p.get_device_info_by_index(i)
@@ -135,16 +119,13 @@ def record_audio():
         stream.close()
         p.terminate()
         
-        # Process audio
         audio_data = b''.join(frames)
         audio_array = np.frombuffer(audio_data, dtype=np.int16)
         audio_array = audio_array.astype(np.float32) / 32767.0
         
-        # Normalize
         if np.max(np.abs(audio_array)) > 1.0:
             audio_array = audio_array / np.max(np.abs(audio_array))
             
-        # Convert to base64
         audio_bytes = audio_array.tobytes()
         b64_audio = base64.b64encode(audio_bytes).decode("utf-8")
         
@@ -157,7 +138,9 @@ def record_audio():
         response = requests.post(f"{API_URL}/process", json=request_data, timeout=300)
         
         if response.status_code == 200:
-            return jsonify(response.json())
+            result = response.json()
+            result["response"] = result.get("response") or result.get("answer") or ""
+            return jsonify(result)
         else:
             return jsonify({'error': f"Processing failed: {response.status_code}"}), 500
 

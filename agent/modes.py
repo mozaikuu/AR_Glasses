@@ -1,6 +1,5 @@
 """Agent mode logic for quick and thinking modes."""
 from typing import Dict, List, Set, Tuple
-import json
 
 
 def should_continue_quick_mode(
@@ -51,19 +50,15 @@ def should_continue_thinking_mode(
     if loop_count >= max_loops:
         return False
     
-    # Continue if we have a tool to call
+    # Continue if we have a tool to call.
+    # Duplicate-call guard is handled by agent_loop with bounded retries.
     if decision.get("tool"):
-        # Check if we've already used this tool with these args
-        sig = (decision["tool"], json.dumps(decision.get("args", {}), sort_keys=True))
-        if sig in used_tools:
-            # Already used this tool, stop to avoid infinite loop
-            return False
         return True
     
-    # Continue if we have reasoning but no answer yet
-    if decision.get("reasoning") and not decision.get("answer"):
-        return True
-    
+    # If there is no tool and no final answer, stop to avoid infinite self-talk loops.
+    if not decision.get("tool") and not decision.get("answer"):
+        return False
+
     return False
 
 
@@ -76,4 +71,3 @@ def get_mode_continuation_check(mode: str):
     else:
         # Default to thinking mode
         return should_continue_thinking_mode
-

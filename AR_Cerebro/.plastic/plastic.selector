@@ -1,0 +1,4 @@
+repository "AR_Cerebro 2026-02-10_14-00-43/AR_Cerebro@11270373192095@cloud"
+  path "/"
+    br "/main"
+    co "/main"
