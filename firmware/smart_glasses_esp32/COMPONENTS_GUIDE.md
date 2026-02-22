@@ -1,227 +1,84 @@
 # Smart Glasses Components Guide
 
-## Compact Hobby/Mechatronics Parts for Wearable Project
+This guide is aligned to your actual hardware and removes the vibration motor.
 
----
+## Components You Already Have
 
-## 1. Microphone - INMP441 (I2S Digital)
+1. Touch module
+2. TP4056 1S BMS/charger module
+3. SH1106 OLED display
+4. HW-104 audio amplifier
+5. Laptop speakers (Compaq Mini)
+6. Li-po battery
+7. Raw MEMS microphone element
+8. Spare 5V to 3.3V regulator
+9. Extra touch pad
 
-**Why:** Compact, low power, I2S digital output (no ADC needed)
+## Components You Still Need
 
-| Pin  | ESP32 Pin | Notes        |
-| ---- | --------- | ------------ |
-| VCC  | 3.3V      |              |
-| GND  | GND       |              |
-| SCL  | GPIO 14   | I2S Clock    |
-| WS   | GPIO 15   | Word Select  |
-| DOUT | GPIO 4    | Data Out     |
-| L/R  | GND       | Left channel |
+1. ESP32 board (required)
+2. Power switch (required)
+3. Microphone front-end (required if you want voice input from glasses)
+4. Depending on ESP32 board input, possibly a 3.7V to 5V boost converter
 
-**Price:** ~$1-2 (AliExpress)
+## Microphone Requirement (Critical)
 
-**Code:**
+A raw MEMS capsule is not plug-and-play with ESP32.
 
-```cpp
-#include "driver/i2s.h"
+You need one of these:
 
-void setup() {
-  i2s_config_t config = {
-    .mode = I2S_MODE_MASTER | I2S_MODE_RX,
-    .sample_rate = 16000,
-    .bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT,
-    .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
-    .communication_format = I2S_COMM_FORMAT_I2S,
-    .dma_buf_count = 2,
-    .dma_buf_len = 256,
-  };
+1. Recommended: I2S MEMS microphone breakout (INMP441 or ICS-43434)
+2. Alternative: analog mic preamp module (MAX9814 or MAX4466) feeding ESP32 ADC
 
-  i2s_pin_config_t pins = {
-    .bck_io_num = 14,
-    .ws_io_num = 15,
-    .data_out_num = -1,
-    .data_in_num = 4,
-  };
+Without one of those, reliable voice capture will not work.
 
-  i2s_driver_install(0, &config, 0, NULL);
-  i2s_set_pin(0, &pins);
-}
-```
+## Power Architecture
 
----
+1. Li-po -> TP4056 (B+ / B-) for charge/protection
+2. System power from TP4056 OUT+ / OUT-
+3. Then choose one:
+   - If your ESP32 board takes 5V on VIN/USB: add boost converter (3.7V to 5V)
+   - If your board accepts regulated 3.3V input: use stable 3.3V regulator path
 
-## 2. IMU - MPU6050 (6-axis)
+## SH1106 OLED (I2C)
 
-**Why:** Small, cheap, accelerometer + gyroscope in one
+| SH1106 Pin | ESP32 Pin |
+| ---------- | --------- |
+| VCC        | 3.3V      |
+| GND        | GND       |
+| SCL        | GPIO 22   |
+| SDA        | GPIO 21   |
 
-| Pin | ESP32 Pin | Notes        |
-| --- | --------- | ------------ |
-| VCC | 3.3V      |              |
-| GND | GND       |              |
-| SCL | GPIO 32   |              |
-| SDA | GPIO 33   |              |
-| AD0 | GND       | Address 0x68 |
+## Touch Inputs
 
-**Price:** ~$0.50-1 (AliExpress)
+| Touch Module Pin | ESP32 Pin |
+| ---------------- | --------- |
+| VCC              | 3.3V      |
+| GND              | GND       |
+| OUT              | GPIO 5    |
 
-**Library:** "MPU6050" by Electronic Cats
+Second touch pad (optional): `GPIO18`.
 
-**Code:**
+## Audio Output Path
 
-```cpp
-#include <Wire.h>
-#include <MPU6050.h>
+1. ESP32 audio output -> HW-104 amplifier input
+2. HW-104 output -> laptop speakers
 
-MPU6050 mpu;
+Notes:
 
-void setup() {
-  Wire.begin(33, 32);
-  mpu.begin(MPU6050_ADDR);
-  mpu.setGyroRange(MPU6050_RANGE_500DPS);
-  mpu.setAccelRange(MPU6050_RANGE_2G);
-}
+1. Classic ESP32 can use built-in DAC (`GPIO25`/`GPIO26`) for cleaner analog output
+2. ESP32-C3 has no DAC; for good quality use an external I2S DAC module
 
-void loop() {
-  Vector accel = mpu.readAccel();
-  Vector gyro = mpu.readGyro();
-  // accel.X, accel.Y, accel.Z
-}
-```
+## Final BOM to Finish the Project
 
----
-
-## 3. Vibration Motor - Mini Flat Motor
-
-**Why:** Small, silent, good for haptic feedback
-
-| Motor Pin | ESP32 Pin | Notes                 |
-| --------- | --------- | --------------------- |
-| Positive  | GPIO 13   | Via MOSFET/Transistor |
-| Negative  | GND       |                       |
-
-**Recommended Parts:**
-
--  **Motor:** 0830 flat vibration motor (8x3mm)
--  **Driver:** AO3400 MOSFET or 2N2222 transistor
--  **Diode:** 1N4007 (flyback protection)
-
-**Circuit:**
-
-```
-GPIO 13 ──[100Ω]──→ MOSFET Gate
-                    │
-MOSFET Drain ─────→ Motor (+)
-                    │
-MOSFET Source ────→ GND
-                    │
-Motor (-) ─────────→ GND
-                    │
-1N4007 ───[Anode→GND, Cathode→Motor(+)]
-```
-
-**Code:**
-
-```cpp
-#define MOTOR_PIN 13
-
-void setup() { pinMode(MOTOR_PIN, OUTPUT); }
-
-void vibrate(int ms) {
-  digitalWrite(MOTOR_PIN, HIGH);
-  delay(ms);
-  digitalWrite(MOTOR_PIN, LOW);
-}
-```
-
----
-
-## 4. Power - 3.7V LiPo Battery
-
-**Why:** Small, rechargeable, powers ESP32 directly
-
-| Battery  | ESP32         |
-| -------- | ------------- |
-| Positive | VIN or 5V pin |
-| Negative | GND           |
-
-**Recommended Batteries:**
-
--  **302030:** 150mAh, 30x20x3mm
--  **401020:** 200mAh, 40x10x2mm
--  **501010:** 80mAh, 50x10x1mm
-
-**Charging:** TP4056 USB charger module
-
----
-
-## 5. Display - SSD1306 OLED (Optional)
-
-**Why:** Small, low power, shows status/info
-
-| Pin | ESP32 Pin | Notes |
-| --- | --------- | ----- |
-| VCC | 3.3V      |       |
-| GND | GND       |       |
-| SCL | GPIO 22   |       |
-| SDA | GPIO 21   |       |
-
-**Price:** ~$1-2 (128x64 OLED)
-
-**Library:** "ESP8266 OLED" by Daniel Eichhorn
-
----
-
-## 6. ESP32 Board - ESP32-C3 or ESP32-S3
-
-**Why:** Smaller than Dev Kit, lower power
-
-**Recommended:**
-
--  **ESP32-C3 SuperMini:** 23x18mm
--  **ESP32-S3 Tiny:** 25x20mm
--  **Bare ESP32 chip:** With custom PCB (most compact)
-
----
-
-## Complete Bill of Materials
-
-| Component                 | Size    | Price | Link       |
-| ------------------------- | ------- | ----- | ---------- |
-| ESP32-C3 SuperMini        | 23x18mm | $3-4  | AliExpress |
-| INMP441 Mic               | 4x4mm   | $1-2  | AliExpress |
-| MPU6050                   | 15x20mm | $0.50 | AliExpress |
-| Mini Vibration Motor 0830 | 8x3mm   | $0.50 | AliExpress |
-| SSD1306 OLED              | 27x27mm | $1-2  | AliExpress |
-| LiPo 302030               | 150mAh  | $2-3  | AliExpress |
-| TP4056 Charger            | 15x8mm  | $0.50 | AliExpress |
-| MOSFET AO3400             | SOT-23  | $0.10 | AliExpress |
-
-**Total Cost:** ~$10-15
-
----
-
-## Minimal Wiring (No Display)
-
-```
-┌─────────────────────────┐
-│    ESP32-C3 SuperMini   │
-│                         │
-│  GPIO 21 ───→ SDA MPU   │
-│  GPIO 22 ───→ SCL MPU   │
-│  GPIO  4 ───→ DOUT INMP │
-│  GPIO 15 ───→ WS   INMP │
-│  GPIO 14 ───→ SCK  INMP │
-│  GPIO 13 ───→ Motor     │
-│  3.3V  ───→ VCC MPU/INMP│
-│  GND   ───→ GND All     │
-└─────────────────────────┘
-```
-
----
-
-## Assembly Tips
-
-1. **Use flex cable** for microphone (place near ear)
-2. **Temple mount** for ESP32 and battery
-3. **Bridge nose pad** for MPU6050 (detects head movement)
-4. **Arm tip** for vibration motor
-5. **Keep wires short** to reduce interference
+1. ESP32 board
+2. TP4056 module
+3. Li-po battery
+4. SH1106 OLED
+5. Touch module(s)
+6. HW-104 amplifier + speakers
+7. Microphone front-end option:
+   - I2S MEMS breakout (recommended), or
+   - analog preamp module
+8. Power switch
+9. Optional boost converter (if your ESP32 board requires 5V input)

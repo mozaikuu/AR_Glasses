@@ -1,160 +1,111 @@
 # ESP32 Smart Glasses Hardware Wiring
 
-## Compact Hobby/Mechatronics Components
+This wiring removes the vibration motor and matches your listed hardware.
 
----
+## Wiring Diagram (Recommended Baseline)
 
-## Pinout Diagram (Compact Build)
+```text
+Li-po Battery
+   -> TP4056 B+ / B-
+TP4056 OUT+ / OUT-
+   -> Power switch
+   -> ESP32 power input path (3.3V regulated or 5V boosted, board-dependent)
 
-```
-┌────────────────────────────────────────────────────────┐
-│              ESP32-C3 SuperMini / DevKit                │
-│                                                        │
-│  GPIO 21 ───→ SDA (MPU6050 / OLED)                     │
-│  GPIO 22 ───→ SCL (MPU6050 / OLED)                      │
-│                                                        │
-│  GPIO  4 ───→ I2S DOUT (INMP441 Mic)                   │
-│  GPIO 15 ───→ I2S WS   (INMP441 Mic)                   │
-│  GPIO 14 ───→ I2S SCK  (INMP441 Mic)                   │
-│                                                        │
-│  GPIO 13 ───→ MOSFET Gate → Vibration Motor            │
-│  GPIO  5 ───→ (Optional: Button)                        │
-│                                                        │
-│  3.3V ───→ VCC (MPU6050, INMP441, OLED)               │
-│  GND  ───→ GND (All components)                        │
-└────────────────────────────────────────────────────────┘
-```
+ESP32 I2C bus:
+  GPIO21 -> SH1106 SDA
+  GPIO22 -> SH1106 SCL
+  3.3V   -> SH1106 VCC
+  GND    -> SH1106 GND
 
----
+ESP32 Touch:
+  GPIO5  <- Touch1 OUT
+  GPIO18 <- Touch2 OUT (optional)
+  3.3V   -> Touch VCC
+  GND    -> Touch GND
 
-## Component Connections
+ESP32 Audio Out -> HW-104 IN
+HW-104 OUT -> Laptop speaker(s)
 
-### 1. MPU6050 IMU (6-axis Accelerometer + Gyroscope)
-
-| MPU6050 Pin | ESP32 Pin | Notes          |
-| ----------- | --------- | -------------- |
-| VCC         | 3.3V      |                |
-| GND         | GND       |                |
-| SCL         | GPIO 22   |                |
-| SDA         | GPIO 21   |                |
-| AD0         | GND       | Address = 0x68 |
-
-### 2. INMP441 I2S Microphone
-
-| INMP441 Pin | ESP32 Pin | Notes        |
-| ----------- | --------- | ------------ |
-| VCC         | 3.3V      |              |
-| GND         | GND       |              |
-| SCK         | GPIO 14   | Bit Clock    |
-| WS          | GPIO 15   | Word Select  |
-| DOUT        | GPIO 4    | Data Output  |
-| L/R         | GND       | Left Channel |
-
-### 3. Mini Vibration Motor (0830 Flat Motor)
-
-```
-GPIO 13 ──[100Ω]──→ AO3400 MOSFET Gate
-                     │
-MOSFET Drain ──────→ Motor (+)
-                     │
-MOSFET Source ─────→ GND
-                     │
-1N4007 Diode ──────→ Across motor terminals (cathode to +)
+ESP32 Mic Input (if using I2S mic module):
+  GPIO14 <- I2S BCK/SCK
+  GPIO15 <- I2S WS/LRCLK
+  GPIO4  <- I2S DOUT
+  3.3V   -> Mic VCC
+  GND    -> Mic GND
 ```
 
-### 4. Optional: SSD1306 OLED Display
+## Connection Tables
 
-| OLED Pin | ESP32 Pin | Notes              |
-| -------- | --------- | ------------------ |
-| VCC      | 3.3V      |                    |
-| GND      | GND       |                    |
-| SCL      | GPIO 22   | Share with MPU6050 |
-| SDA      | GPIO 21   | Share with MPU6050 |
+### 1. SH1106 OLED
 
-### 5. Optional: Push Button
+| OLED Pin | ESP32 Pin |
+| -------- | --------- |
+| VCC      | 3.3V      |
+| GND      | GND       |
+| SCL      | GPIO22    |
+| SDA      | GPIO21    |
 
-| Button Pin | ESP32 Pin | Notes            |
-| ---------- | --------- | ---------------- |
-| One side   | GPIO 5    |                  |
-| Other side | GND       | Use INPUT_PULLUP |
+### 2. Touch Module(s)
 
----
+| Touch Pin | ESP32 Pin |
+| --------- | --------- |
+| VCC       | 3.3V      |
+| GND       | GND       |
+| OUT       | GPIO5     |
 
-## Power Supply
+Optional second touch OUT: `GPIO18`.
 
-**Recommended Battery:** 302030 LiPo (150mAh, 30x20x3mm)
+### 3. Microphone
 
-```
-Battery (+) ──→ ESP32 VIN or 5V pin
-Battery (-) ──→ ESP32 GND
-              │
-TP4056 Charger Module (for USB charging)
-Battery (+) ──→ B+
-Battery (-) ──→ B-
-USB 5V ──────→ IN+
-GND ─────────→ IN-
-```
+#### Option A (recommended): I2S mic breakout
 
----
+| Mic Pin | ESP32 Pin |
+| ------- | --------- |
+| VCC     | 3.3V      |
+| GND     | GND       |
+| BCK/SCK | GPIO14    |
+| WS      | GPIO15    |
+| DOUT    | GPIO4     |
 
-## Complete Wiring Table
+#### Option B: raw MEMS capsule
 
-| Component       | VCC  | GND | Signal 1             | Signal 2      | Signal 3     |
-| --------------- | ---- | --- | -------------------- | ------------- | ------------ |
-| MPU6050         | 3.3V | GND | GPIO 21 (SDA)        | GPIO 22 (SCL) | -            |
-| INMP441         | 3.3V | GND | GPIO 4 (DOUT)        | GPIO 14 (SCK) | GPIO 15 (WS) |
-| Vibration Motor | -    | GND | GPIO 13 (via MOSFET) | -             | -            |
-| OLED (optional) | 3.3V | GND | GPIO 21 (SDA)        | GPIO 22 (SCL) | -            |
-| Button          | -    | GND | GPIO 5               | -             | -            |
+Raw MEMS is not directly compatible. Add a proper analog preamp/bias stage first.
 
----
+### 4. Audio Amplifier (HW-104)
 
-## Compact Assembly Tips
+| HW-104 Pin | Connection |
+| ---------- | ---------- |
+| VCC        | Power rail per module rating |
+| GND        | Common GND |
+| IN         | ESP32 audio output |
+| SPK+/-     | Speaker terminals |
 
-1. **MPU6050** → Bridge/nose pad area (detects head movement)
-2. **INMP441 Mic** → Temple tip (near ear)
-3. **ESP32** → Temple arm (middle section)
-4. **Battery** → Other temple arm
-5. **Vibration Motor** → Ear piece area
-6. **OLED** → Inside lens area (if display desired)
+## Power Checklist
 
----
+1. Confirm your ESP32 board power requirement before wiring battery output.
+2. Keep all grounds common (ESP32, OLED, touch, mic, amp).
+3. Add a physical switch on system output line.
+4. Test OLED and touch first, then add audio, then mic.
 
-## Minimal Code Test
+## Backend Connection Architecture
 
-```cpp
-#include <Wire.h>
-#include <MPU6050.h>
+Recommended chain:
 
-#define MOTOR_PIN 13
-#define MIC_DATA 4
-#define MIC_WS 15
-#define MIC_SCK 14
+1. ESP32 <-> Phone over BLE
+2. Phone -> Backend HTTP API (`server/gateway.py` / `server/api_v2.py`)
+3. Phone -> ESP32 over BLE (commands/text to display)
 
-MPU6050 mpu;
+Why this is best:
 
-void setup() {
-  Serial.begin(115200);
+1. BLE is good for local control packets
+2. Phone handles internet + larger payloads + authentication
+3. Easier debugging than direct ESP32 cloud pipeline
 
-  // IMU
-  Wire.begin(21, 22);
-  mpu.begin(MPU6050_ADDR);
+## API Endpoints to Use in Bridge App
 
-  // Motor
-  pinMode(MOTOR_PIN, OUTPUT);
-  digitalWrite(MOTOR_PIN, LOW);
+1. `POST /v2/voice/transcribe`
+2. `POST /v2/voice/process`
+3. `POST /v2/gesture/recognize`
+4. `POST /v2/multimodal/process`
 
-  Serial.println("Ready!");
-}
-
-void loop() {
-  // Read IMU
-  Vector accel = mpu.readAccel();
-  Serial.print("Accel: ");
-  Serial.print(accel.X); Serial.print(", ");
-  Serial.print(accel.Y); Serial.print(", ");
-  Serial.println(accel.Z);
-
-  delay(100);
-}
-```
+Server is started from `start_gateway.py`.
