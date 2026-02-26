@@ -9,43 +9,6 @@
  * - SH1106 OLED status display (optional)
  * - Optional I2S mic module wiring test hook
  */
-
-#include <Arduino.h>
-#include <Wire.h>
-#include <BLEDevice.h>
-#include <BLEServer.h>
-#include <BLECharacteristic.h>
-#include <BLE2902.h>
-#include "driver/i2s.h"
-
-#define USE_SH1106 0
-#define USE_I2S_MIC_MODULE 0
-
-#if USE_SH1106
-#include <U8g2lib.h>
-U8G2_SH1106_128X64_NONAME_F_HW_I2C gDisplay(U8G2_R0, U8X8_PIN_NONE);
-#endif
-
-// BLE UUIDs
-#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
-
-// GPIO
-#define LED_PIN 2
-#define TOUCH1_PIN 5
-#define TOUCH2_PIN 18
-
-#define I2C_SDA_PIN 21
-#define I2C_SCL_PIN 22
-
-// I2S mic pins (for INMP441/ICS-43434 style module)
-#define I2S_MIC_BCK 14
-#define I2S_MIC_WS 15
-#define I2S_MIC_DATA 4
-
-// Touch module logic level can vary by board
-#define TOUCH_ACTIVE_LEVEL HIGH
-
 bool deviceConnected = false;
 BLECharacteristic *pCharacteristic = nullptr;
 
