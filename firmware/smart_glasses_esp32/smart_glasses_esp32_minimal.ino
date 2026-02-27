@@ -13,6 +13,7 @@
 #include <BLEServer.h>
 #include <BLECharacteristic.h>
 #include <BLE2902.h>
+#include <cstring>
 #include "driver/i2s.h"
 
 #define USE_SH1106 1
@@ -42,6 +43,11 @@ bool deviceConnected = false;
 BLECharacteristic *pCharacteristic = nullptr;
 bool lastTouch1 = false;
 bool lastTouch2 = false;
+volatile bool bleConnectEvent = false;
+volatile bool bleDisconnectEvent = false;
+char pendingCommand[196] = {0};
+volatile bool pendingCommandReady = false;
+portMUX_TYPE bleMux = portMUX_INITIALIZER_UNLOCKED;
 
 #if USE_I2S_MIC_MODULE
 void setupAudio();
@@ -59,20 +65,14 @@ public:
   {
     (void)pServer;
     deviceConnected = true;
-    digitalWrite(LED_PIN, HIGH);
-    Serial.println("Phone connected");
-    updateDisplay("BLE", "Connected");
-    notifyMessage("ACK:BLE:CONNECTED");
+    bleConnectEvent = true;
   }
 
   void onDisconnect(BLEServer *pServer) override
   {
     (void)pServer;
     deviceConnected = false;
-    digitalWrite(LED_PIN, LOW);
-    BLEDevice::startAdvertising();
-    Serial.println("Phone disconnected");
-    updateDisplay("BLE", "Advertising");
+    bleDisconnectEvent = true;
   }
 };
 
@@ -87,9 +87,10 @@ class CharacteristicCallbacks : public BLECharacteristicCallbacks
       return;
     }
 
-    Serial.print("BLE RX: ");
-    Serial.println(cmd);
-    handleCommand(cmd);
+    portENTER_CRITICAL(&bleMux);
+    cmd.toCharArray(pendingCommand, sizeof(pendingCommand));
+    pendingCommandReady = true;
+    portEXIT_CRITICAL(&bleMux);
   }
 };
 
@@ -136,6 +137,40 @@ void setup()
 void loop()
 {
   static unsigned long lastPollMs = 0;
+
+  if (bleConnectEvent)
+  {
+    bleConnectEvent = false;
+    digitalWrite(LED_PIN, HIGH);
+    Serial.println("Phone connected");
+    updateDisplay("BLE", "Connected");
+  }
+
+  if (bleDisconnectEvent)
+  {
+    bleDisconnectEvent = false;
+    digitalWrite(LED_PIN, LOW);
+    Serial.println("Phone disconnected");
+    updateDisplay("BLE", "Advertising");
+    BLEDevice::startAdvertising();
+  }
+
+  if (pendingCommandReady)
+  {
+    char localCmd[sizeof(pendingCommand)];
+    localCmd[0] = '\0';
+    portENTER_CRITICAL(&bleMux);
+    strncpy(localCmd, pendingCommand, sizeof(localCmd));
+    localCmd[sizeof(localCmd) - 1] = '\0';
+    pendingCommand[0] = '\0';
+    pendingCommandReady = false;
+    portEXIT_CRITICAL(&bleMux);
+    String cmd = String(localCmd);
+    Serial.print("BLE RX: ");
+    Serial.println(cmd);
+    handleCommand(cmd);
+  }
+
   if (millis() - lastPollMs < 20)
   {
     delay(1);
