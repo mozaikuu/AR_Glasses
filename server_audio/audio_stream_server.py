@@ -359,6 +359,7 @@ class AudioStreamServer:
         Expected formats:
         - {"type": "config", "server_url": "..."}
         - {"type": "status"} -> sends status response
+        - {"type": "text_command", "text": "..."} -> LLM command path
         """
         try:
             data = json.loads(message)
@@ -377,6 +378,20 @@ class AudioStreamServer:
                     "server_time": datetime.now().isoformat()
                 }
                 await session.websocket.send(json.dumps(status))
+            elif data.get("type") == "text_command":
+                text = (data.get("text") or "").strip()
+                if not text:
+                    await session.websocket.send(json.dumps({
+                        "type": "error",
+                        "text": "Empty text command"
+                    }))
+                    return
+
+                logger.info(f"Text command from {session.device_type or 'unknown'}: {text}")
+                response = await self.process_command(text)
+                await self.send_response(session, response)
+            else:
+                logger.warning(f"Unknown text message type: {data.get('type')}")
 
         except json.JSONDecodeError:
             logger.warning(f"Invalid JSON from client: {message[:100]}")

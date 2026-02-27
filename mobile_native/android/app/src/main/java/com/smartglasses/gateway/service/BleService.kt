@@ -1,16 +1,20 @@
 package com.smartglasses.gateway.service
 
 import android.annotation.SuppressLint
+import android.app.Service
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.BluetoothSocket
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -39,10 +43,14 @@ class BleService : Service() {
 
     companion object {
         private const val TAG = "BleService"
+        const val ACTION_BLE_RX_TEXT = "com.smartglasses.gateway.ACTION_BLE_RX_TEXT"
+        const val ACTION_BLE_TX_TEXT = "com.smartglasses.gateway.ACTION_BLE_TX_TEXT"
+        const val EXTRA_TEXT = "text"
 
         // Service UUIDs - must match ESP32 firmware
         private val SERVICE_UUID: UUID = UUID.fromString("4fafc201-1fb5-459e-8fcc-c5c9c331914b")
         private val CHARACTERISTIC_UUID: UUID = UUID.fromString("beb5483e-36e1-4688-b7f5-ea07361b26a8")
+        private val CLIENT_CONFIG_UUID: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
 
         // Fallback for Classic Bluetooth
         private val SPP_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
@@ -84,6 +92,16 @@ class BleService : Service() {
 
     // Handler for main thread operations
     private val mainHandler = Handler(Looper.getMainLooper())
+    private var receiverRegistered = false
+
+    private val outboundTextReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != ACTION_BLE_TX_TEXT) return
+            val text = intent.getStringExtra(EXTRA_TEXT)?.trim().orEmpty()
+            if (text.isEmpty()) return
+            sendData(text.toByteArray(Charsets.UTF_8))
+        }
+    }
 
     private val gattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
@@ -115,6 +133,23 @@ class BleService : Service() {
                         service.characteristics.forEach { characteristic ->
                             if (characteristic.uuid == CHARACTERISTIC_UUID) {
                                 gatt.setCharacteristicNotification(characteristic, true)
+                                val cccd = characteristic.getDescriptor(CLIENT_CONFIG_UUID)
+                                if (cccd != null) {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        gatt.writeDescriptor(
+                                            cccd,
+                                            BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                                        )
+                                    } else {
+                                        @Suppress("DEPRECATION")
+                                        run {
+                                            cccd.value =
+                                                BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                                            gatt.writeDescriptor(cccd)
+                                        }
+                                    }
+                                }
+                                sendQueuedData()
                             }
                         }
                     }
@@ -148,13 +183,19 @@ class BleService : Service() {
     override fun onCreate() {
         super.onCreate()
         initializeBluetooth()
+        setDataCallback { data ->
+            handleIncomingData(data)
+        }
+        registerOutboundReceiver()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        autoConnectToKnownDevice()
         return START_STICKY
     }
 
     override fun onDestroy() {
+        unregisterOutboundReceiver()
         disconnect()
         serviceScope.cancel()
         super.onDestroy()
@@ -383,4 +424,45 @@ class BleService : Service() {
     fun isConnected(): Boolean = connectionState == STATE_CONNECTED
 
     fun getConnectionState(): Int = connectionState
+
+    private fun autoConnectToKnownDevice() {
+        if (connectionState != STATE_DISCONNECTED) return
+        val devices = discoverDevices()
+        val device = devices.firstOrNull()
+        if (device == null) {
+            Log.w(TAG, "No paired Smart Glasses device found")
+            return
+        }
+
+        connect(device)
+    }
+
+    private fun handleIncomingData(data: ByteArray) {
+        val text = data.toString(Charsets.UTF_8).trim()
+        if (text.isEmpty()) return
+        val intent = Intent(ACTION_BLE_RX_TEXT).apply {
+            putExtra(EXTRA_TEXT, text)
+            `package` = packageName
+        }
+        sendBroadcast(intent)
+        Log.d(TAG, "BLE RX text: $text")
+    }
+
+    private fun registerOutboundReceiver() {
+        if (receiverRegistered) return
+        val filter = IntentFilter(ACTION_BLE_TX_TEXT)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(outboundTextReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("DEPRECATION")
+            registerReceiver(outboundTextReceiver, filter)
+        }
+        receiverRegistered = true
+    }
+
+    private fun unregisterOutboundReceiver() {
+        if (!receiverRegistered) return
+        unregisterReceiver(outboundTextReceiver)
+        receiverRegistered = false
+    }
 }

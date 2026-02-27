@@ -5,7 +5,10 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.text.InputType
 import android.widget.Button
+import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -23,6 +26,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var statusText: TextView
     private lateinit var startButton: Button
     private lateinit var stopButton: Button
+    private lateinit var sendTestButton: Button
+    private lateinit var testInput: EditText
 
     companion object {
         private const val SERVER_URL = "wss://YOUR_SERVER_IP:8765"
@@ -36,6 +41,9 @@ class MainActivity : AppCompatActivity() {
             add(Manifest.permission.POST_NOTIFICATIONS)
         }
         add(Manifest.permission.BLUETOOTH_CONNECT)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            add(Manifest.permission.BLUETOOTH_SCAN)
+        }
     }
 
     private val permissionLauncher = registerForActivityResult(
@@ -53,11 +61,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-
-        statusText = findViewById(R.id.status_text)
-        startButton = findViewById(R.id.btn_start)
-        stopButton = findViewById(R.id.btn_stop)
+        setupUiProgrammatically()
 
         startButton.setOnClickListener {
             if (checkPermissions()) {
@@ -69,6 +73,10 @@ class MainActivity : AppCompatActivity() {
 
         stopButton.setOnClickListener {
             stopAudioService()
+        }
+
+        sendTestButton.setOnClickListener {
+            sendTestCommand()
         }
 
         // Initial state
@@ -105,8 +113,12 @@ class MainActivity : AppCompatActivity() {
     private fun enableButtons(enabled: Boolean) {
         startButton.isEnabled = enabled
         stopButton.isEnabled = enabled
+        sendTestButton.isEnabled = enabled
+        testInput.isEnabled = enabled
         startButton.alpha = if (enabled) 1.0f else 0.5f
         stopButton.alpha = if (enabled) 1.0f else 0.5f
+        sendTestButton.alpha = if (enabled) 1.0f else 0.5f
+        testInput.alpha = if (enabled) 1.0f else 0.5f
     }
 
     private fun updateStatus(message: String) {
@@ -139,6 +151,7 @@ class MainActivity : AppCompatActivity() {
     private fun stopAudioService() {
         val intent = Intent(this, AudioRecordingService::class.java)
         stopService(intent)
+        stopService(Intent(this, BleService::class.java))
 
         updateStatus("Audio service stopped.")
     }
@@ -150,6 +163,30 @@ class MainActivity : AppCompatActivity() {
             stopButton.isEnabled = true
             stopButton.alpha = 1.0f
         }
+    }
+
+    private fun sendTestCommand() {
+        if (!checkPermissions()) {
+            requestPermissions()
+            return
+        }
+
+        if (!isServiceRunning(AudioRecordingService::class.java)) {
+            startAudioService()
+        }
+
+        val rawText = testInput.text?.toString()?.trim().orEmpty()
+        if (rawText.isEmpty()) {
+            updateStatus("Enter a test command first.")
+            return
+        }
+
+        val intent = Intent(BleService.ACTION_BLE_TX_TEXT).apply {
+            putExtra(BleService.EXTRA_TEXT, "TXT:$rawText")
+            `package` = packageName
+        }
+        sendBroadcast(intent)
+        updateStatus("Sent test command to ESP.")
     }
 
     private fun isServiceRunning(serviceClass: Class<*>): Boolean {
@@ -166,5 +203,47 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         // Service continues running unless user explicitly stops
+    }
+
+    private fun setupUiProgrammatically() {
+        val density = resources.displayMetrics.density
+        fun dp(value: Int): Int = (value * density).toInt()
+
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(24), dp(20), dp(24))
+        }
+
+        statusText = TextView(this).apply {
+            text = "Status: Ready"
+            textSize = 16f
+        }
+
+        testInput = EditText(this).apply {
+            hint = "Type test command (no mic)"
+            inputType = InputType.TYPE_CLASS_TEXT
+            setText("what time is it")
+        }
+
+        sendTestButton = Button(this).apply {
+            text = "Send Test Text"
+        }
+
+        startButton = Button(this).apply {
+            text = "Start Gateway"
+        }
+
+        stopButton = Button(this).apply {
+            text = "Stop Gateway"
+            isEnabled = false
+        }
+
+        root.addView(statusText)
+        root.addView(testInput)
+        root.addView(sendTestButton)
+        root.addView(startButton)
+        root.addView(stopButton)
+
+        setContentView(root)
     }
 }

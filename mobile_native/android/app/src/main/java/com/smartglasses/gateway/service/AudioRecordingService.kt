@@ -5,8 +5,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioRecord
@@ -31,6 +33,7 @@ import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import okio.ByteString
+import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -66,6 +69,7 @@ class AudioRecordingService : Service() {
         // WebSocket reconnection
         private const val RECONNECT_DELAY_MS = 1000L
         private const val MAX_RECONNECT_ATTEMPTS = 10
+        private const val MAX_BLE_TEXT_LEN = 180
     }
 
     // Audio recording
@@ -94,6 +98,16 @@ class AudioRecordingService : Service() {
     private val audioBuffer = ByteArrayOutputStream()
     private var sampleRate = DEFAULT_SAMPLE_RATE
     private var bufferSizeInBytes: Int = 0
+    private var receiverRegistered = false
+
+    private val bleMessageReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != BleService.ACTION_BLE_RX_TEXT) return
+            val message = intent.getStringExtra(BleService.EXTRA_TEXT)?.trim().orEmpty()
+            if (message.isEmpty()) return
+            handleBleTextMessage(message)
+        }
+    }
 
     inner class LocalBinder : Binder() {
         fun getService(): AudioRecordingService = this@AudioRecordingService
@@ -106,6 +120,7 @@ class AudioRecordingService : Service() {
         createNotificationChannel()
         initializeAudio()
         initializeHttpClient()
+        registerBleReceiver()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -132,6 +147,7 @@ class AudioRecordingService : Service() {
     }
 
     override fun onDestroy() {
+        unregisterBleReceiver()
         stopRecording()
         stopPlayback()
         disconnectWebSocket()
@@ -408,21 +424,70 @@ class AudioRecordingService : Service() {
     }
 
     private fun handleServerMessage(message: String) {
-        // Parse server message
-        when {
-            message.startsWith("{\"type\":\"text\"") -> {
-                // Extract text response and convert to speech via TTS
-                // For now, just log
-                Log.d(TAG, "Server text response: $message")
+        try {
+            val json = JSONObject(message)
+            val type = json.optString("type", "")
+            when (type) {
+                "response", "text", "command" -> {
+                    val text = json.optString("text", "").trim()
+                    if (text.isNotEmpty()) {
+                        forwardTextToBle("TTS:${limitForBle(text)}")
+                        Log.d(TAG, "Forwarded server text to BLE: $text")
+                    }
+                }
+                "status" -> {
+                    Log.d(TAG, "Server status: $message")
+                }
+                else -> {
+                    Log.d(TAG, "Server message: $message")
+                }
             }
-            message.startsWith("{\"type\":\"command\"") -> {
-                // Handle command (volume, mode, etc.)
-                Log.d(TAG, "Server command: $message")
-            }
-            else -> {
-                Log.d(TAG, "Unknown message: $message")
-            }
+        } catch (_: Exception) {
+            Log.d(TAG, "Non-JSON server message: $message")
         }
+    }
+
+    private fun handleBleTextMessage(message: String) {
+        Log.d(TAG, "BLE message received: $message")
+        if (message.startsWith("CMD:")) {
+            val commandText = message.removePrefix("CMD:").trim()
+            if (commandText.isNotEmpty()) {
+                sendTextCommandToServer(commandText)
+            }
+            return
+        }
+
+        if (message == "PING") {
+            forwardTextToBle("PONG")
+        }
+    }
+
+    private fun sendTextCommandToServer(commandText: String) {
+        if (webSocket == null) {
+            Log.w(TAG, "WebSocket not connected, text command dropped: $commandText")
+            return
+        }
+
+        val payload = JSONObject()
+            .put("type", "text_command")
+            .put("text", commandText)
+            .put("source", "ble_esp32")
+            .toString()
+
+        webSocket?.send(payload)
+        Log.i(TAG, "Sent text command to server: $commandText")
+    }
+
+    private fun forwardTextToBle(text: String) {
+        val intent = Intent(BleService.ACTION_BLE_TX_TEXT).apply {
+            putExtra(BleService.EXTRA_TEXT, text)
+            `package` = packageName
+        }
+        sendBroadcast(intent)
+    }
+
+    private fun limitForBle(text: String): String {
+        return if (text.length <= MAX_BLE_TEXT_LEN) text else text.take(MAX_BLE_TEXT_LEN)
     }
 
     // ==================== Configuration ====================
@@ -497,5 +562,23 @@ class AudioRecordingService : Service() {
         } else {
             serverUrl = url
         }
+    }
+
+    private fun registerBleReceiver() {
+        if (receiverRegistered) return
+        val filter = IntentFilter(BleService.ACTION_BLE_RX_TEXT)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(bleMessageReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("DEPRECATION")
+            registerReceiver(bleMessageReceiver, filter)
+        }
+        receiverRegistered = true
+    }
+
+    private fun unregisterBleReceiver() {
+        if (!receiverRegistered) return
+        unregisterReceiver(bleMessageReceiver)
+        receiverRegistered = false
     }
 }
