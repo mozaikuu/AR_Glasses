@@ -259,6 +259,16 @@ extension AudioManager: WebSocketDelegate {
         }
     }
 
+    func sendUserText(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        sendTextCommandToServer(trimmed)
+    }
+
+    var isSocketConnected: Bool {
+        return isConnected
+    }
+
     func didReceive(message: String, client: WebSocketClient) {
         routeServerTextToBLE(message)
         delegate?.audioManager(self, didReceiveText: message)

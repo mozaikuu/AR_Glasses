@@ -30,7 +30,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var testInput: EditText
 
     companion object {
-        private const val SERVER_URL = "wss://YOUR_SERVER_IP:8765"
+        // IMPORTANT:
+        // - Use your PC's LAN IP, not 127.0.0.1 (localhost on phone).
+        // - server_audio/audio_stream_server.py listens on ws://<PC_IP>:8765 by default.
+        // Example: ws://192.168.1.42:8765
+        private const val SERVER_URL = "ws://192.168.100.2:8765"
     }
 
     private val requiredPermissions = mutableListOf<String>().apply {
