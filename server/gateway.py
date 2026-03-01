@@ -19,7 +19,7 @@ import base64
 from contextlib import asynccontextmanager, AsyncExitStack
 from pathlib import Path
 import numpy as np
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse
@@ -487,6 +487,54 @@ async def process_multimodal(req: MultimodalRequest):
     }
 
 
+@app.post("/esp/process")
+async def esp_process(req: dict, request: Request):
+    """
+    ESP-focused text endpoint.
+    Returns model response and optional WAV URL for ESP fetch/playback.
+    """
+    text = (req.get("text") or "").strip()
+    mode = req.get("mode") or "quick"
+    if not text:
+        return {"error": "No text provided"}
+
+    result = await process_multimodal(MultimodalRequest(text=text, mode=mode))
+    response_text = (result.get("response") or "").strip()
+
+    # If agent loop returns a generic fallback, try one direct LLM pass.
+    if response_text == "I encountered an issue. Please try again.":
+        try:
+            from agent.llm import generate_chat
+            messages = [
+                {"role": "system", "content": "You are a helpful AI assistant. Respond in one concise paragraph."},
+                {"role": "user", "content": text},
+            ]
+            direct = await generate_chat(messages, max_tokens=384, temperature=0.1)
+            if isinstance(direct, str) and direct.strip():
+                response_text = direct.strip()
+        except Exception as e:
+            print(f"[WARNING] ESP direct LLM retry failed: {e}", file=sys.stderr)
+
+    tts_url = None
+    tts_file = None
+    if response_text and not response_text.lower().startswith("error:"):
+        try:
+            from tools.speech.tts import synthesize_to_wav_file
+            wav_path = await asyncio.to_thread(synthesize_to_wav_file, response_text, "esp")
+            if wav_path and wav_path.exists():
+                tts_file = wav_path.name
+                tts_url = str(request.url_for("serve_esp_tts_file", filename=tts_file))
+        except Exception as e:
+            print(f"[WARNING] ESP TTS synth failed: {e}", file=sys.stderr)
+
+    return {
+        "response": response_text,
+        "tts_url": tts_url,
+        "tts_file": tts_file,
+        "transcription": result.get("transcription"),
+    }
+
+
 # ----------------------------
 # NAVIGATION ENDPOINTS
 # ----------------------------
@@ -775,6 +823,16 @@ async def serve_tts_file(filename: str):
     if filepath.exists():
         return FileResponse(str(filepath), media_type="audio/mp3")
     return {"error": "Audio file not found"}, 404
+
+
+@app.get("/esp/tts/{filename}", name="serve_esp_tts_file")
+async def serve_esp_tts_file(filename: str):
+    """Serve generated WAV for ESP playback."""
+    from config.settings import TTS_OUTPUT_DIR
+    filepath = Path(TTS_OUTPUT_DIR) / filename
+    if filepath.exists():
+        return FileResponse(str(filepath), media_type="audio/wav")
+    return {"error": "Audio file not found"}
 
 
 @app.get("/config")

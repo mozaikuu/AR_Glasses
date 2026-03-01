@@ -215,6 +215,22 @@ def text_to_speech_sync(text: str) -> None:
     asyncio.run(text_to_speech(text))
 
 
+def synthesize_to_wav_file(text: str, prefix: str = "esp_tts") -> Path | None:
+    """Synthesize text to a WAV file and return the path without local playback."""
+    if not text or not text.strip():
+        return None
+
+    out = TTS_OUTPUT_DIR / f"{prefix}_{uuid4().hex}.wav"
+    ok = _synthesize_piper_to_file(text, out)
+    if not ok:
+        try:
+            out.unlink(missing_ok=True)
+        except Exception:
+            pass
+        return None
+    return out
+
+
 def cleanup_tts() -> None:
     """Release TTS resources."""
     global _mixer_initialized
