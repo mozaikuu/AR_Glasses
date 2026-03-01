@@ -58,6 +58,11 @@ enum OperationMode
 const char *WIFI_SSID = "Moussa24";
 const char *WIFI_PASSWORD = "AhmedMoussa2003!";
 const char *SERVER_PROCESS_URL = "http://192.168.100.2:8000/esp/process";
+const uint16_t OLED_MAX_CHARS_PER_LINE = 21;
+const uint16_t OLED_MAX_LINES = 3;
+const unsigned long OLED_SCROLL_INTERVAL_MS = 350;
+const uint16_t OLED_SCROLL_GAP_SPACES = 8;
+const unsigned long SPEECH_CHAR_INTERVAL_MS = 70;
 
 bool deviceConnected = false;
 BLECharacteristic *pCharacteristic = nullptr;
@@ -71,6 +76,16 @@ portMUX_TYPE bleMux = portMUX_INITIALIZER_UNLOCKED;
 OperationMode currentMode = DEFAULT_OPERATION_MODE;
 unsigned long lastWiFiRetryMs = 0;
 const unsigned long WIFI_RETRY_MS = 5000;
+String displayLine1Cache = "";
+String displayLine2Cache = "";
+String displayScrollBuffer = "";
+size_t displayScrollOffset = 0;
+bool displayScrollEnabled = false;
+unsigned long lastDisplayScrollMs = 0;
+bool speechAnimActive = false;
+String speechFullText = "";
+size_t speechVisibleChars = 0;
+unsigned long lastSpeechStepMs = 0;
 
 #if USE_I2S_MIC_MODULE
 void setupAudio();
@@ -91,6 +106,10 @@ void handleSerialInput();
 void handleSerialCommand(const String &cmd);
 void drawWrappedText(int x, int yStart, int maxCharsPerLine, int maxLines, const String &text);
 bool fetchAndPlayTtsFromUrl(const String &ttsUrl);
+void renderDisplay();
+void tickDisplayScroll();
+void setDisplayContent(const String &line1, const String &line2, bool resetScroll);
+void tickSpeechAnimation();
 
 #if USE_I2S_TTS_MODULE
 void setupTtsAudio();
@@ -186,6 +205,9 @@ void setup()
 void loop()
 {
   static unsigned long lastPollMs = 0;
+
+  tickSpeechAnimation();
+  tickDisplayScroll();
 
   if (bleConnectEvent)
   {
@@ -340,23 +362,143 @@ void speakText(const String &text)
   // Placeholder for on-device TTS/audio playback integration.
   Serial.print("TTS RX: ");
   Serial.println(text);
-  updateDisplay("Server says", text);
+  speechFullText = text;
+  speechVisibleChars = 0;
+  speechAnimActive = (speechFullText.length() > 0);
+  lastSpeechStepMs = millis();
+  setDisplayContent("Server says", "", true);
 }
 
 void updateDisplay(const String &line1, const String &line2)
 {
 #if USE_SH1106
-  gDisplay.clearBuffer();
-  gDisplay.setFont(u8g2_font_6x10_tr);
-  gDisplay.drawStr(0, 14, line1.c_str());
-  drawWrappedText(0, 30, 21, 3, line2);
-  gDisplay.sendBuffer();
+  speechAnimActive = false;
+  setDisplayContent(line1, line2, true);
 #else
   Serial.print("[OLED] ");
   Serial.print(line1);
   Serial.print(" | ");
   Serial.println(line2);
 #endif
+}
+
+void setDisplayContent(const String &line1, const String &line2, bool resetScroll)
+{
+#if USE_SH1106
+  displayLine1Cache = line1;
+  displayLine2Cache = line2;
+
+  const int maxCharsVisible = OLED_MAX_CHARS_PER_LINE * OLED_MAX_LINES;
+  bool nextScrollEnabled = (displayLine2Cache.length() > maxCharsVisible);
+  if (nextScrollEnabled)
+  {
+    displayScrollBuffer = displayLine2Cache;
+    for (uint16_t i = 0; i < OLED_SCROLL_GAP_SPACES; i++)
+    {
+      displayScrollBuffer += ' ';
+    }
+    displayScrollBuffer += displayLine2Cache;
+  }
+  else
+  {
+    displayScrollBuffer = displayLine2Cache;
+  }
+
+  if (resetScroll || !displayScrollEnabled || !nextScrollEnabled)
+  {
+    displayScrollOffset = 0;
+    lastDisplayScrollMs = millis();
+  }
+  displayScrollEnabled = nextScrollEnabled;
+  renderDisplay();
+#else
+  (void)line1;
+  (void)line2;
+  (void)resetScroll;
+#endif
+}
+
+void renderDisplay()
+{
+#if USE_SH1106
+  gDisplay.clearBuffer();
+  gDisplay.setFont(u8g2_font_6x10_tr);
+  gDisplay.drawStr(0, 14, displayLine1Cache.c_str());
+
+  if (displayScrollEnabled)
+  {
+    const int maxCharsVisible = OLED_MAX_CHARS_PER_LINE * OLED_MAX_LINES;
+    String visible = "";
+    visible.reserve(maxCharsVisible);
+    for (int i = 0; i < maxCharsVisible; i++)
+    {
+      size_t idx = displayScrollOffset + (size_t)i;
+      if (idx < displayScrollBuffer.length())
+      {
+        visible += displayScrollBuffer[idx];
+      }
+      else
+      {
+        visible += ' ';
+      }
+    }
+    drawWrappedText(0, 30, OLED_MAX_CHARS_PER_LINE, OLED_MAX_LINES, visible);
+  }
+  else
+  {
+    drawWrappedText(0, 30, OLED_MAX_CHARS_PER_LINE, OLED_MAX_LINES, displayLine2Cache);
+  }
+
+  gDisplay.sendBuffer();
+#endif
+}
+
+void tickDisplayScroll()
+{
+#if USE_SH1106
+  if (!displayScrollEnabled)
+  {
+    return;
+  }
+  if (millis() - lastDisplayScrollMs < OLED_SCROLL_INTERVAL_MS)
+  {
+    return;
+  }
+  lastDisplayScrollMs = millis();
+
+  displayScrollOffset++;
+  const int maxCharsVisible = OLED_MAX_CHARS_PER_LINE * OLED_MAX_LINES;
+  if (displayScrollOffset + (size_t)maxCharsVisible >= displayScrollBuffer.length())
+  {
+    displayScrollOffset = 0;
+  }
+  renderDisplay();
+#endif
+}
+
+void tickSpeechAnimation()
+{
+  if (!speechAnimActive)
+  {
+    return;
+  }
+  if (millis() - lastSpeechStepMs < SPEECH_CHAR_INTERVAL_MS)
+  {
+    return;
+  }
+  lastSpeechStepMs = millis();
+
+  if (speechVisibleChars < speechFullText.length())
+  {
+    speechVisibleChars++;
+    String visible = speechFullText.substring(0, speechVisibleChars);
+    // Keep scroll offset continuity so long subtitles move while revealing.
+    setDisplayContent("Server says", visible, false);
+  }
+  else
+  {
+    speechAnimActive = false;
+  }
 }
 
 void drawWrappedText(int x, int yStart, int maxCharsPerLine, int maxLines, const String &text)
