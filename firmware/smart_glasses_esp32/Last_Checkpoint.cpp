@@ -20,6 +20,7 @@
 
 #define USE_SH1106 1
 #define USE_I2S_MIC_MODULE 0
+#define USE_I2S_TTS_MODULE 0
 
 #if USE_SH1106
 #include <U8g2lib.h>
@@ -40,6 +41,9 @@ U8G2_SH1106_128X64_NONAME_F_HW_I2C gDisplay(U8G2_R0, U8X8_PIN_NONE);
 #define I2S_MIC_BCK 14
 #define I2S_MIC_WS 15
 #define I2S_MIC_DATA 4
+#define I2S_TTS_BCK 26
+#define I2S_TTS_WS 25
+#define I2S_TTS_DATA 27
 
 enum OperationMode
 {
@@ -53,7 +57,12 @@ enum OperationMode
 // Wi-Fi + server config for direct mode.
 const char *WIFI_SSID = "Moussa24";
 const char *WIFI_PASSWORD = "AhmedMoussa2003!";
-const char *SERVER_PROCESS_URL = "http://192.168.100.2:8000/process";
+const char *SERVER_PROCESS_URL = "http://192.168.100.2:8000/esp/process";
+const uint16_t OLED_MAX_CHARS_PER_LINE = 21;
+const uint16_t OLED_MAX_LINES = 3;
+const unsigned long OLED_SCROLL_INTERVAL_MS = 350;
+const uint16_t OLED_SCROLL_GAP_SPACES = 8;
+const unsigned long SPEECH_CHAR_INTERVAL_MS = 70;
 
 bool deviceConnected = false;
 BLECharacteristic *pCharacteristic = nullptr;
@@ -67,6 +76,16 @@ portMUX_TYPE bleMux = portMUX_INITIALIZER_UNLOCKED;
 OperationMode currentMode = DEFAULT_OPERATION_MODE;
 unsigned long lastWiFiRetryMs = 0;
 const unsigned long WIFI_RETRY_MS = 5000;
+String displayLine1Cache = "";
+String displayLine2Cache = "";
+String displayScrollBuffer = "";
+size_t displayScrollOffset = 0;
+bool displayScrollEnabled = false;
+unsigned long lastDisplayScrollMs = 0;
+bool speechAnimActive = false;
+String speechFullText = "";
+size_t speechVisibleChars = 0;
+unsigned long lastSpeechStepMs = 0;
 
 #if USE_I2S_MIC_MODULE
 void setupAudio();
@@ -81,10 +100,21 @@ void ensureWiFiConnected();
 String escapeJson(const String &text);
 String unescapeJson(const String &text);
 String parseJsonStringField(const String &json, const String &key);
-bool sendTextToServer(const String &text, String &responseOut);
+bool sendTextToServer(const String &text, String &responseOut, String &ttsUrlOut);
 void processTextCommand(const String &userCommand);
 void handleSerialInput();
 void handleSerialCommand(const String &cmd);
+void drawWrappedText(int x, int yStart, int maxCharsPerLine, int maxLines, const String &text);
+bool fetchAndPlayTtsFromUrl(const String &ttsUrl);
+void renderDisplay();
+void tickDisplayScroll();
+void setDisplayContent(const String &line1, const String &line2, bool resetScroll);
+void tickSpeechAnimation();
+
+#if USE_I2S_TTS_MODULE
+void setupTtsAudio();
+bool playWavFromHttp(HTTPClient &http);
+#endif
 
 class MyServerCallbacks : public BLEServerCallbacks
 {
@@ -142,6 +172,9 @@ void setup()
 #if USE_I2S_MIC_MODULE
   setupAudio();
 #endif
+#if USE_I2S_TTS_MODULE
+  setupTtsAudio();
+#endif
 
   BLEDevice::init("Smart Glasses");
   BLEServer *pServer = BLEDevice::createServer();
@@ -172,6 +205,9 @@ void setup()
 void loop()
 {
   static unsigned long lastPollMs = 0;
+
+  tickSpeechAnimation();
+  tickDisplayScroll();
 
   if (bleConnectEvent)
   {
@@ -326,23 +362,187 @@ void speakText(const String &text)
   // Placeholder for on-device TTS/audio playback integration.
   Serial.print("TTS RX: ");
   Serial.println(text);
-  updateDisplay("Server says", text);
+  speechFullText = text;
+  speechVisibleChars = 0;
+  speechAnimActive = (speechFullText.length() > 0);
+  lastSpeechStepMs = millis();
+  setDisplayContent("Server says", "", true);
 }
 
 void updateDisplay(const String &line1, const String &line2)
 {
 #if USE_SH1106
-  gDisplay.clearBuffer();
-  gDisplay.setFont(u8g2_font_6x10_tr);
-  gDisplay.drawStr(0, 14, line1.c_str());
-  gDisplay.drawUTF8(0, 30, line2.c_str());
-  gDisplay.sendBuffer();
+  speechAnimActive = false;
+  setDisplayContent(line1, line2, true);
 #else
   Serial.print("[OLED] ");
   Serial.print(line1);
   Serial.print(" | ");
   Serial.println(line2);
 #endif
+}
+
+void setDisplayContent(const String &line1, const String &line2, bool resetScroll)
+{
+#if USE_SH1106
+  displayLine1Cache = line1;
+  displayLine2Cache = line2;
+
+  const int maxCharsVisible = OLED_MAX_CHARS_PER_LINE * OLED_MAX_LINES;
+  bool nextScrollEnabled = (displayLine2Cache.length() > maxCharsVisible);
+  if (nextScrollEnabled)
+  {
+    displayScrollBuffer = displayLine2Cache;
+    for (uint16_t i = 0; i < OLED_SCROLL_GAP_SPACES; i++)
+    {
+      displayScrollBuffer += ' ';
+    }
+    displayScrollBuffer += displayLine2Cache;
+  }
+  else
+  {
+    displayScrollBuffer = displayLine2Cache;
+  }
+
+  if (resetScroll || !displayScrollEnabled || !nextScrollEnabled)
+  {
+    displayScrollOffset = 0;
+    lastDisplayScrollMs = millis();
+  }
+  displayScrollEnabled = nextScrollEnabled;
+  renderDisplay();
+#else
+  (void)line1;
+  (void)line2;
+  (void)resetScroll;
+#endif
+}
+
+void renderDisplay()
+{
+#if USE_SH1106
+  gDisplay.clearBuffer();
+  gDisplay.setFont(u8g2_font_6x10_tr);
+  gDisplay.drawStr(0, 14, displayLine1Cache.c_str());
+
+  if (displayScrollEnabled)
+  {
+    const int maxCharsVisible = OLED_MAX_CHARS_PER_LINE * OLED_MAX_LINES;
+    String visible = "";
+    visible.reserve(maxCharsVisible);
+    for (int i = 0; i < maxCharsVisible; i++)
+    {
+      size_t idx = displayScrollOffset + (size_t)i;
+      if (idx < displayScrollBuffer.length())
+      {
+        visible += displayScrollBuffer[idx];
+      }
+      else
+      {
+        visible += ' ';
+      }
+    }
+    drawWrappedText(0, 30, OLED_MAX_CHARS_PER_LINE, OLED_MAX_LINES, visible);
+  }
+  else
+  {
+    drawWrappedText(0, 30, OLED_MAX_CHARS_PER_LINE, OLED_MAX_LINES, displayLine2Cache);
+  }
+
+  gDisplay.sendBuffer();
+#endif
+}
+
+void tickDisplayScroll()
+{
+#if USE_SH1106
+  if (!displayScrollEnabled)
+  {
+    return;
+  }
+  if (millis() - lastDisplayScrollMs < OLED_SCROLL_INTERVAL_MS)
+  {
+    return;
+  }
+  lastDisplayScrollMs = millis();
+
+  displayScrollOffset++;
+  const int maxCharsVisible = OLED_MAX_CHARS_PER_LINE * OLED_MAX_LINES;
+  if (displayScrollOffset + (size_t)maxCharsVisible >= displayScrollBuffer.length())
+  {
+    displayScrollOffset = 0;
+  }
+  renderDisplay();
+#endif
+}
+
+void tickSpeechAnimation()
+{
+  if (!speechAnimActive)
+  {
+    return;
+  }
+  if (millis() - lastSpeechStepMs < SPEECH_CHAR_INTERVAL_MS)
+  {
+    return;
+  }
+  lastSpeechStepMs = millis();
+
+  if (speechVisibleChars < speechFullText.length())
+  {
+    speechVisibleChars++;
+    String visible = speechFullText.substring(0, speechVisibleChars);
+    // Keep scroll offset continuity so long subtitles move while revealing.
+    setDisplayContent("Server says", visible, false);
+  }
+  else
+  {
+    speechAnimActive = false;
+  }
+}
+
+void drawWrappedText(int x, int yStart, int maxCharsPerLine, int maxLines, const String &text)
+{
+  if (maxLines <= 0 || maxCharsPerLine <= 0)
+  {
+    return;
+  }
+
+  String remaining = text;
+  remaining.trim();
+  int y = yStart;
+
+  for (int line = 0; line < maxLines; line++)
+  {
+    if (remaining.length() == 0)
+    {
+      return;
+    }
+
+    if ((int)remaining.length() <= maxCharsPerLine)
+    {
+      gDisplay.drawUTF8(x, y, remaining.c_str());
+      return;
+    }
+
+    int split = maxCharsPerLine;
+    while (split > 0 && remaining[split] != ' ')
+    {
+      split--;
+    }
+    if (split <= 0)
+    {
+      split = maxCharsPerLine;
+    }
+
+    String part = remaining.substring(0, split);
+    part.trim();
+    gDisplay.drawUTF8(x, y, part.c_str());
+
+    remaining = remaining.substring(split);
+    remaining.trim();
+    y += 12;
+  }
 }
 
 void setOperationMode(OperationMode nextMode)
@@ -499,9 +699,10 @@ String parseJsonStringField(const String &json, const String &key)
   return "";
 }
 
-bool sendTextToServer(const String &text, String &responseOut)
+bool sendTextToServer(const String &text, String &responseOut, String &ttsUrlOut)
 {
   responseOut = "";
+  ttsUrlOut = "";
   if (WiFi.status() != WL_CONNECTED)
   {
     Serial.println("ERR:WIFI:DISCONNECTED");
@@ -524,7 +725,17 @@ bool sendTextToServer(const String &text, String &responseOut)
 
   String body = http.getString();
   http.end();
+
+  String err = parseJsonStringField(body, "error");
+  if (err.length() > 0)
+  {
+    Serial.print("ERR:SERVER:");
+    Serial.println(err);
+    return false;
+  }
+
   responseOut = parseJsonStringField(body, "response");
+  ttsUrlOut = parseJsonStringField(body, "tts_url");
   if (responseOut.length() == 0)
   {
     Serial.println("ERR:SERVER:BAD_RESPONSE");
@@ -539,10 +750,15 @@ void processTextCommand(const String &userCommand)
   {
     updateDisplay("Ask", userCommand);
     String serverResponse;
-    if (sendTextToServer(userCommand, serverResponse))
+    String ttsUrl;
+    if (sendTextToServer(userCommand, serverResponse, ttsUrl))
     {
       speakText(serverResponse);
       notifyMessage("ACK:SRV");
+      if (ttsUrl.length() > 0)
+      {
+        fetchAndPlayTtsFromUrl(ttsUrl);
+      }
     }
     else
     {
@@ -563,6 +779,36 @@ void processTextCommand(const String &userCommand)
 
   updateDisplay("Queue CMD", userCommand);
   notifyMessage("CMD:" + userCommand);
+}
+
+bool fetchAndPlayTtsFromUrl(const String &ttsUrl)
+{
+  if (ttsUrl.length() == 0)
+  {
+    return false;
+  }
+
+  HTTPClient http;
+  http.begin(ttsUrl);
+  int code = http.GET();
+  if (code <= 0)
+  {
+    Serial.print("ERR:TTS_FETCH:");
+    Serial.println(http.errorToString(code));
+    http.end();
+    return false;
+  }
+
+#if USE_I2S_TTS_MODULE
+  bool ok = playWavFromHttp(http);
+  http.end();
+  return ok;
+#else
+  Serial.print("TTS URL ready: ");
+  Serial.println(ttsUrl);
+  http.end();
+  return true;
+#endif
 }
 
 void handleSerialInput()
@@ -638,5 +884,62 @@ void setupAudio()
   i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL);
   i2s_set_pin(I2S_NUM_0, &pin_config);
   Serial.println("I2S mic init complete");
+}
+#endif
+
+#if USE_I2S_TTS_MODULE
+void setupTtsAudio()
+{
+  i2s_config_t cfg = {
+      .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX),
+      .sample_rate = 22050,
+      .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
+      .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+      .communication_format = I2S_COMM_FORMAT_I2S,
+      .intr_alloc_flags = 0,
+      .dma_buf_count = 6,
+      .dma_buf_len = 256,
+      .use_apll = false,
+      .tx_desc_auto_clear = true,
+      .fixed_mclk = 0};
+
+  i2s_pin_config_t pins = {
+      .bck_io_num = I2S_TTS_BCK,
+      .ws_io_num = I2S_TTS_WS,
+      .data_out_num = I2S_TTS_DATA,
+      .data_in_num = -1};
+
+  i2s_driver_install(I2S_NUM_1, &cfg, 0, NULL);
+  i2s_set_pin(I2S_NUM_1, &pins);
+}
+
+bool playWavFromHttp(HTTPClient &http)
+{
+  WiFiClient *stream = http.getStreamPtr();
+  if (!stream)
+  {
+    return false;
+  }
+
+  // Skip standard WAV header.
+  uint8_t header[44];
+  int got = stream->readBytes(header, sizeof(header));
+  if (got < 44)
+  {
+    return false;
+  }
+
+  uint8_t buf[1024];
+  while (http.connected() && stream->available())
+  {
+    int n = stream->readBytes(buf, sizeof(buf));
+    if (n <= 0)
+    {
+      break;
+    }
+    size_t written = 0;
+    i2s_write(I2S_NUM_1, buf, n, &written, portMAX_DELAY);
+  }
+  return true;
 }
 #endif

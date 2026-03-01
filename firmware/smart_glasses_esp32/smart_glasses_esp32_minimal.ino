@@ -20,7 +20,7 @@
 
 #define USE_SH1106 1
 #define USE_I2S_MIC_MODULE 0
-#define USE_I2S_TTS_MODULE 0
+#define USE_DAC_TTS_MODULE 1
 
 #if USE_SH1106
 #include <U8g2lib.h>
@@ -41,9 +41,8 @@ U8G2_SH1106_128X64_NONAME_F_HW_I2C gDisplay(U8G2_R0, U8X8_PIN_NONE);
 #define I2S_MIC_BCK 14
 #define I2S_MIC_WS 15
 #define I2S_MIC_DATA 4
-#define I2S_TTS_BCK 26
-#define I2S_TTS_WS 25
-#define I2S_TTS_DATA 27
+#define DAC_TTS_LEFT_PIN 25
+#define DAC_TTS_RIGHT_PIN 26
 
 enum OperationMode
 {
@@ -60,9 +59,9 @@ const char *WIFI_PASSWORD = "AhmedMoussa2003!";
 const char *SERVER_PROCESS_URL = "http://192.168.100.2:8000/esp/process";
 const uint16_t OLED_MAX_CHARS_PER_LINE = 21;
 const uint16_t OLED_MAX_LINES = 3;
-const unsigned long OLED_SCROLL_INTERVAL_MS = 350;
+const unsigned long OLED_SCROLL_INTERVAL_MS = 120;
+const uint8_t OLED_SCROLL_STEP_CHARS = 2;
 const uint16_t OLED_SCROLL_GAP_SPACES = 8;
-const unsigned long SPEECH_CHAR_INTERVAL_MS = 70;
 
 bool deviceConnected = false;
 BLECharacteristic *pCharacteristic = nullptr;
@@ -82,10 +81,6 @@ String displayScrollBuffer = "";
 size_t displayScrollOffset = 0;
 bool displayScrollEnabled = false;
 unsigned long lastDisplayScrollMs = 0;
-bool speechAnimActive = false;
-String speechFullText = "";
-size_t speechVisibleChars = 0;
-unsigned long lastSpeechStepMs = 0;
 
 #if USE_I2S_MIC_MODULE
 void setupAudio();
@@ -109,11 +104,11 @@ bool fetchAndPlayTtsFromUrl(const String &ttsUrl);
 void renderDisplay();
 void tickDisplayScroll();
 void setDisplayContent(const String &line1, const String &line2, bool resetScroll);
-void tickSpeechAnimation();
 
-#if USE_I2S_TTS_MODULE
+#if USE_DAC_TTS_MODULE
 void setupTtsAudio();
 bool playWavFromHttp(HTTPClient &http);
+inline void writeDacPair(uint8_t value);
 #endif
 
 class MyServerCallbacks : public BLEServerCallbacks
@@ -172,7 +167,7 @@ void setup()
 #if USE_I2S_MIC_MODULE
   setupAudio();
 #endif
-#if USE_I2S_TTS_MODULE
+#if USE_DAC_TTS_MODULE
   setupTtsAudio();
 #endif
 
@@ -206,7 +201,6 @@ void loop()
 {
   static unsigned long lastPollMs = 0;
 
-  tickSpeechAnimation();
   tickDisplayScroll();
 
   if (bleConnectEvent)
@@ -359,20 +353,15 @@ void notifyMessage(const String &payload)
 
 void speakText(const String &text)
 {
-  // Placeholder for on-device TTS/audio playback integration.
+  // Display response immediately.
   Serial.print("TTS RX: ");
   Serial.println(text);
-  speechFullText = text;
-  speechVisibleChars = 0;
-  speechAnimActive = (speechFullText.length() > 0);
-  lastSpeechStepMs = millis();
-  setDisplayContent("Server says", "", true);
+  updateDisplay("Server says", text);
 }
 
 void updateDisplay(const String &line1, const String &line2)
 {
 #if USE_SH1106
-  speechAnimActive = false;
   setDisplayContent(line1, line2, true);
 #else
   Serial.print("[OLED] ");
@@ -466,7 +455,7 @@ void tickDisplayScroll()
   }
   lastDisplayScrollMs = millis();
 
-  displayScrollOffset++;
+  displayScrollOffset += OLED_SCROLL_STEP_CHARS;
   const int maxCharsVisible = OLED_MAX_CHARS_PER_LINE * OLED_MAX_LINES;
   if (displayScrollOffset + (size_t)maxCharsVisible >= displayScrollBuffer.length())
   {
@@ -474,31 +463,6 @@ void tickDisplayScroll()
   }
   renderDisplay();
 #endif
-}
-
-void tickSpeechAnimation()
-{
-  if (!speechAnimActive)
-  {
-    return;
-  }
-  if (millis() - lastSpeechStepMs < SPEECH_CHAR_INTERVAL_MS)
-  {
-    return;
-  }
-  lastSpeechStepMs = millis();
-
-  if (speechVisibleChars < speechFullText.length())
-  {
-    speechVisibleChars++;
-    String visible = speechFullText.substring(0, speechVisibleChars);
-    // Keep scroll offset continuity so long subtitles move while revealing.
-    setDisplayContent("Server says", visible, false);
-  }
-  else
-  {
-    speechAnimActive = false;
-  }
 }
 
 void drawWrappedText(int x, int yStart, int maxCharsPerLine, int maxLines, const String &text)
@@ -799,7 +763,7 @@ bool fetchAndPlayTtsFromUrl(const String &ttsUrl)
     return false;
   }
 
-#if USE_I2S_TTS_MODULE
+#if USE_DAC_TTS_MODULE
   bool ok = playWavFromHttp(http);
   http.end();
   return ok;
@@ -887,30 +851,14 @@ void setupAudio()
 }
 #endif
 
-#if USE_I2S_TTS_MODULE
+#if USE_DAC_TTS_MODULE
 void setupTtsAudio()
 {
-  i2s_config_t cfg = {
-      .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX),
-      .sample_rate = 22050,
-      .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
-      .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
-      .communication_format = I2S_COMM_FORMAT_I2S,
-      .intr_alloc_flags = 0,
-      .dma_buf_count = 6,
-      .dma_buf_len = 256,
-      .use_apll = false,
-      .tx_desc_auto_clear = true,
-      .fixed_mclk = 0};
-
-  i2s_pin_config_t pins = {
-      .bck_io_num = I2S_TTS_BCK,
-      .ws_io_num = I2S_TTS_WS,
-      .data_out_num = I2S_TTS_DATA,
-      .data_in_num = -1};
-
-  i2s_driver_install(I2S_NUM_1, &cfg, 0, NULL);
-  i2s_set_pin(I2S_NUM_1, &pins);
+  pinMode(DAC_TTS_LEFT_PIN, OUTPUT);
+  pinMode(DAC_TTS_RIGHT_PIN, OUTPUT);
+  // Midpoint silence for DAC output.
+  writeDacPair(128);
+  Serial.println("TTS DAC init on GPIO25/26");
 }
 
 bool playWavFromHttp(HTTPClient &http)
@@ -918,28 +866,152 @@ bool playWavFromHttp(HTTPClient &http)
   WiFiClient *stream = http.getStreamPtr();
   if (!stream)
   {
+    Serial.println("ERR:TTS_DAC:NO_STREAM");
     return false;
   }
 
-  // Skip standard WAV header.
+  // Read and parse basic WAV header.
   uint8_t header[44];
   int got = stream->readBytes(header, sizeof(header));
   if (got < 44)
   {
+    Serial.println("ERR:TTS_DAC:BAD_WAV_HEADER");
     return false;
   }
 
-  uint8_t buf[1024];
-  while (http.connected() && stream->available())
+  uint16_t audioFormat = (uint16_t)header[20] | ((uint16_t)header[21] << 8);
+  uint16_t channels = (uint16_t)header[22] | ((uint16_t)header[23] << 8);
+  uint32_t sampleRate = (uint32_t)header[24] |
+                        ((uint32_t)header[25] << 8) |
+                        ((uint32_t)header[26] << 16) |
+                        ((uint32_t)header[27] << 24);
+  uint16_t bitsPerSample = (uint16_t)header[34] | ((uint16_t)header[35] << 8);
+
+  if (audioFormat != 1)
   {
-    int n = stream->readBytes(buf, sizeof(buf));
-    if (n <= 0)
+    // Only PCM WAV is supported in this minimal DAC path.
+    Serial.println("ERR:TTS_DAC:NON_PCM");
+    return false;
+  }
+  if (channels == 0 || channels > 2)
+  {
+    Serial.println("ERR:TTS_DAC:BAD_CHANNELS");
+    return false;
+  }
+  if (sampleRate == 0)
+  {
+    sampleRate = 22050;
+  }
+  if (bitsPerSample != 8 && bitsPerSample != 16)
+  {
+    // This DAC path supports 8-bit or 16-bit PCM WAV.
+    Serial.println("ERR:TTS_DAC:BAD_BPS");
+    return false;
+  }
+
+  Serial.print("TTS DAC play: ");
+  Serial.print(sampleRate);
+  Serial.print(" Hz, ");
+  Serial.print(channels);
+  Serial.print(" ch, ");
+  Serial.print(bitsPerSample);
+  Serial.println(" bit");
+
+  int totalLen = http.getSize();
+  int remaining = (totalLen > 44) ? (totalLen - 44) : -1;
+  uint8_t buf[1024];
+  uint32_t bytesPlayed = 0;
+  unsigned long lastDataMs = millis();
+  uint32_t sampleIntervalUs = 1000000UL / sampleRate;
+  if (sampleIntervalUs == 0)
+  {
+    sampleIntervalUs = 1;
+  }
+  uint32_t nextSampleUs = micros();
+
+  int bytesPerSample = bitsPerSample / 8;
+  int frameBytes = bytesPerSample * channels;
+  if (frameBytes <= 0)
+  {
+    return false;
+  }
+
+  while (http.connected())
+  {
+    int want = sizeof(buf);
+    if (remaining >= 0 && remaining < want)
+    {
+      want = remaining;
+    }
+    if (want <= 0)
     {
       break;
     }
-    size_t written = 0;
-    i2s_write(I2S_NUM_1, buf, n, &written, portMAX_DELAY);
+
+    int n = stream->readBytes(buf, want);
+    if (n <= 0)
+    {
+      if (millis() - lastDataMs > 1200)
+      {
+        break;
+      }
+      delay(2);
+      continue;
+    }
+    lastDataMs = millis();
+    if (remaining >= 0)
+    {
+      remaining -= n;
+    }
+
+    int idx = 0;
+    while (idx + frameBytes <= n)
+    {
+      uint8_t dacVal = 128;
+      if (bitsPerSample == 8)
+      {
+        uint16_t sL = buf[idx];
+        if (channels == 2)
+        {
+          uint16_t sR = buf[idx + 1];
+          dacVal = (uint8_t)((sL + sR) / 2);
+        }
+        else
+        {
+          dacVal = (uint8_t)sL;
+        }
+      }
+      else
+      {
+        int16_t sL = (int16_t)((uint16_t)buf[idx] | ((uint16_t)buf[idx + 1] << 8));
+        int16_t sMono = sL;
+        if (channels == 2)
+        {
+          int16_t sR = (int16_t)((uint16_t)buf[idx + 2] | ((uint16_t)buf[idx + 3] << 8));
+          sMono = (int16_t)(((int32_t)sL + (int32_t)sR) / 2);
+        }
+        dacVal = (uint8_t)(((int32_t)sMono + 32768) >> 8);
+      }
+
+      while ((int32_t)(micros() - nextSampleUs) < 0)
+      {
+        // Busy wait for timing precision.
+      }
+      writeDacPair(dacVal);
+      nextSampleUs += sampleIntervalUs;
+      idx += frameBytes;
+      bytesPlayed += frameBytes;
+    }
   }
+  writeDacPair(128);
+  Serial.print("TTS DAC done, bytes=");
+  Serial.println(bytesPlayed);
   return true;
+}
+
+inline void writeDacPair(uint8_t value)
+{
+  dacWrite(DAC_TTS_LEFT_PIN, value);
+  dacWrite(DAC_TTS_RIGHT_PIN, value);
 }
 #endif
