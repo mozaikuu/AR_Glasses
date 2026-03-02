@@ -60,12 +60,12 @@ run all 3 previous unfinished tasks and fix all errors
       ~~~ take me from 46 to dean
       🤖 AI Assistant:
 
-                            Please choose a valid start location from the following: Entrance, Hall 2-0-25, Hall 2-0-16, Stairs G, Elevator G, Floor 1, Left Corridor, Elevator F1, TA Office, Section 2-1-52, Hall 2-1-45, Section 2-1-41, Right Corridor, Hall 2-1-76, Hall 2-1-77, Hall 2-1-83, Hall 2-1-84 ~~~
+                             Please choose a valid start location from the following: Entrance, Hall 2-0-25, Hall 2-0-16, Stairs G, Elevator G, Floor 1, Left Corridor, Elevator F1, TA Office, Section 2-1-52, Hall 2-1-45, Section 2-1-41, Right Corridor, Hall 2-1-76, Hall 2-1-77, Hall 2-1-83, Hall 2-1-84 ~~~
 
-                 take me from 2-1-45 to dean
-                 🤖 AI Assistant:
+                  take me from 2-1-45 to dean
+                  🤖 AI Assistant:
 
-                       Action already taken.
+                        Action already taken.
 
 - [ ] reset history due to task conflicts
 
@@ -678,10 +678,10 @@ Students should work on preparing power point slides include the following:
 - [x] fix my name in the file
 - [x] ABSTRACT
 
-                     Modern wearable technologies aim to enhance human–technology interaction; however, existing smart glasses solutions remain limited in personalization, contextual awareness, and seamless multimodal integration. This paper presents an advanced AI-powered smart glasses system designed to improve daily communication, productivity, accessibility, and decision-making through intelligent, hands-free interaction.
-                     The proposed system integrates speech recognition, real-time multilingual translation, large language models, computer vision, augmented reality, navigation, and smart home connectivity into a unified wearable platform. A YOLO-based computer vision module enables real-time object detection and face recognition, allowing personalized and context-aware interactions. Indoor navigation is supported through a custom mapping and graph-based routing approach, providing accurate guidance in complex indoor environments.
-                     Speech input is transcribed using a multilingual automatic speech recognition model and processed by a large language model to understand user intent and generate appropriate responses, which are delivered through natural text-to-speech output. A companion mobile and web platform enables device management, smart home control, accessibility customization, and real-time system monitoring.
-                     The system is designed with inclusivity as a core principle, supporting users with disabilities through voice-based interaction, visual aids, and hands-free operation, while also enhancing safety and efficiency in daily tasks. Experimental analysis and competitor comparison demonstrate that the proposed solution addresses key limitations of existing smart glasses platforms, particularly in advanced computer vision, indoor navigation, and AI-driven personalization.
+                      Modern wearable technologies aim to enhance human–technology interaction; however, existing smart glasses solutions remain limited in personalization, contextual awareness, and seamless multimodal integration. This paper presents an advanced AI-powered smart glasses system designed to improve daily communication, productivity, accessibility, and decision-making through intelligent, hands-free interaction.
+                      The proposed system integrates speech recognition, real-time multilingual translation, large language models, computer vision, augmented reality, navigation, and smart home connectivity into a unified wearable platform. A YOLO-based computer vision module enables real-time object detection and face recognition, allowing personalized and context-aware interactions. Indoor navigation is supported through a custom mapping and graph-based routing approach, providing accurate guidance in complex indoor environments.
+                      Speech input is transcribed using a multilingual automatic speech recognition model and processed by a large language model to understand user intent and generate appropriate responses, which are delivered through natural text-to-speech output. A companion mobile and web platform enables device management, smart home control, accessibility customization, and real-time system monitoring.
+                      The system is designed with inclusivity as a core principle, supporting users with disabilities through voice-based interaction, visual aids, and hands-free operation, while also enhancing safety and efficiency in daily tasks. Experimental analysis and competitor comparison demonstrate that the proposed solution addresses key limitations of existing smart glasses platforms, particularly in advanced computer vision, indoor navigation, and AI-driven personalization.
 
 - [x] fix bookmarks
 - [ ] TABLE OF CONTENTS
@@ -927,145 +927,5 @@ python test_system.py
 
 ---
 
-Start the correct websocket server (not the FastAPI one):
-python server_audio/audio_stream_server.py
-You should see: 0.0.0.0 (line 8765).
-
-Keep Android URL as:
-MainActivity.kt
-192.168.100.2:8765"
-Rebuild/reinstall Android app:
-Open mobile_native/android in Android Studio
-Build -> Clean Project
-Build -> Rebuild Project
-Uninstall old app from phone
-Run again on phone
-Network checks:
-Phone Wi-Fi IP must be 192.168.100.x
-PC is 192.168.100.2 (you already confirmed)
-Allow Python through Windows Firewall (Private network)
-Test flow from Android app (not nRF app):
-Tap Start Gateway
-In text box, type what time is it
-Tap Send Test Text
-Expected logs:
-ESP serial:
-BLE RX: TXT:what time is it
-later BLE RX: TTS:<answer>
-Server console:
-Text command from android...
-Android logcat:
-WebSocket connected + forwarded response to BLE
-If you still get only TXT and never TTS, send me:
-
-ESP serial from boot to test
-server_audio console output
-Android logcat lines for AudioRecordingService and BleService
-
----
-
-(Smart_Glasses) D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses
-
-> python server_audio/audio_stream_server.py
-> D:\0_code\New_ideas\1_Coding_Now\Smart_Glasses\server_audio\audio_stream_server.py:27: DeprecationWarning: websockets.server.WebSocketServerProtocol is deprecated
-> from websockets.server import WebSocketServerProtocol
-> 2026-02-28 01:37:16,798 - **main** - INFO - Starting WebSocket server on 0.0.0.0:8765
-> 2026-02-28 01:37:21,654 - **main** - INFO - Loading Whisper model: base
-> 2026-02-28 01:37:24,627 - **main** - INFO - STT model loaded successfully
-> 2026-02-28 01:37:25,211 - **main** - INFO - Loading Piper TTS...
-> 2026-02-28 01:37:25,211 - **main** - INFO - TTS engine ready
-> 2026-02-28 01:37:25,319 - websockets.server - INFO - server listening on 0.0.0.0:8765
-> 2026-02-28 01:37:25,319 - **main** - INFO - WebSocket server running at ws://0.0.0.0:8765
-> 2026-02-28 01:37:25,319 - **main** - INFO - Press Ctrl+C to stop
-
-BLE RX: TXT:alive?
-CMD:alive?
-
----
-
-Implemented. I patched both firmware and backend.
-
-What I changed
-OLED long-text wrapping fixed
-updateDisplay() now wraps line 2 across up to 3 lines instead of truncating.
-File: smart_glasses_esp32_minimal.ino
-ESP now uses dedicated backend endpoint for Wi‑Fi mode
-SERVER_PROCESS_URL changed to:
-http://192.168.100.2:8000/esp/process
-This endpoint returns both:
-response
-tts_url (WAV file URL for ESP fetch)
-Added backend /esp/process + WAV serving route
-New endpoint:
-POST /esp/process
-New file route:
-GET /esp/tts/{filename}
-File: gateway.py
-Added backend WAV synthesis helper (no local speaker required)
-New function: synthesize_to_wav_file(...)
-File: tts.py
-Added optional ESP WAV playback via I2S (disabled by default)
-USE_I2S_TTS_MODULE 0 currently (safe for flash size)
-If enabled (1), ESP fetches WAV from tts_url and streams over I2S.
-Pins currently set:
-I2S_TTS_BCK 26
-I2S_TTS_WS 25
-I2S_TTS_DATA 27
-Why you were mostly getting day/time
-That came from the server’s local fast-path (works even when LLM path has issues).
-I added a retry in /esp/process: if it gets the generic fallback ("I encountered an issue..."), it retries once with direct LLM call.
-
-What you need to do now
-Restart backend:
-python start_gateway.py
-Reflash ESP firmware.
-
-Test in Serial (Wi‑Fi mode):
-
-MODE:WIFI
-TXT:what day is it today?
-TXT:explain what photosynthesis is
-Expect:
-
-OLED shows wrapped text (not cut off).
-Serial prints TTS RX: ... and ACK:SRV.
-You may see ...wav (while playback is disabled).
-If you want speaker playback on ESP:
-
-set #define USE_I2S_TTS_MODULE 1
-wire speaker amp/DAC to the I2S TTS pins above
-recompile (may increase binary size).
-If you want, next I can tune pin mapping to your exact audio board and add a runtime AUDIO:ON/OFF command.
-
----
-
-INFO: Application startup complete.
-[HTTP] Keepalive: MCP connection active
-DEBUG: Combined text: 'INSTRUCTION: Answer this question in ONE SINGLE PARAGRAPH with no headers, no bullet points, no lists, and no formatting. Keep it brief. QUESTION: explain what photosynthesis is'  
-DEBUG: Text parts: ['explain what photosynthesis is']
-[HTTP] Processing request with mode='quick'
-[HTTP] MCP connection verified. Available tools: ['VisionDetect', 'search_web', 'navigate_indoor', 'list_navigation_locations', 'navigate_and_visualize', 'start_indoor_navigation', 'next_navigation_instruction', 'get_navigation_progress', 'cancel_navigation_session', 'update_location_from_qr_code', 'get_current_location', 'get_all_building_locations']
-[HTTP] Using MCP agent loop with tools
-[HTTP] MCP connection verified. Tools: ['VisionDetect', 'search_web', 'navigate_indoor', 'list_navigation_locations', 'navigate_and_visualize', 'start_indoor_navigation', 'next_navigation_instruction', 'get_navigation_progress', 'cancel_navigation_session', 'update_location_from_qr_code', 'get_current_location', 'get_all_building_locations']
-[HTTP] User query (after cleanup): 'explain what photosynthesis is...'
---- QUICK LOOP 1 ---
-Available tools: ['VisionDetect', 'search_web', 'navigate_indoor', 'list_navigation_locations', 'navigate_and_visualize', 'start_indoor_navigation', 'next_navigation_instruction', 'get_navigation_progress', 'cancel_navigation_session', 'update_location_from_qr_code', 'get_current_location', 'get_all_building_locations']
-History length: 0, Tool calls: 0
-Making API request to https://api.cerebras.ai/v1/chat/completions with model llama3.3-70b
-Error in decide (attempt 1): API request failed with status 404: {"message":"Model llama-3.3-70b does not exist or you do not have access to it.","type":"not_found_error","param":"model","code":"model_not_found"}
-Making API request to https://api.cerebras.ai/v1/chat/completions with model llama3.3-70b
-Error in decide (attempt 2): API request failed with status 404: {"message":"Model llama-3.3-70b does not exist or you do not have access to it.","type":"not_found_error","param":"model","code":"model_not_found"}
-Making API request to https://api.cerebras.ai/v1/chat/completions with model llama3.3-70b
-Error in decide (attempt 3): API request failed with status 404: {"message":"Model llama-3.3-70b does not exist or you do not have access to it.","type":"not_found_error","param":"model","code":"model_not_found"}
-Thought: API error
-[HTTP] Agent loop completed in 1 iteration(s), tool_used=[], result length: 41
-[HTTP] TTS task scheduled
-Making API request to https://api.cerebras.ai/v1/chat/completions with model llama3.3-70b
-[WARNING] ESP direct LLM retry failed: API request failed with status 404: {"message":"Model llama-3.3-70b does not exist or you do not have access to it.","type":"not_found_error","param":"model","code":"model_not_found"}
-[TTS] Piper synthesis failed with en_US-libritts-high.onnx: return code 3221226505
-[TTS] Piper synthesis failed with en_US-libritts-high.onnx: return code 3221226505
-[TTS] Piper fallback model in use: en_US-lessac-medium.onnx
-[TTS] pygame audio unavailable: No module named 'pygame'
-[TTS] Piper fallback model in use: en_US-lessac-medium.onnx
-INFO: 192.168.100.18:53282 - "POST /esp/process HTTP/1.1" 200 OK
-INFO: 192.168.100.18:53283 - "GET /esp/tts/esp_68e551e646fc40b69444ad893440e09e.wav HTTP/1.1" 200 OK
+when i use touch twice. it should start recording a 5 second audio and send it to the server for processing.
+start removing words off the screen before TTS ends.
