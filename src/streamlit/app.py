@@ -1,101 +1,111 @@
 import streamlit as st
 import requests
 import numpy as np
+import pygame
+import threading
+
 from streamlit_webrtc import webrtc_streamer, VideoProcessorBase, AudioProcessorBase
+from tools.speech.tts import stop_tts
+from tools.speech.transcription import transcribe_audio_array
+
 
 # ----------------------------
 # CONFIG
 # ----------------------------
-st.set_page_config(page_title="Camera MCP Interface", layout="wide")
+st.set_page_config(page_title="Nova Interface", layout="wide")
 
-api_key = "http://localhost:8000/run"  # MCP Server URL
+API_URL = "http://localhost:8000/run"
 
-st.text_area("✍️ Write command", key="text_input")
 
-if st.button("Send Text", key="send_text"):
-    text = st.session_state["text_input"]
-
-    if text.strip():
-        with st.spinner("Running LLM..."):
-            r = requests.post(api_key, json={"text": text}, timeout=300)
-            result = r.json()["response"]
-
-        st.success("LLM Response:")
-        st.write(result)
-
-    
-# ----------------------------
+# ===============================
 # VIDEO PROCESSOR
-# ----------------------------
+# ===============================
 class VideoProcessor(VideoProcessorBase):
     def recv(self, frame):
-        img = frame.to_ndarray(format="bgr24")
-        return frame.from_ndarray(img, format="bgr24")
-    
-# images
-class ImageProcessor(VideoProcessorBase):
-    def recv(self, frame):
-        img = frame.to_ndarray(format="bgr24")
-        return frame.from_ndarray(img, format="bgr24")
+        return frame
 
-# ----------------------------
-# AUDIO PROCESSOR
-# ----------------------------
+
+# ===============================
+# AUDIO PROCESSOR (Interrupt + STT)
+# ===============================
 class AudioProcessor(AudioProcessorBase):
     def __init__(self):
         self.audio_buffer = []
+        self.silence_counter = 0
 
     def recv(self, frame):
         audio = frame.to_ndarray()
-        self.audio_buffer.append(audio)
+        volume = np.abs(audio).mean()
+
+        # =====================
+        # INTERRUPT LOGIC
+        # =====================
+        if pygame.mixer.get_init():
+            if pygame.mixer.music.get_busy() and volume > 0.02:
+                print("User interrupted Nova")
+                stop_tts()
+
+        # =====================
+        # RECORDING LOGIC
+        # =====================
+        if volume > 0.02:
+            self.audio_buffer.append(audio)
+            self.silence_counter = 0
+        else:
+            self.silence_counter += 1
+
+        # لو حصل صمت بعد الكلام → نعمل STT
+        if self.silence_counter > 20 and len(self.audio_buffer) > 10:
+            full_audio = np.concatenate(self.audio_buffer, axis=0)
+            self.audio_buffer = []
+            self.silence_counter = 0
+
+            threading.Thread(
+                target=process_audio,
+                args=(full_audio,),
+                daemon=True
+            ).start()
+
         return frame
 
-# ----------------------------
+
+# ===============================
+# PROCESS AUDIO → STT → API
+# ===============================
+def process_audio(audio_array):
+    text = transcribe_audio_array(audio_array)
+
+    if text and text.strip():
+        print("User said:", text)
+
+        try:
+            response = requests.post(
+                API_URL,
+                json={"text": text},
+                timeout=300
+            )
+
+            result = response.json()["response"]
+            print("Nova replied:", result)
+
+        except Exception as e:
+            print("API error:", e)
+
+
+# ===============================
 # UI
-# ----------------------------
-st.title("📱 Live Camera + MCP Controls")
+# ===============================
+st.title("🎙 Nova Live Interface")
 
-col1, col2 = st.columns([2, 1])
+webrtc_ctx = webrtc_streamer(
+    key="nova",
+    video_processor_factory=VideoProcessor,
+    audio_processor_factory=AudioProcessor,
+    media_stream_constraints={
+        "video": True,
+        "audio": True
+    },
+    async_processing=True
+)
 
-with col1:
-    st.subheader("Live Camera Feed")
-
-    webrtc_ctx = webrtc_streamer(
-        key="camera",
-        video_processor_factory=VideoProcessor,
-        audio_processor_factory=AudioProcessor,
-        media_stream_constraints={
-            "video": True,
-            "audio": True
-        },
-        async_processing=True
-    )
-
-with col2:
-    st.subheader("Controls")
-
-    # -------- WRITE INPUT --------
-    text_input = st.text_area("✍️ Write command")
-
-    if st.button("Send Text"):
-        if text_input.strip():
-            st.success("Text captured")
-            st.session_state["last_text"] = text_input
-
-            # SEND TO MCP (explained below)
-            # requests.post(MCP_SERVER_URL, json={"type": "text", "data": text_input})
-
-    # -------- SPEAK INPUT --------
-    if st.button("🎤 Speak"):
-        if webrtc_ctx.audio_processor:
-            audio_data = webrtc_ctx.audio_processor.audio_buffer
-            st.success(f"Captured {len(audio_data)} audio frames")
-
-            # SEND TO MCP (explained below)
-            # requests.post(MCP_SERVER_URL, files={"audio": audio_bytes})
-
-# ----------------------------
-# DEBUG VIEW
-# ----------------------------
-with st.expander("Debug"):
-    st.write("Last text:", st.session_state.get("last_text"))
+st.info("Talk normally. Nova will interrupt and respond automatically.")
