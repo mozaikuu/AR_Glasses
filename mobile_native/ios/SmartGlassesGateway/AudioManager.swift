@@ -1,5 +1,6 @@
 import Foundation
 import AVFoundation
+import CoreBluetooth
 import Starscream
 
 /**
@@ -39,6 +40,15 @@ class AudioManager: NSObject {
     private var isConnected = false
     private var serverURL = ""
 
+    // BLE bridge
+    private var centralManager: CBCentralManager?
+    private var glassesPeripheral: CBPeripheral?
+    private var glassesCharacteristic: CBCharacteristic?
+
+    private let serviceUUID = CBUUID(string: "4fafc201-1fb5-459e-8fcc-c5c9c331914b")
+    private let characteristicUUID = CBUUID(string: "beb5483e-36e1-4688-b7f5-ea07361b26a8")
+    private let namePatterns = ["smart glasses", "nova", "esp32", "smartglasses"]
+
     // State
     private(set) var isRecording = false
 
@@ -51,6 +61,7 @@ class AudioManager: NSObject {
     override init() {
         super.init()
         setupAudioSession()
+        centralManager = CBCentralManager(delegate: self, queue: nil)
     }
 
     deinit {
@@ -149,6 +160,9 @@ class AudioManager: NSObject {
         webSocket?.disconnect()
         isConnected = false
         onStatusChange?(false)
+        if let peripheral = glassesPeripheral {
+            centralManager?.cancelPeripheralConnection(peripheral)
+        }
 
         // Clean up temp file
         if let url = recordingURL {
@@ -220,11 +234,43 @@ extension AudioManager: AVAudioRecorderDelegate {
 
 extension AudioManager: WebSocketDelegate {
     func didReceive(event: WebSocketEvent, client: WebSocketClient) {
-        // Handle WebSocket events
+        switch event {
+        case .connected:
+            isConnected = true
+            print("WebSocket connected")
+        case .disconnected(let reason, _):
+            isConnected = false
+            print("WebSocket disconnected: \(reason)")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
+                self?.webSocket?.connect()
+            }
+        case .text(let message):
+            routeServerTextToBLE(message)
+            delegate?.audioManager(self, didReceiveText: message)
+        case .binary(let data):
+            playAudio(data: data)
+        case .error(let error):
+            isConnected = false
+            if let error {
+                delegate?.audioManager(self, didFailWithError: error)
+            }
+        default:
+            break
+        }
+    }
+
+    func sendUserText(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        sendTextCommandToServer(trimmed)
+    }
+
+    var isSocketConnected: Bool {
+        return isConnected
     }
 
     func didReceive(message: String, client: WebSocketClient) {
-        // Handle text message
+        routeServerTextToBLE(message)
         delegate?.audioManager(self, didReceiveText: message)
     }
 
@@ -249,5 +295,132 @@ extension AudioManager: WebSocketDelegate {
         DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
             self?.webSocket?.connect()
         }
+    }
+}
+
+// MARK: - BLE Bridge
+
+extension AudioManager: CBCentralManagerDelegate, CBPeripheralDelegate {
+    func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        if central.state == .poweredOn {
+            startBLEScan()
+        }
+    }
+
+    private func startBLEScan() {
+        centralManager?.scanForPeripherals(withServices: [serviceUUID], options: nil)
+    }
+
+    func centralManager(
+        _ central: CBCentralManager,
+        didDiscover peripheral: CBPeripheral,
+        advertisementData: [String: Any],
+        rssi RSSI: NSNumber
+    ) {
+        let name = (peripheral.name ?? "").lowercased()
+        let matches = namePatterns.contains { name.contains($0) }
+        guard matches else { return }
+
+        central.stopScan()
+        glassesPeripheral = peripheral
+        peripheral.delegate = self
+        central.connect(peripheral, options: nil)
+    }
+
+    func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
+        peripheral.discoverServices([serviceUUID])
+    }
+
+    func centralManager(
+        _ central: CBCentralManager,
+        didDisconnectPeripheral peripheral: CBPeripheral,
+        error: Error?
+    ) {
+        glassesCharacteristic = nil
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            self?.startBLEScan()
+        }
+    }
+
+    func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
+        guard error == nil, let services = peripheral.services else { return }
+        for service in services where service.uuid == serviceUUID {
+            peripheral.discoverCharacteristics([characteristicUUID], for: service)
+        }
+    }
+
+    func peripheral(
+        _ peripheral: CBPeripheral,
+        didDiscoverCharacteristicsFor service: CBService,
+        error: Error?
+    ) {
+        guard error == nil, let characteristics = service.characteristics else { return }
+        for characteristic in characteristics where characteristic.uuid == characteristicUUID {
+            glassesCharacteristic = characteristic
+            peripheral.setNotifyValue(true, for: characteristic)
+        }
+    }
+
+    func peripheral(
+        _ peripheral: CBPeripheral,
+        didUpdateValueFor characteristic: CBCharacteristic,
+        error: Error?
+    ) {
+        guard error == nil,
+              characteristic.uuid == characteristicUUID,
+              let data = characteristic.value,
+              let text = String(data: data, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+              !text.isEmpty else { return }
+
+        if text.hasPrefix("CMD:") {
+            let commandText = String(text.dropFirst(4)).trimmingCharacters(in: .whitespacesAndNewlines)
+            if !commandText.isEmpty {
+                sendTextCommandToServer(commandText)
+            }
+        }
+    }
+
+    private func sendTextCommandToServer(_ command: String) {
+        guard isConnected else { return }
+        let payload: [String: String] = [
+            "type": "text_command",
+            "text": command,
+            "source": "ble_esp32_ios"
+        ]
+
+        guard let data = try? JSONSerialization.data(withJSONObject: payload),
+              let json = String(data: data, encoding: .utf8) else {
+            return
+        }
+
+        webSocket?.write(string: json)
+    }
+
+    private func routeServerTextToBLE(_ message: String) {
+        guard let data = message.data(using: .utf8),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return
+        }
+
+        let type = (obj["type"] as? String ?? "").lowercased()
+        guard type == "response" || type == "text" || type == "command",
+              let responseText = (obj["text"] as? String)?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+              !responseText.isEmpty else {
+            return
+        }
+
+        sendTextToBLE("TTS:\(String(responseText.prefix(180)))")
+    }
+
+    private func sendTextToBLE(_ text: String) {
+        guard let peripheral = glassesPeripheral,
+              let characteristic = glassesCharacteristic else {
+            return
+        }
+
+        guard let data = text.data(using: .utf8) else { return }
+        peripheral.writeValue(data, for: characteristic, type: .withResponse)
     }
 }

@@ -39,6 +39,27 @@ class ViewController: UIViewController {
         return indicator
     }()
 
+    private lazy var textField: UITextField = {
+        let field = UITextField()
+        field.placeholder = "Type command for LLM"
+        field.borderStyle = .roundedRect
+        field.autocapitalizationType = .sentences
+        field.autocorrectionType = .yes
+        field.returnKeyType = .send
+        field.translatesAutoresizingMaskIntoConstraints = false
+        field.delegate = self
+        return field
+    }()
+
+    private lazy var sendTextButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setTitle("Send Text", for: .normal)
+        button.titleLabel?.font = UIFont.boldSystemFont(ofSize: 16)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.addTarget(self, action: #selector(sendTextCommand), for: .touchUpInside)
+        return button
+    }()
+
     // MARK: - Properties
 
     private var audioManager: AudioManager?
@@ -67,6 +88,8 @@ class ViewController: UIViewController {
         view.addSubview(startButton)
         view.addSubview(stopButton)
         view.addSubview(activityIndicator)
+        view.addSubview(textField)
+        view.addSubview(sendTextButton)
 
         NSLayoutConstraint.activate([
             statusLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -83,7 +106,17 @@ class ViewController: UIViewController {
             stopButton.heightAnchor.constraint(equalToConstant: 50),
 
             activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            activityIndicator.topAnchor.constraint(equalTo: stopButton.bottomAnchor, constant: 20)
+            activityIndicator.topAnchor.constraint(equalTo: stopButton.bottomAnchor, constant: 20),
+
+            textField.topAnchor.constraint(equalTo: activityIndicator.bottomAnchor, constant: 24),
+            textField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            textField.trailingAnchor.constraint(equalTo: sendTextButton.leadingAnchor, constant: -12),
+            textField.heightAnchor.constraint(equalToConstant: 44),
+
+            sendTextButton.centerYAnchor.constraint(equalTo: textField.centerYAnchor),
+            sendTextButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+            sendTextButton.widthAnchor.constraint(equalToConstant: 96),
+            sendTextButton.heightAnchor.constraint(equalToConstant: 44)
         ])
     }
 
@@ -137,6 +170,22 @@ class ViewController: UIViewController {
         statusLabel.text = "Status: Stopped"
     }
 
+    @objc private func sendTextCommand() {
+        guard let text = textField.text?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !text.isEmpty else {
+            statusLabel.text = "Status: Enter text first"
+            return
+        }
+        guard let manager = audioManager, manager.isSocketConnected else {
+            statusLabel.text = "Status: Start recording to connect server"
+            return
+        }
+
+        manager.sendUserText(text)
+        textField.text = ""
+        statusLabel.text = "Status: Text command sent"
+    }
+
     // MARK: - Permissions
 
     private func checkPermissions() -> Bool {
@@ -171,5 +220,13 @@ extension ViewController: AudioManagerDelegate {
             self.statusLabel.text = "Status: Error - \(error.localizedDescription)"
             self.updateUI(isRecording: false)
         }
+    }
+}
+
+extension ViewController: UITextFieldDelegate {
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        sendTextCommand()
+        textField.resignFirstResponder()
+        return true
     }
 }

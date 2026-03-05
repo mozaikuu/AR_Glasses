@@ -19,3 +19,12 @@ AR_Cerebro/[MemoryCaptures]/
 AR_Cerebro/*.7z
 AR_Cerebro/*.zip
 
+ar-nav-multiset/[Ll]ibrary/
+ar-nav-multiset/[Tt]emp/
+ar-nav-multiset/[Oo]bj/
+ar-nav-multiset/[Bb]uild/
+ar-nav-multiset/[Logs]/
+ar-nav-multiset/[MemoryCaptures]/
+ar-nav-multiset/*.7z
+ar-nav-multiset/*.zip
+ar-nav-multiset/Assets/MultiSet.7z

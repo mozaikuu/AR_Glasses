@@ -3,6 +3,7 @@ import sys
 import json
 import asyncio
 import aiohttp
+import os
 from typing import List, Dict, Any
 from config.settings import API_BASE_URL, API_KEY, MODEL_ID, MAX_RETRIES
 
@@ -21,6 +22,64 @@ class CerebrasAPIClient:
         self.api_key = api_key
         self.model_id = model_id
         self.session = None
+        self.model_candidates = self._build_model_candidates(model_id)
+
+    def _build_model_candidates(self, model_id: str) -> List[str]:
+        candidates: List[str] = []
+
+        def add(value: str):
+            v = (value or "").strip()
+            if v and v not in candidates:
+                candidates.append(v)
+
+        # Primary configured model.
+        add(model_id)
+
+        # Common normalization for typos like llama3.3-70b -> llama-3.3-70b.
+        if model_id.startswith("llama") and not model_id.startswith("llama-"):
+            add(model_id.replace("llama", "llama-", 1))
+
+        # Optional overrides from env.
+        raw_fallbacks = os.getenv("MODEL_FALLBACKS", "")
+        for item in raw_fallbacks.split(","):
+            add(item)
+
+        # Conservative built-in fallbacks.
+        add("llama-3.1-8b")
+        add("llama-3.1-70b")
+
+        return candidates
+
+    @staticmethod
+    def _looks_like_model_error(error_text: str) -> bool:
+        t = (error_text or "").lower()
+        return (
+            "model_not_found" in t
+            or "\"param\":\"model\"" in t
+            or "does not exist" in t
+            or "do not have access to it" in t
+        )
+
+    async def _discover_remote_models(self) -> List[str]:
+        if not self.session:
+            return []
+        url = f"{self.base_url}/models"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        try:
+            async with self.session.get(url, headers=headers) as response:
+                if response.status != 200:
+                    return []
+                data = await response.json()
+                models = data.get("data", []) if isinstance(data, dict) else []
+                ids = []
+                for model in models:
+                    if isinstance(model, dict):
+                        model_id = str(model.get("id", "")).strip()
+                        if model_id:
+                            ids.append(model_id)
+                return ids
+        except Exception:
+            return []
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession()
@@ -40,23 +99,48 @@ class CerebrasAPIClient:
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
+        attempted: List[str] = []
+        model_pool = list(self.model_candidates)
+        discovered_added = False
+        last_error = "Unknown API error"
 
-        payload = {
-            "model": self.model_id,
-            "messages": messages,
-            "max_tokens": max_tokens,
-            "temperature": temperature
-        }
+        while model_pool:
+            active_model = model_pool.pop(0)
+            attempted.append(active_model)
+            payload = {
+                "model": active_model,
+                "messages": messages,
+                "max_tokens": max_tokens,
+                "temperature": temperature
+            }
 
-        log(f"Making API request to {url} with model {self.model_id}")
+            log(f"Making API request to {url} with model {active_model}")
 
-        async with self.session.post(url, headers=headers, json=payload) as response:
-            if response.status != 200:
+            async with self.session.post(url, headers=headers, json=payload) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    # Promote working model for future calls.
+                    self.model_id = active_model
+                    self.model_candidates = [active_model] + [m for m in self.model_candidates if m != active_model]
+                    return result["choices"][0]["message"]["content"]
+
                 error_text = await response.text()
-                raise RuntimeError(f"API request failed with status {response.status}: {error_text}")
+                last_error = f"API request failed with status {response.status}: {error_text}"
 
-            result = await response.json()
-            return result["choices"][0]["message"]["content"]
+                # For model-specific errors, try fallbacks and discovered list.
+                if self._looks_like_model_error(error_text):
+                    if not discovered_added:
+                        discovered = await self._discover_remote_models()
+                        for m in discovered:
+                            if m not in attempted and m not in model_pool:
+                                model_pool.append(m)
+                        discovered_added = True
+                    continue
+
+                # Non-model errors should stop early.
+                raise RuntimeError(last_error)
+
+        raise RuntimeError(last_error)
 
 
 # Global API client instance
