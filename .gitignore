@@ -8,6 +8,7 @@ smart_home_web/node_modules
 smart_home_app/node_modules
 Temp/RealTimeObjectDetection
 env.py
+Depricated
 
 
 AR_Cerebro/[Ll]ibrary/
@@ -28,3 +29,13 @@ ar-nav-multiset/[MemoryCaptures]/
 ar-nav-multiset/*.7z
 ar-nav-multiset/*.zip
 ar-nav-multiset/Assets/MultiSet.7z
+
+hololens2-campus-nav/[Ll]ibrary/
+hololens2-campus-nav/[Tt]emp/
+hololens2-campus-nav/[Oo]bj/
+hololens2-campus-nav/[Bb]uild/
+hololens2-campus-nav/[Logs]/
+hololens2-campus-nav/[MemoryCaptures]/
+hololens2-campus-nav/*.7z
+hololens2-campus-nav/*.zip
+hololens2-campus-nav/Assets/MultiSet.7z
