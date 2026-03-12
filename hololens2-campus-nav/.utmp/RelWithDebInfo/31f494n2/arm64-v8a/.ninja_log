@@ -1,0 +1,12 @@
+# ninja log v5
+106	1153	7948697204567307	FramePacing/CMakeFiles/swappywrapper.dir/UnitySwappyWrapper.cpp.o	39da1caf3bbe5ad8
+1156	2435	7948697214384209	D:/2_University/Unity/AR_Test/hololens2-campus-nav/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/31f494n2/obj/arm64-v8a/libswappywrapper.so	d827641ffa72a1cd
+50	3703	7948697229869590	GameActivity/CMakeFiles/game.dir/UGAEntry.cpp.o	f4d4f526bbf2b79e
+94	3813	7948697230944984	GameActivity/CMakeFiles/game.dir/UGAInputMotionEvent.cpp.o	36cb67a9e0f221a9
+15	3843	7948697231252602	GameActivity/CMakeFiles/game.dir/UGAConfiguration.cpp.o	33de00e16dae6cb1
+40	3849	7948697231363875	GameActivity/CMakeFiles/game.dir/UGAInputKeyEvent.cpp.o	b10bc554838c6100
+2	3992	7948697232809223	GameActivity/CMakeFiles/game.dir/UGADebug.cpp.o	6ce994934281c018
+67	4372	7948697236588381	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	cafc70c1c1e75b8d
+82	4376	7948697236625446	GameActivity/CMakeFiles/game.dir/UGASoftKeyboard.cpp.o	13d49efc062ff6a2
+25	4579	7948697238715590	GameActivity/CMakeFiles/game.dir/UGAApplication.cpp.o	e56c2d6bd5309887
+4579	4753	7948697240492753	D:/2_University/Unity/AR_Test/hololens2-campus-nav/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/31f494n2/obj/arm64-v8a/libgame.so	70740fd849f23912
