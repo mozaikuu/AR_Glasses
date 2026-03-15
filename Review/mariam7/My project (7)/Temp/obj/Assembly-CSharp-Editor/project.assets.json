@@ -39,12 +39,14 @@
       "outputPath": "D:\\0_code\\New_ideas\\1_Coding_Now\\Smart_Glasses\\Review\\mariam7\\My project (7)\\Temp\\obj\\Assembly-CSharp-Editor\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "C:\\Users\\Moussa\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "C:\\Users\\Moussa\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
         "netstandard2.1"
       ],
       "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {

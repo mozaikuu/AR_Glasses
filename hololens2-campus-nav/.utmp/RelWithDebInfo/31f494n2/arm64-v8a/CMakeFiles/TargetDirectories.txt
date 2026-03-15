@@ -1,0 +1,8 @@
+D:/2_University/Unity/AR_Test/hololens2-campus-nav/.utmp/RelWithDebInfo/31f494n2/arm64-v8a/CMakeFiles/edit_cache.dir
+D:/2_University/Unity/AR_Test/hololens2-campus-nav/.utmp/RelWithDebInfo/31f494n2/arm64-v8a/CMakeFiles/rebuild_cache.dir
+D:/2_University/Unity/AR_Test/hololens2-campus-nav/.utmp/RelWithDebInfo/31f494n2/arm64-v8a/GameActivity/CMakeFiles/game.dir
+D:/2_University/Unity/AR_Test/hololens2-campus-nav/.utmp/RelWithDebInfo/31f494n2/arm64-v8a/GameActivity/CMakeFiles/edit_cache.dir
+D:/2_University/Unity/AR_Test/hololens2-campus-nav/.utmp/RelWithDebInfo/31f494n2/arm64-v8a/GameActivity/CMakeFiles/rebuild_cache.dir
+D:/2_University/Unity/AR_Test/hololens2-campus-nav/.utmp/RelWithDebInfo/31f494n2/arm64-v8a/FramePacing/CMakeFiles/swappywrapper.dir
+D:/2_University/Unity/AR_Test/hololens2-campus-nav/.utmp/RelWithDebInfo/31f494n2/arm64-v8a/FramePacing/CMakeFiles/edit_cache.dir
+D:/2_University/Unity/AR_Test/hololens2-campus-nav/.utmp/RelWithDebInfo/31f494n2/arm64-v8a/FramePacing/CMakeFiles/rebuild_cache.dir
