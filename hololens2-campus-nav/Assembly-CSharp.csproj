@@ -61,10 +61,15 @@
     <Analyzer Include="G:\Unity Hub\Editor\6000.2.8f1\Editor\Data\Tools\Unity.SourceGenerators\Unity.UIToolkit.SourceGenerator.dll" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Assets\Scripts\Navigation\VoiceGuide.cs" />
+    <Compile Include="Assets\Scripts\Navigation\NavigationSetup.cs" />
+    <Compile Include="Assets\Scripts\Navigation\LocalizationWrapper.cs" />
     <Compile Include="Assets\Scripts\HoloLens\QrModalController.cs" />
     <Compile Include="Assets\Scripts\HoloLens\HoloLensQrTracker.cs" />
     <Compile Include="Assets\Samples\MultiSet-SDK\1.11.2\Sample Scenes\OnDeviceLocalization\OnDeviceRuntimeDemo.cs" />
+    <Compile Include="Assets\Scripts\Navigation\NavigationManager.cs" />
     <Compile Include="Assets\Scripts\HoloLens\BackendApiClient.cs" />
+    <Compile Include="Assets\Scripts\Navigation\PathRenderer.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\TextMesh Pro\Shaders\TMPro.cginc" />
