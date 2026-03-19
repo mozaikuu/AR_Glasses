@@ -1,14 +1,12 @@
 using System.Collections.Generic;
 using System.Text;
-using UnityEngine;
 using TMPro;
-using LocationInfoSystem;
+using UnityEngine;
 
 namespace LocationInfoSystem
 {
     /// <summary>
-    /// Displays location information in a popup UI.
-    /// Designed to work with MRTK for HoloLens.
+    /// Displays location information in a world-space popup.
     /// </summary>
     public class LocationInfoPopup : MonoBehaviour
     {
@@ -24,83 +22,75 @@ namespace LocationInfoSystem
         [Header("Visual")]
         [SerializeField] private Canvas popupCanvas;
         [SerializeField] private Animator animator;
-        [SerializeField] private GameObject backplate;
 
         [Header("Behavior")]
         [SerializeField] private bool billboardMode = true;
         [SerializeField] private bool followUser = false;
         [SerializeField] private float followDistance = 2.0f;
-        [SerializeField] private float hideAfterSeconds = 0f; // 0 = don't auto-hide
+        [SerializeField] private float hideAfterSeconds = 0f;
 
         [Header("Animation")]
         [SerializeField] private string showTrigger = "Show";
         [SerializeField] private string hideTrigger = "Hide";
         [SerializeField] private float destroyAfterHide = 1.0f;
 
-        // Runtime
         private LocationData currentLocation;
         private Transform cameraTransform;
-        private bool isVisible = false;
+        private bool isVisible;
         private float showTime;
 
-        // Events
         public System.Action OnShow;
         public System.Action OnHide;
 
         private void Awake()
         {
-            // Find camera
             if (Camera.main != null)
             {
                 cameraTransform = Camera.main.transform;
             }
 
-            // Hide initially
             if (popupCanvas != null)
             {
                 popupCanvas.enabled = false;
             }
 
-            // Clear containers
             ClearContainers();
         }
 
         private void Update()
         {
             if (!isVisible)
+            {
                 return;
+            }
 
-            // Billboard mode - always face camera
+            if (cameraTransform == null && Camera.main != null)
+            {
+                cameraTransform = Camera.main.transform;
+            }
+
             if (billboardMode && cameraTransform != null)
             {
-                transform.rotation = Quaternion.LookRotation(
-                    transform.position - cameraTransform.position,
-                    Vector3.up
-                );
+                transform.rotation = Quaternion.LookRotation(transform.position - cameraTransform.position, Vector3.up);
             }
 
-            // Follow user mode
             if (followUser && cameraTransform != null)
             {
-                Vector3 targetPos = cameraTransform.position + cameraTransform.forward * followDistance;
-                transform.position = Vector3.Lerp(transform.position, targetPos, Time.deltaTime * 5f);
+                Vector3 targetPosition = cameraTransform.position + cameraTransform.forward * followDistance;
+                transform.position = Vector3.Lerp(transform.position, targetPosition, Time.deltaTime * 5f);
             }
 
-            // Auto-hide
-            if (hideAfterSeconds > 0 && Time.time - showTime >= hideAfterSeconds)
+            if (hideAfterSeconds > 0f && Time.time - showTime >= hideAfterSeconds)
             {
                 Hide();
             }
         }
 
-        /// <summary>
-        /// Show the popup with location data.
-        /// </summary>
         public void Show(LocationData data)
         {
             if (data == null)
             {
-                Debug.LogWarning("[LocationInfoPopup] Cannot show null location data");
+                Debug.LogWarning("[LocationInfoPopup] Cannot show null location data.");
                 return;
             }
 
@@ -108,270 +98,322 @@ namespace LocationInfoSystem
             showTime = Time.time;
             isVisible = true;
 
-            // Enable canvas
+            if (followUser && cameraTransform != null)
+            {
+                transform.position = cameraTransform.position + cameraTransform.forward * followDistance;
+            }
+
             if (popupCanvas != null)
             {
                 popupCanvas.enabled = true;
             }
 
-            // Populate UI
-            PopulateUI();
+            PopulateUi();
 
-            // Trigger animation
-            if (animator != null)
+            if (animator != null && !string.IsNullOrWhiteSpace(showTrigger))
             {
                 animator.SetTrigger(showTrigger);
             }
 
             OnShow?.Invoke();
-
-            Debug.Log($"[LocationInfoPopup] Showing: {data.name}");
         }
 
-        /// <summary>
-        /// Hide the popup.
-        /// </summary>
         public void Hide()
         {
             if (!isVisible)
+            {
                 return;
+            }
 
             isVisible = false;
 
-            // Trigger animation
-            if (animator != null)
+            if (animator != null && !string.IsNullOrWhiteSpace(hideTrigger))
             {
                 animator.SetTrigger(hideTrigger);
             }
 
             OnHide?.Invoke();
 
-            // Destroy after animation
-            if (destroyAfterHide > 0)
+            if (destroyAfterHide > 0f)
             {
                 Destroy(gameObject, destroyAfterHide);
             }
-            else
+            else if (popupCanvas != null)
             {
-                // Just disable canvas
-                if (popupCanvas != null)
-                {
-                    popupCanvas.enabled = false;
-                }
+                popupCanvas.enabled = false;
             }
         }
 
-        /// <summary>
-        /// Populate the UI with location data.
-        /// </summary>
-        private void PopulateUI()
+        private void PopulateUi()
         {
-            // Title
             if (titleText != null)
             {
                 titleText.text = currentLocation.name;
             }
 
-            // Subtitle (type + floor)
             if (subtitleText != null)
             {
-                string floorText = currentLocation.floor >= 0 ? $"Floor {currentLocation.floor}" : "";
+                string floorText = currentLocation.floor >= 0 ? $"Floor {currentLocation.floor}" : string.Empty;
                 string typeText = currentLocation.GetPlaceTypeDisplayName();
-                subtitleText.text = $"{typeText} • {floorText}";
+                subtitleText.text = string.IsNullOrEmpty(floorText) ? typeText : $"{typeText} - {floorText}";
             }
 
-            // Clear previous content
             ClearContainers();
 
-            // Populate based on location type
             if (currentLocation.HasStaffInfo())
             {
                 PopulateStaffInfo();
+                return;
             }
-            else if (currentLocation.HasLectureInfo())
+
+            if (currentLocation.HasLectureInfo())
             {
                 PopulateLectureInfo();
+                return;
             }
-            else
-            {
-                // Generic location
-                PopulateGenericInfo();
-            }
+
+            PopulateGenericInfo();
         }
 
-        /// <summary>
-        /// Populate staff information for offices.
-        /// </summary>
         private void PopulateStaffInfo()
         {
             if (contentText != null)
             {
-                contentText.text = "Staff:";
+                contentText.text = "Office staff";
             }
 
             if (staffContainer == null || staffCardPrefab == null)
             {
-                // Fallback to text
-                if (contentText != null)
-                {
-                    StringBuilder sb = new StringBuilder();
-                    sb.AppendLine("Staff:");
-                    sb.AppendLine();
-
-                    foreach (var staff in currentLocation.staff)
-                    {
-                        sb.AppendLine($"<b>{staff.name}</b>");
-                        sb.AppendLine($"{staff.role}");
-                        sb.AppendLine($"📧 {staff.email}");
-                        sb.AppendLine($"📅 {string.Join(", ", staff.officeDays)}");
-                        sb.AppendLine($"🕐 {staff.officeHours}");
-                        sb.AppendLine();
-                    }
-
-                    contentText.text = sb.ToString();
-                }
+                PopulateStaffTextFallback();
                 return;
             }
 
-            // Instantiate staff cards
-            foreach (var staff in currentLocation.staff)
+            foreach (StaffMember staff in currentLocation.staff)
             {
                 GameObject card = Instantiate(staffCardPrefab, staffContainer);
 
-                // Find text components in card
-                var nameText = card.transform.Find("Name")?.GetComponent<TextMeshProUGUI>();
-                var roleText = card.transform.Find("Role")?.GetComponent<TextMeshProUGUI>();
-                var emailText = card.transform.Find("Email")?.GetComponent<TextMeshProUGUI>();
-                var hoursText = card.transform.Find("Hours")?.GetComponent<TextMeshProUGUI>();
-
-                if (nameText != null) nameText.text = staff.name;
-                if (roleText != null) roleText.text = staff.role;
-                if (emailText != null) emailText.text = staff.email;
-                if (hoursText != null)
-                {
-                    hoursText.text = $"📅 {string.Join(", ", staff.officeDays)}\n🕐 {staff.officeHours}";
-                }
+                SetCardText(card, "Name", staff.name);
+                SetCardText(card, "Desk", string.IsNullOrWhiteSpace(staff.deskLabel) ? "Desk not listed" : $"Desk: {staff.deskLabel}");
+                SetCardText(card, "Role", staff.role);
+                SetCardText(card, "Email", string.IsNullOrWhiteSpace(staff.email) ? string.Empty : $"Email: {staff.email}");
+                SetCardText(card, "Hours", BuildStaffAvailabilityText(staff));
+                SetCardText(card, "Courses", BuildCoursesText(staff));
             }
         }
 
-        /// <summary>
-        /// Populate lecture schedule for lecture halls.
-        /// </summary>
+        private void PopulateStaffTextFallback()
+        {
+            if (contentText == null)
+            {
+                return;
+            }
+
+            StringBuilder builder = new StringBuilder();
+            builder.AppendLine("Office staff");
+            builder.AppendLine();
+
+            foreach (StaffMember staff in currentLocation.staff)
+            {
+                builder.AppendLine($"<b>{staff.name}</b>");
+                if (!string.IsNullOrWhiteSpace(staff.deskLabel))
+                {
+                    builder.AppendLine($"Desk: {staff.deskLabel}");
+                }
+
+                if (!string.IsNullOrWhiteSpace(staff.role))
+                {
+                    builder.AppendLine(staff.role);
+                }
+
+                if (!string.IsNullOrWhiteSpace(staff.email))
+                {
+                    builder.AppendLine($"Email: {staff.email}");
+                }
+
+                builder.AppendLine(BuildStaffAvailabilityText(staff));
+
+                string coursesText = BuildCoursesText(staff);
+                if (!string.IsNullOrWhiteSpace(coursesText))
+                {
+                    builder.AppendLine(coursesText);
+                }
+
+                builder.AppendLine();
+            }
+
+            contentText.text = builder.ToString().TrimEnd();
+        }
+
         private void PopulateLectureInfo()
         {
-            // Get today's lectures
-            var todaysLectures = currentLocation.GetTodaysLectures();
+            Lecture[] todaysLectures = currentLocation.GetTodaysLectures();
 
             if (contentText != null)
             {
-                if (todaysLectures.Length > 0)
-                {
-                    contentText.text = "Today's Lectures:";
-                }
-                else
-                {
-                    contentText.text = "No lectures scheduled today";
-                }
+                contentText.text = todaysLectures.Length > 0 ? "Today's schedule" : "No lectures scheduled today";
             }
 
             if (lecturesContainer == null || lectureCardPrefab == null)
             {
-                // Fallback to text
-                if (contentText != null && todaysLectures.Length > 0)
-                {
-                    StringBuilder sb = new StringBuilder();
-                    sb.AppendLine("Today's Lectures:");
-                    sb.AppendLine();
-
-                    foreach (var lecture in todaysLectures)
-                    {
-                        sb.AppendLine($"<b>{lecture.courseName}</b>");
-                        sb.AppendLine($"{lecture.courseCode} - {lecture.instructor}");
-                        sb.AppendLine($"🕐 {lecture.startTime} - {lecture.endTime}");
-                        sb.AppendLine();
-                    }
-
-                    contentText.text = sb.ToString();
-                }
+                PopulateLectureTextFallback(todaysLectures);
                 return;
             }
 
-            // Instantiate lecture cards
-            foreach (var lecture in todaysLectures)
+            if (todaysLectures.Length > 0)
             {
-                GameObject card = Instantiate(lectureCardPrefab, lecturesContainer);
+                foreach (Lecture lecture in todaysLectures)
+                {
+                    CreateLectureCard(lecture.courseName, lecture.courseCode, lecture.instructor, $"{lecture.startTime} - {lecture.endTime}");
+                }
 
-                var courseText = card.transform.Find("CourseName")?.GetComponent<TextMeshProUGUI>();
-                var codeText = card.transform.Find("CourseCode")?.GetComponent<TextMeshProUGUI>();
-                var instructorText = card.transform.Find("Instructor")?.GetComponent<TextMeshProUGUI>();
-                var timeText = card.transform.Find("Time")?.GetComponent<TextMeshProUGUI>();
-
-                if (courseText != null) courseText.text = lecture.courseName;
-                if (codeText != null) codeText.text = lecture.courseCode;
-                if (instructorText != null) instructorText.text = lecture.instructor;
-                if (timeText != null) timeText.text = $"🕐 {lecture.startTime} - {lecture.endTime}";
+                return;
             }
 
-            // Show weekly schedule if no lectures today
-            if (todaysLectures.Length == 0 && currentLocation.lectures.Length > 0)
+            Dictionary<string, List<Lecture>> lecturesByDay = GroupLecturesByDay();
+            foreach (KeyValuePair<string, List<Lecture>> dayEntry in lecturesByDay)
             {
-                if (contentText != null)
-                {
-                    contentText.text += "\n\nWeekly Schedule:";
-                }
-
-                // Group by day
-                var lecturesByDay = new Dictionary<string, List<Lecture>>();
-                foreach (var lecture in currentLocation.lectures)
-                {
-                    if (!lecturesByDay.ContainsKey(lecture.day))
-                        lecturesByDay[lecture.day] = new List<Lecture>();
-                    lecturesByDay[lecture.day].Add(lecture);
-                }
-
-                foreach (var day in lecturesByDay.Keys)
-                {
-                    GameObject card = Instantiate(lectureCardPrefab, lecturesContainer);
-                    var courseText = card.transform.Find("CourseName")?.GetComponent<TextMeshProUGUI>();
-                    if (courseText != null) courseText.text = day;
-
-                    var timeText = card.transform.Find("Time")?.GetComponent<TextMeshProUGUI>();
-                    if (timeText != null)
-                    {
-                        var lectures = lecturesByDay[day];
-                        timeText.text = $"{lectures.Count} lecture(s)";
-                    }
-                }
+                CreateLectureCard(dayEntry.Key, string.Empty, string.Empty, $"{dayEntry.Value.Count} lecture(s)");
             }
         }
 
-        /// <summary>
-        /// Populate generic location info.
-        /// </summary>
+        private void PopulateLectureTextFallback(Lecture[] todaysLectures)
+        {
+            if (contentText == null)
+            {
+                return;
+            }
+
+            StringBuilder builder = new StringBuilder();
+            if (todaysLectures.Length > 0)
+            {
+                builder.AppendLine("Today's schedule");
+                builder.AppendLine();
+
+                foreach (Lecture lecture in todaysLectures)
+                {
+                    builder.AppendLine($"<b>{lecture.courseName}</b>");
+                    builder.AppendLine($"{lecture.courseCode} - {lecture.instructor}");
+                    builder.AppendLine($"{lecture.startTime} - {lecture.endTime}");
+                    builder.AppendLine();
+                }
+            }
+            else
+            {
+                builder.AppendLine("No lectures scheduled today");
+                builder.AppendLine();
+                builder.AppendLine("Weekly schedule");
+                builder.AppendLine();
+
+                foreach (KeyValuePair<string, List<Lecture>> dayEntry in GroupLecturesByDay())
+                {
+                    builder.AppendLine($"<b>{dayEntry.Key}</b>");
+                    foreach (Lecture lecture in dayEntry.Value)
+                    {
+                        builder.AppendLine($"{lecture.startTime} - {lecture.endTime}: {lecture.courseName} ({lecture.instructor})");
+                    }
+
+                    builder.AppendLine();
+                }
+            }
+
+            contentText.text = builder.ToString().TrimEnd();
+        }
+
+        private Dictionary<string, List<Lecture>> GroupLecturesByDay()
+        {
+            Dictionary<string, List<Lecture>> lecturesByDay = new Dictionary<string, List<Lecture>>();
+
+            foreach (Lecture lecture in currentLocation.lectures)
+            {
+                if (!lecturesByDay.ContainsKey(lecture.day))
+                {
+                    lecturesByDay[lecture.day] = new List<Lecture>();
+                }
+
+                lecturesByDay[lecture.day].Add(lecture);
+            }
+
+            return lecturesByDay;
+        }
+
+        private void CreateLectureCard(string courseName, string courseCode, string instructor, string timeText)
+        {
+            GameObject card = Instantiate(lectureCardPrefab, lecturesContainer);
+            SetCardText(card, "CourseName", courseName);
+            SetCardText(card, "CourseCode", courseCode);
+            SetCardText(card, "Instructor", instructor);
+            SetCardText(card, "Time", timeText);
+        }
+
         private void PopulateGenericInfo()
         {
-            if (contentText != null)
+            if (contentText == null)
             {
-                StringBuilder sb = new StringBuilder();
+                return;
+            }
 
-                if (!string.IsNullOrEmpty(currentLocation.description))
+            StringBuilder builder = new StringBuilder();
+
+            if (!string.IsNullOrWhiteSpace(currentLocation.description))
+            {
+                builder.AppendLine(currentLocation.description);
+            }
+
+            if (!string.IsNullOrWhiteSpace(currentLocation.additional_info))
+            {
+                if (builder.Length > 0)
                 {
-                    sb.AppendLine(currentLocation.description);
-                    sb.AppendLine();
+                    builder.AppendLine();
                 }
 
-                if (!string.IsNullOrEmpty(currentLocation.additional_info))
-                {
-                    sb.AppendLine(currentLocation.additional_info);
-                }
+                builder.AppendLine(currentLocation.additional_info);
+            }
 
-                contentText.text = sb.ToString();
+            contentText.text = builder.ToString().TrimEnd();
+        }
+
+        private string BuildStaffAvailabilityText(StaffMember staff)
+        {
+            List<string> lines = new List<string>();
+
+            if (staff.officeDays != null && staff.officeDays.Length > 0)
+            {
+                lines.Add($"Days: {string.Join(", ", staff.officeDays)}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(staff.officeHours))
+            {
+                lines.Add($"Hours: {staff.officeHours}");
+            }
+
+            lines.Add(staff.IsAvailableToday() ? "Status: Available today" : "Status: Not scheduled today");
+            return string.Join("\n", lines);
+        }
+
+        private string BuildCoursesText(StaffMember staff)
+        {
+            if (staff.coursesTaught == null || staff.coursesTaught.Length == 0)
+            {
+                return string.Empty;
+            }
+
+            return $"Teaches: {string.Join(", ", staff.coursesTaught)}";
+        }
+
+        private void SetCardText(GameObject card, string childName, string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return;
+            }
+
+            TextMeshProUGUI targetText = card.transform.Find(childName)?.GetComponent<TextMeshProUGUI>();
+            if (targetText != null)
+            {
+                targetText.text = value;
             }
         }
 
-        /// <summary>
-        /// Clear all dynamic content containers.
-        /// </summary>
         private void ClearContainers()
         {
             if (staffContainer != null)
@@ -391,31 +433,19 @@ namespace LocationInfoSystem
             }
         }
 
-        /// <summary>
-        /// Check if popup is currently visible.
-        /// </summary>
         public bool IsVisible => isVisible;
 
-        /// <summary>
-        /// Get the current location data.
-        /// </summary>
         public LocationData GetCurrentLocation()
         {
             return currentLocation;
         }
 
-        /// <summary>
-        /// Set the popup to follow the user.
-        /// </summary>
         public void SetFollowUser(bool follow, float distance = 2.0f)
         {
             followUser = follow;
             followDistance = distance;
         }
 
-        /// <summary>
-        /// Set billboard mode.
-        /// </summary>
         public void SetBillboardMode(bool billboard)
         {
             billboardMode = billboard;

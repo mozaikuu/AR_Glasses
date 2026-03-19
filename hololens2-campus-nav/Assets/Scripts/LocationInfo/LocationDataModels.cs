@@ -24,10 +24,35 @@ namespace LocationInfoSystem
     public class StaffMember
     {
         public string name;
+        public string deskLabel;
         public string role;
         public string email;
         public string[] officeDays;
         public string officeHours;
+        public string[] coursesTaught;
+
+        public bool IsAvailableOnDay(string day)
+        {
+            if (officeDays == null || officeDays.Length == 0 || string.IsNullOrWhiteSpace(day))
+            {
+                return false;
+            }
+
+            foreach (string officeDay in officeDays)
+            {
+                if (string.Equals(officeDay, day, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public bool IsAvailableToday()
+        {
+            return IsAvailableOnDay(DateTime.Now.DayOfWeek.ToString());
+        }
     }
 
     /// <summary>

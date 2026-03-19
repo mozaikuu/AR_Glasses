@@ -1,24 +1,34 @@
+using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
-using LocationInfoSystem;
+using UnityEngine.Networking;
 
 namespace LocationInfoSystem
 {
     /// <summary>
-    /// Singleton manager that loads and provides access to location data from navigation.json.
-    /// Attach this to a GameObject in the scene.
+    /// Loads and serves location metadata for popup/navigation features.
+    /// Uses StreamingAssets by default so the same flow works on Meta Quest.
     /// </summary>
     public class LocationDataManager : MonoBehaviour
     {
         [Header("Data Source")]
-        [SerializeField] private TextAsset navigationJson;
+        [SerializeField] private TextAsset navigationJsonOverride;
+        [SerializeField] private string streamingAssetsRelativePath = "Campus/navigation.json";
         [SerializeField] private bool loadOnAwake = true;
 
         [Header("Debug")]
         [SerializeField] private bool debugMode = false;
 
-        // Singleton instance
         private static LocationDataManager _instance;
+
+        private readonly Dictionary<string, LocationData> locationDatabase = new Dictionary<string, LocationData>();
+        private NavigationDataRoot navigationData;
+        private Coroutine loadRoutine;
+        private bool isLoaded;
+        private bool isLoading;
+
         public static LocationDataManager Instance
         {
             get
@@ -28,31 +38,31 @@ namespace LocationInfoSystem
                     _instance = FindFirstObjectByType<LocationDataManager>();
                     if (_instance == null)
                     {
-                        Debug.LogError("[LocationDataManager] No instance found in scene!");
+                        Debug.LogError("[LocationDataManager] No instance found in scene.");
                     }
                 }
+
                 return _instance;
             }
         }
 
-        // Data storage
-        private Dictionary<string, LocationData> locationDatabase = new Dictionary<string, LocationData>();
-        private NavigationDataRoot navigationData;
-        private bool isLoaded = false;
+        public event Action OnDataLoaded;
+        public event Action<string> OnDataLoadFailed;
 
-        // Properties
         public bool IsLoaded => isLoaded;
+        public bool IsLoading => isLoading;
+        public bool DebugMode => debugMode;
         public int LocationCount => locationDatabase.Count;
         public BuildingInfo BuildingInfo => navigationData?.building;
 
         private void Awake()
         {
-            // Singleton setup
             if (_instance != null && _instance != this)
             {
                 Destroy(gameObject);
                 return;
             }
+
             _instance = this;
 
             if (loadOnAwake)
@@ -61,64 +71,187 @@ namespace LocationInfoSystem
             }
         }
 
-        /// <summary>
-        /// Load and parse the navigation.json data.
-        /// </summary>
+        public void SetNavigationJsonOverride(TextAsset textAsset)
+        {
+            navigationJsonOverride = textAsset;
+        }
+
+        public void SetStreamingAssetsRelativePath(string relativePath)
+        {
+            if (!string.IsNullOrWhiteSpace(relativePath))
+            {
+                streamingAssetsRelativePath = relativePath;
+            }
+        }
+
         public void LoadData()
         {
-            if (navigationJson == null)
+            if (isLoading)
             {
-                Debug.LogError("[LocationDataManager] navigationJson TextAsset is not assigned!");
                 return;
             }
 
+            if (loadRoutine != null)
+            {
+                StopCoroutine(loadRoutine);
+            }
+
+            loadRoutine = StartCoroutine(LoadDataRoutine());
+        }
+
+        public bool LoadDataImmediate()
+        {
+            if (isLoading)
+            {
+                return false;
+            }
+
+            isLoading = true;
+            isLoaded = false;
+
+            string json = null;
+            string sourceLabel = string.Empty;
+
+            if (navigationJsonOverride != null)
+            {
+                json = navigationJsonOverride.text;
+                sourceLabel = "TextAsset override";
+            }
+            else
+            {
+                string streamingPath = Path.Combine(Application.streamingAssetsPath, streamingAssetsRelativePath).Replace("\\", "/");
+                sourceLabel = streamingPath;
+
+                if (!File.Exists(streamingPath))
+                {
+                    FailLoad($"navigation.json not found at {streamingPath}");
+                    return false;
+                }
+
+                json = File.ReadAllText(streamingPath);
+            }
+
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                FailLoad("navigation.json was empty.");
+                return false;
+            }
+
+            ParseJson(json, sourceLabel);
+            return isLoaded;
+        }
+
+        private IEnumerator LoadDataRoutine()
+        {
+            isLoading = true;
+            isLoaded = false;
+
+            string json = null;
+            string sourceLabel = string.Empty;
+
+            if (navigationJsonOverride != null)
+            {
+                json = navigationJsonOverride.text;
+                sourceLabel = "TextAsset override";
+            }
+            else
+            {
+                string streamingPath = Path.Combine(Application.streamingAssetsPath, streamingAssetsRelativePath).Replace("\\", "/");
+                sourceLabel = streamingPath;
+
+                if (streamingPath.StartsWith("jar:", StringComparison.OrdinalIgnoreCase) ||
+                    streamingPath.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                {
+                    using (UnityWebRequest request = UnityWebRequest.Get(streamingPath))
+                    {
+                        yield return request.SendWebRequest();
+
+                        if (request.result != UnityWebRequest.Result.Success)
+                        {
+                            FailLoad($"Failed to load navigation data from {streamingPath}: {request.error}");
+                            yield break;
+                        }
+
+                        json = request.downloadHandler.text;
+                    }
+                }
+                else
+                {
+                    if (!File.Exists(streamingPath))
+                    {
+                        FailLoad($"navigation.json not found at {streamingPath}");
+                        yield break;
+                    }
+
+                    json = File.ReadAllText(streamingPath);
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                FailLoad("navigation.json was empty.");
+                yield break;
+            }
+
+            ParseJson(json, sourceLabel);
+        }
+
+        private void ParseJson(string json, string sourceLabel)
+        {
             try
             {
-                string json = navigationJson.text;
-
-                // Handle mixed string/integer placeType in JSON
-                json = FixJsonPlaceType(json);
-
-                navigationData = JsonUtility.FromJson<NavigationDataRoot>(json);
+                navigationData = JsonUtility.FromJson<NavigationDataRoot>(FixJsonPlaceType(json));
 
                 if (navigationData == null || navigationData.locations == null)
                 {
-                    Debug.LogError("[LocationDataManager] Failed to parse navigation.json!");
+                    FailLoad($"Failed to parse navigation data from {sourceLabel}");
                     return;
                 }
 
-                // Build lookup dictionary
                 locationDatabase.Clear();
-                foreach (var location in navigationData.locations)
+                foreach (LocationData location in navigationData.locations)
                 {
-                    if (!string.IsNullOrEmpty(location.id))
+                    if (string.IsNullOrWhiteSpace(location?.id))
                     {
-                        locationDatabase[location.id] = location;
+                        continue;
+                    }
 
-                        if (debugMode)
-                        {
-                            Debug.Log($"[LocationDataManager] Loaded: {location.name} (ID: {location.id})");
-                        }
+                    locationDatabase[location.id] = location;
+
+                    if (debugMode)
+                    {
+                        Debug.Log($"[LocationDataManager] Loaded {location.id} -> {location.name}");
                     }
                 }
 
                 isLoaded = true;
-                Debug.Log($"[LocationDataManager] Loaded {locationDatabase.Count} locations from navigation.json");
+                isLoading = false;
+                loadRoutine = null;
+
+                Debug.Log($"[LocationDataManager] Loaded {locationDatabase.Count} locations from {sourceLabel}");
+                OnDataLoaded?.Invoke();
             }
-            catch (System.Exception e)
+            catch (Exception exception)
             {
-                Debug.LogError($"[LocationDataManager] Error loading data: {e.Message}");
+                FailLoad($"Error parsing navigation data: {exception.Message}");
             }
         }
 
-        /// <summary>
-        /// Get location data by ID.
-        /// </summary>
+        private void FailLoad(string message)
+        {
+            isLoading = false;
+            isLoaded = false;
+            loadRoutine = null;
+
+            Debug.LogError($"[LocationDataManager] {message}");
+            OnDataLoadFailed?.Invoke(message);
+        }
+
         public LocationData GetLocation(string locationId)
         {
             if (!isLoaded)
             {
-                Debug.LogWarning("[LocationDataManager] Data not loaded yet!");
+                Debug.LogWarning("[LocationDataManager] Data not loaded yet.");
                 return null;
             }
 
@@ -131,123 +264,113 @@ namespace LocationInfoSystem
             return null;
         }
 
-        /// <summary>
-        /// Get location data by name (case-insensitive).
-        /// </summary>
         public LocationData GetLocationByName(string name)
         {
-            if (!isLoaded) return null;
-
-            foreach (var kvp in locationDatabase)
+            if (!isLoaded || string.IsNullOrWhiteSpace(name))
             {
-                if (kvp.Value.name.Equals(name, System.StringComparison.OrdinalIgnoreCase))
+                return null;
+            }
+
+            foreach (KeyValuePair<string, LocationData> entry in locationDatabase)
+            {
+                if (entry.Value.name.Equals(name, StringComparison.OrdinalIgnoreCase))
                 {
-                    return kvp.Value;
+                    return entry.Value;
                 }
             }
 
             return null;
         }
 
-        /// <summary>
-        /// Get all locations.
-        /// </summary>
         public LocationData[] GetAllLocations()
         {
-            if (!isLoaded) return new LocationData[0];
+            if (!isLoaded)
+            {
+                return Array.Empty<LocationData>();
+            }
 
             LocationData[] array = new LocationData[locationDatabase.Count];
             locationDatabase.Values.CopyTo(array, 0);
             return array;
         }
 
-        /// <summary>
-        /// Get locations filtered by floor.
-        /// </summary>
         public LocationData[] GetLocationsByFloor(int floor)
         {
-            if (!isLoaded) return new LocationData[0];
+            if (!isLoaded)
+            {
+                return Array.Empty<LocationData>();
+            }
 
-            var result = new List<LocationData>();
-            foreach (var location in locationDatabase.Values)
+            List<LocationData> result = new List<LocationData>();
+            foreach (LocationData location in locationDatabase.Values)
             {
                 if (location.floor == floor)
                 {
                     result.Add(location);
                 }
             }
+
             return result.ToArray();
         }
 
-        /// <summary>
-        /// Get locations filtered by type.
-        /// </summary>
         public LocationData[] GetLocationsByType(PlaceType type)
         {
-            if (!isLoaded) return new LocationData[0];
+            if (!isLoaded)
+            {
+                return Array.Empty<LocationData>();
+            }
 
-            var result = new List<LocationData>();
-            foreach (var location in locationDatabase.Values)
+            List<LocationData> result = new List<LocationData>();
+            foreach (LocationData location in locationDatabase.Values)
             {
                 if (location.placeType == type)
                 {
                     result.Add(location);
                 }
             }
+
             return result.ToArray();
         }
 
-        /// <summary>
-        /// Get locations near a position (within radius).
-        /// </summary>
         public LocationData[] GetLocationsNear(Vector2 position, float radius)
         {
-            if (!isLoaded) return new LocationData[0];
-
-            var result = new List<LocationData>();
-            float radiusSqr = radius * radius;
-
-            foreach (var location in locationDatabase.Values)
+            if (!isLoaded)
             {
-                float distSqr = (location.coordinates - position).sqrMagnitude;
-                if (distSqr <= radiusSqr)
+                return Array.Empty<LocationData>();
+            }
+
+            List<LocationData> result = new List<LocationData>();
+            float radiusSquared = radius * radius;
+
+            foreach (LocationData location in locationDatabase.Values)
+            {
+                float distanceSquared = (location.coordinates - position).sqrMagnitude;
+                if (distanceSquared <= radiusSquared)
                 {
                     result.Add(location);
                 }
             }
+
             return result.ToArray();
         }
 
-        /// <summary>
-        /// Check if a location ID exists.
-        /// </summary>
         public bool HasLocation(string locationId)
         {
-            return locationDatabase.ContainsKey(locationId);
+            return isLoaded && locationDatabase.ContainsKey(locationId);
         }
 
-        /// <summary>
-        /// Get the building name.
-        /// </summary>
         public string GetBuildingName()
         {
             return navigationData?.building?.name ?? "Unknown Building";
         }
 
-        /// <summary>
-        /// Get the building address.
-        /// </summary>
         public string GetBuildingAddress()
         {
-            return navigationData?.building?.address ?? "";
+            return navigationData?.building?.address ?? string.Empty;
         }
 
-        /// <summary>
-        /// Fix JSON to handle string placeType values (convert to integers).
-        /// </summary>
         private string FixJsonPlaceType(string json)
         {
-            // Replace string placeType values with enum integers
             json = json.Replace("\"placeType\": \"Office\"", "\"placeType\": 1");
             json = json.Replace("\"placeType\": \"LectureRoom\"", "\"placeType\": 2");
             json = json.Replace("\"placeType\": \"Lab\"", "\"placeType\": 3");

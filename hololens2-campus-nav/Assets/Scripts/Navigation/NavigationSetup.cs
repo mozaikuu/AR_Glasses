@@ -25,11 +25,11 @@ public class NavigationSetup : MonoBehaviour
   [SerializeField]
   private string[] targetNames = new string[]
   {
-        "Entrance",
-        "TA_Office",
-        "Stairs_G",
-        "Floor_1",
-        "Elevator"
+        "entrance",
+        "ta_office_1",
+        "lecture_hall_a",
+        "lab1",
+        "elevator"
   };
 
   [Header("References (Auto-Find)")]

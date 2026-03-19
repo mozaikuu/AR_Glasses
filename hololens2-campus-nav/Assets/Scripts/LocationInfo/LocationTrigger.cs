@@ -1,12 +1,12 @@
 using UnityEngine;
-using LocationInfoSystem;
 
 namespace LocationInfoSystem
 {
     /// <summary>
-    /// Triggers a popup when the user enters the proximity of a location.
-    /// Attach this to a GameObject at the location's position.
-    /// </summary>    [RequireComponent(typeof(SphereCollider))]
+    /// Shows a popup when the user is close to a location.
+    /// Supports a distance-check mode that fits headset-based AR better than physics-only triggers.
+    /// </summary>
+    [RequireComponent(typeof(SphereCollider))]
     public class LocationTrigger : MonoBehaviour
     {
         [Header("Location Data")]
@@ -19,6 +19,16 @@ namespace LocationInfoSystem
         [Tooltip("Custom trigger radius (if overriding)")]
         [SerializeField] private float customRadius = 2.0f;
 
+        [Header("Detection")]
+        [Tooltip("Use distance checks against the localized user/camera pose instead of waiting for collider hits.")]
+        [SerializeField] private bool useDistanceCheck = true;
+
+        [Tooltip("Optional explicit transform to track. If empty, LocalizationWrapper and then Camera.main are used.")]
+        [SerializeField] private Transform trackedUserTransform;
+
+        [Tooltip("How often to evaluate distance checks.")]
+        [SerializeField] private float distanceCheckInterval = 0.1f;
+
         [Header("UI")]
         [Tooltip("The popup prefab to instantiate")]
         [SerializeField] private LocationInfoPopup popupPrefab;
@@ -27,7 +37,7 @@ namespace LocationInfoSystem
         [SerializeField] private Transform popupParent;
 
         [Tooltip("Offset from trigger center for popup position")]
-        [SerializeField] private Vector3 popupOffset = new Vector3(0, 1.5f, 0);
+        [SerializeField] private Vector3 popupOffset = new Vector3(0f, 1.5f, 0f);
 
         [Header("Behavior")]
         [Tooltip("Auto-hide popup when leaving trigger area")]
@@ -42,15 +52,14 @@ namespace LocationInfoSystem
         [Tooltip("Facing angle threshold (degrees)")]
         [SerializeField] private float facingAngleThreshold = 60f;
 
-        // Runtime
         private LocationData locationData;
         private SphereCollider triggerCollider;
         private LocationInfoPopup currentPopup;
-        private float enterTime;
-        private bool isPlayerInside = false;
-        private Transform playerTransform;
+        private LocalizationWrapper localizationWrapper;
+        private Transform runtimeUserTransform;
+        private bool isUserInside;
+        private float nextDistanceCheckTime;
 
-        // Events
         public System.Action<LocationData> OnPlayerEntered;
         public System.Action<LocationData> OnPlayerExited;
         public System.Action<LocationData> OnPopupShown;
@@ -58,73 +67,147 @@ namespace LocationInfoSystem
 
         private void Awake()
         {
-            triggerCollider = GetComponent<SphereCollider>();
-            triggerCollider.isTrigger = true;
-
-            // Configure collider radius
-            if (overrideRadius)
-            {
-                triggerCollider.radius = customRadius;
-            }
+            EnsureTriggerCollider();
         }
 
         private void Start()
         {
-            // Load location data
-            if (!string.IsNullOrEmpty(locationId) && LocationDataManager.Instance != null)
-            {
-                locationData = LocationDataManager.Instance.GetLocation(locationId);
+            EnsureTriggerCollider();
+            localizationWrapper = LocalizationWrapper.Instance;
+            ResolveTrackedUserTransform();
+            TryLoadLocationData();
 
-                if (locationData != null && !overrideRadius)
+            if (locationData == null)
+            {
+                if (LocationDataManager.Instance != null)
                 {
-                    // Use radius from navigation.json
-                    triggerCollider.radius = locationData.proximityRadius;
+                    LocationDataManager.Instance.OnDataLoaded += TryLoadLocationData;
                 }
+            }
+
+            if (popupPrefab == null)
+            {
+                Debug.LogWarning($"[LocationTrigger] Popup prefab is not assigned for {locationId}.");
+            }
+        }
+
+        private void Update()
+        {
+            if (locationData == null)
+            {
+                TryLoadLocationData();
+                return;
+            }
+
+            if (!useDistanceCheck)
+            {
+                return;
+            }
+
+            if (Time.time < nextDistanceCheckTime)
+            {
+                return;
+            }
+
+            nextDistanceCheckTime = Time.time + Mathf.Max(0.02f, distanceCheckInterval);
+            EvaluateDistanceState();
+        }
+
+        private void ResolveTrackedUserTransform()
+        {
+            runtimeUserTransform = trackedUserTransform;
+
+            if (runtimeUserTransform == null && Camera.main != null)
+            {
+                runtimeUserTransform = Camera.main.transform;
+            }
+        }
+
+        private void TryLoadLocationData()
+        {
+            EnsureTriggerCollider();
+
+            if (string.IsNullOrWhiteSpace(locationId) || LocationDataManager.Instance == null || !LocationDataManager.Instance.IsLoaded)
+            {
+                return;
+            }
+
+            locationData = LocationDataManager.Instance.GetLocation(locationId);
+            if (locationData != null && !overrideRadius)
+            {
+                triggerCollider.radius = locationData.proximityRadius;
             }
 
             if (locationData == null)
             {
                 Debug.LogWarning($"[LocationTrigger] No location data found for ID: {locationId}");
             }
+        }
 
-            // Validate popup prefab
-            if (popupPrefab == null)
+        private void EvaluateDistanceState()
+        {
+            Vector3? userPosition = GetTrackedUserPosition();
+            if (!userPosition.HasValue)
             {
-                Debug.LogError($"[LocationTrigger] Popup prefab not assigned for {locationId}!");
+                return;
+            }
+
+            bool isInRange = Vector3.Distance(transform.position, userPosition.Value) <= triggerCollider.radius;
+
+            if (isInRange && !isUserInside)
+            {
+                HandleUserEntered(userPosition.Value);
+            }
+            else if (!isInRange && isUserInside)
+            {
+                HandleUserExited();
+            }
+            else if (isInRange && requireFacing && currentPopup == null && !IsInvoking(nameof(ShowPopup)) && IsUserFacingLocation(userPosition.Value))
+            {
+                Invoke(nameof(ShowPopup), showDelay);
             }
         }
 
-        private void OnTriggerEnter(Collider other)
+        private Vector3? GetTrackedUserPosition()
         {
-            // Check if it's the player
-            if (!other.CompareTag("Player") && !other.GetComponent<UnityEngine.AI.NavMeshAgent>())
-                return;
+            localizationWrapper = LocalizationWrapper.Instance;
+            if (localizationWrapper != null)
+            {
+                Vector3? localizedPosition = localizationWrapper.GetUserPosition();
+                if (localizedPosition.HasValue)
+                {
+                    ResolveTrackedUserTransform();
+                    return localizedPosition.Value;
+                }
+            }
 
-            isPlayerInside = true;
-            playerTransform = other.transform;
-            enterTime = Time.time;
+            ResolveTrackedUserTransform();
+            if (runtimeUserTransform != null)
+            {
+                return runtimeUserTransform.position;
+            }
 
+            return null;
+        }
+
+        private void HandleUserEntered(Vector3 userPosition)
+        {
+            isUserInside = true;
+            ResolveTrackedUserTransform();
             OnPlayerEntered?.Invoke(locationData);
 
-            // Check facing requirement
-            if (requireFacing && !IsPlayerFacingLocation())
+            if (requireFacing && !IsUserFacingLocation(userPosition))
+            {
                 return;
+            }
 
-            // Show popup with delay
             Invoke(nameof(ShowPopup), showDelay);
         }
 
-        private void OnTriggerExit(Collider other)
+        private void HandleUserExited()
         {
-            // Check if it's the player
-            if (!other.CompareTag("Player") && !other.GetComponent<UnityEngine.AI.NavMeshAgent>())
-                return;
-
-            isPlayerInside = false;
-            playerTransform = null;
-
+            isUserInside = false;
             CancelInvoke(nameof(ShowPopup));
-
             OnPlayerExited?.Invoke(locationData);
 
             if (autoHideOnExit)
@@ -133,137 +216,181 @@ namespace LocationInfoSystem
             }
         }
 
-        private void OnTriggerStay(Collider other)
+        private bool IsUserFacingLocation(Vector3 userPosition)
         {
-            // Check facing while inside
-            if (requireFacing && isPlayerInside && currentPopup == null)
+            ResolveTrackedUserTransform();
+            if (runtimeUserTransform == null)
             {
-                if (IsPlayerFacingLocation() && !IsInvoking(nameof(ShowPopup)))
-                {
-                    Invoke(nameof(ShowPopup), showDelay);
-                }
+                return true;
             }
-        }
 
-        /// <summary>
-        /// Check if the player is facing this location.
-        /// </summary>
-        private bool IsPlayerFacingLocation()
-        {
-            if (playerTransform == null)
-                return true; // Default to true if no player
-
-            Vector3 toLocation = (transform.position - playerTransform.position).normalized;
-            float angle = Vector3.Angle(playerTransform.forward, toLocation);
-
+            Vector3 toLocation = (transform.position - userPosition).normalized;
+            float angle = Vector3.Angle(runtimeUserTransform.forward, toLocation);
             return angle <= facingAngleThreshold;
         }
 
-        /// <summary>
-        /// Show the location info popup.
-        /// </summary>
+        private void OnTriggerEnter(Collider other)
+        {
+            if (useDistanceCheck)
+            {
+                return;
+            }
+
+            if (!other.CompareTag("Player") && other.GetComponent<UnityEngine.AI.NavMeshAgent>() == null)
+            {
+                return;
+            }
+
+            runtimeUserTransform = other.transform;
+            HandleUserEntered(other.transform.position);
+        }
+
+        private void OnTriggerExit(Collider other)
+        {
+            if (useDistanceCheck)
+            {
+                return;
+            }
+
+            if (!other.CompareTag("Player") && other.GetComponent<UnityEngine.AI.NavMeshAgent>() == null)
+            {
+                return;
+            }
+
+            HandleUserExited();
+        }
+
+        private void OnTriggerStay(Collider other)
+        {
+            if (useDistanceCheck)
+            {
+                return;
+            }
+
+            if (!requireFacing || !isUserInside || currentPopup != null)
+            {
+                return;
+            }
+
+            runtimeUserTransform = other.transform;
+            if (IsUserFacingLocation(other.transform.position) && !IsInvoking(nameof(ShowPopup)))
+            {
+                Invoke(nameof(ShowPopup), showDelay);
+            }
+        }
+
         private void ShowPopup()
         {
-            if (locationData == null || popupPrefab == null)
+            if (locationData == null || popupPrefab == null || currentPopup != null)
+            {
                 return;
+            }
 
-            // Don't show if already visible
-            if (currentPopup != null)
-                return;
-
-            // Instantiate popup
-            Transform parent = popupParent != null ? popupParent : null;
-            Vector3 position = transform.position + popupOffset;
-
-            var popupInstance = Instantiate(popupPrefab, position, Quaternion.identity, parent);
-            currentPopup = popupInstance;
-
-            // Initialize popup with location data
+            Vector3 popupPosition = transform.position + popupOffset;
+            currentPopup = Instantiate(popupPrefab, popupPosition, Quaternion.identity, popupParent);
             currentPopup.Show(locationData);
-
             OnPopupShown?.Invoke(locationData);
 
-            if (LocationDataManager.Instance != null && LocationDataManager.Instance.debugMode)
+            if (LocationDataManager.Instance != null && LocationDataManager.Instance.DebugMode)
             {
-                Debug.Log($"[LocationTrigger] Showing popup for: {locationData.name}");
+                Debug.Log($"[LocationTrigger] Showing popup for {locationData.name}");
             }
         }
 
-        /// <summary>
-        /// Hide the popup.
-        /// </summary>
         private void HidePopup()
         {
-            if (currentPopup != null)
+            if (currentPopup == null)
             {
-                currentPopup.Hide();
-                currentPopup = null;
-
-                OnPopupHidden?.Invoke();
+                return;
             }
+
+            currentPopup.Hide();
+            currentPopup = null;
+            OnPopupHidden?.Invoke();
         }
 
-        /// <summary>
-        /// Manually trigger the popup (for testing or external calls).
-        /// </summary>
         [ContextMenu("Test: Show Popup")]
         public void TestShowPopup()
         {
-            if (locationData == null && LocationDataManager.Instance != null)
-            {
-                locationData = LocationDataManager.Instance.GetLocation(locationId);
-            }
-
+            TryLoadLocationData();
             ShowPopup();
         }
 
-        /// <summary>
-        /// Manually hide the popup.
-        /// </summary>
         [ContextMenu("Test: Hide Popup")]
         public void TestHidePopup()
         {
             HidePopup();
         }
 
-        /// <summary>
-        /// Set the location ID at runtime.
-        /// </summary>
         public void SetLocationId(string id)
         {
+            EnsureTriggerCollider();
             locationId = id;
-            if (LocationDataManager.Instance != null)
-            {
-                locationData = LocationDataManager.Instance.GetLocation(id);
-            }
+            locationData = null;
+            TryLoadLocationData();
         }
 
-        /// <summary>
-        /// Get the current location data.
-        /// </summary>
+        public void SetPopupPrefab(LocationInfoPopup prefab)
+        {
+            popupPrefab = prefab;
+        }
+
+        public void SetPopupParent(Transform parent)
+        {
+            popupParent = parent;
+        }
+
+        public void SetUseDistanceCheck(bool enabled)
+        {
+            useDistanceCheck = enabled;
+        }
+
         public LocationData GetLocationData()
         {
             return locationData;
         }
 
-        /// <summary>
-        /// Check if player is currently inside trigger.
-        /// </summary>
         public bool IsPlayerInside()
         {
-            return isPlayerInside;
+            return isUserInside;
+        }
+
+        private void EnsureTriggerCollider()
+        {
+            if (triggerCollider == null)
+            {
+                triggerCollider = GetComponent<SphereCollider>();
+            }
+
+            if (triggerCollider == null)
+            {
+                triggerCollider = gameObject.AddComponent<SphereCollider>();
+            }
+
+            triggerCollider.isTrigger = true;
+
+            if (overrideRadius)
+            {
+                triggerCollider.radius = customRadius;
+            }
         }
 
         private void OnDrawGizmosSelected()
         {
-            // Draw trigger radius in editor
             Gizmos.color = Color.cyan;
             Gizmos.DrawWireSphere(transform.position, triggerCollider != null ? triggerCollider.radius : customRadius);
 
-            // Draw popup position
             Gizmos.color = Color.yellow;
             Gizmos.DrawSphere(transform.position + popupOffset, 0.1f);
             Gizmos.DrawLine(transform.position, transform.position + popupOffset);
+        }
+
+        private void OnDestroy()
+        {
+            if (LocationDataManager.Instance != null)
+            {
+                LocationDataManager.Instance.OnDataLoaded -= TryLoadLocationData;
+            }
         }
     }
 }

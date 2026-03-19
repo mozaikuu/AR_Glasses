@@ -16,17 +16,21 @@
 			"staff": [
 				{
 					"name": "Ahmed Hassan",
+					"deskLabel": "Desk A1",
 					"role": "Teaching Assistant",
 					"email": "ahmed.hassan@university.edu",
 					"officeDays": ["Sunday", "Monday", "Tuesday", "Wednesday"],
-					"officeHours": "9:00 AM - 2:00 PM"
+					"officeHours": "9:00 AM - 2:00 PM",
+					"coursesTaught": ["CS101 Programming", "CS201 Data Structures"]
 				},
 				{
 					"name": "Sara Mohamed",
+					"deskLabel": "Desk A2",
 					"role": "Teaching Assistant",
 					"email": "sara.m@university.edu",
 					"officeDays": ["Sunday", "Monday", "Wednesday", "Thursday"],
-					"officeHours": "10:00 AM - 4:00 PM"
+					"officeHours": "10:00 AM - 4:00 PM",
+					"coursesTaught": ["CS102 Discrete Mathematics", "CS202 Algorithms"]
 				}
 			]
 		},
@@ -42,10 +46,12 @@
 			"staff": [
 				{
 					"name": "Omar Ali",
+					"deskLabel": "Desk M1",
 					"role": "Teaching Assistant",
 					"email": "omar.ali@university.edu",
 					"officeDays": ["Monday", "Tuesday", "Wednesday", "Thursday"],
-					"officeHours": "11:00 AM - 5:00 PM"
+					"officeHours": "11:00 AM - 5:00 PM",
+					"coursesTaught": ["MATH101 Calculus I", "MATH201 Linear Algebra"]
 				}
 			]
 		},
