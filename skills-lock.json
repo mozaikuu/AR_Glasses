@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "unity-xr": {
+      "source": "alphaonedev/openclaw-graph",
+      "sourceType": "github",
+      "computedHash": "7e196abee0a513d1d69fe167bfe88e393a7c1898d6f4cd4db5401c8d8abc460f"
+    }
+  }
+}
