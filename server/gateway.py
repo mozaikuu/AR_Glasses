@@ -15,6 +15,7 @@ import os
 import json
 import time
 import datetime
+import re
 import base64
 from contextlib import asynccontextmanager, AsyncExitStack
 from pathlib import Path
@@ -334,8 +335,31 @@ async def process_multimodal(req: MultimodalRequest):
             # Get dtype from request if available (default to float32 for WebRTC)
             audio_dtype = getattr(req, "audio_dtype", "float32")
             transcribed_text = transcribe_audio_bytes(audio_bytes, dtype=audio_dtype)
+            # #region agent log
+            _debug_log(
+                "baseline",
+                "H4",
+                "server/gateway.py:process_multimodal",
+                "audio transcription attempted",
+                {
+                    "audio_bytes_len": len(audio_bytes),
+                    "audio_dtype": audio_dtype,
+                    "transcribed_len": len(transcribed_text or ""),
+                    "transcribed_blank": not bool((transcribed_text or "").strip()),
+                },
+            )
+            # #endregion
             print(f"DEBUG: Transcribed text: '{transcribed_text}' (length: {len(transcribed_text)})", file=sys.stderr)
         except Exception as e:
+            # #region agent log
+            _debug_log(
+                "baseline",
+                "H4",
+                "server/gateway.py:process_multimodal",
+                "audio transcription failed",
+                {"error": str(e)},
+            )
+            # #endregion
             print(f"Audio transcription error: {e}", file=sys.stderr)
             transcribed_text = "[Audio transcription failed]"
 
@@ -485,6 +509,161 @@ async def process_multimodal(req: MultimodalRequest):
         "response": result,
         "transcription": transcribed_text if transcribed_text else None
     }
+
+
+def _normalize_location_name(value: str) -> str:
+    if not value:
+        return ""
+    lowered = value.strip().lower().replace("_", " ")
+    lowered = re.sub(r"[^a-z0-9\s]", " ", lowered)
+    lowered = re.sub(r"\s+", " ", lowered).strip()
+    return lowered
+
+
+def _extract_destination_query(command: str) -> str:
+    normalized = _normalize_location_name(command)
+    prefixes = [
+        "go to",
+        "navigate to",
+        "take me to",
+        "guide me to",
+        "i want to go to",
+        "where is",
+        "how do i get to",
+    ]
+    for prefix in prefixes:
+        if normalized.startswith(prefix + " "):
+            return normalized[len(prefix):].strip()
+    return normalized
+
+
+def _score_destination(query: str, candidate: str) -> int:
+    if not query or not candidate:
+        return 0
+    if query == candidate:
+        return 100
+    if candidate.startswith(query):
+        return 90
+    if query in candidate:
+        return 80
+    query_tokens = [t for t in query.split(" ") if t]
+    if not query_tokens:
+        return 0
+    hits = sum(1 for token in query_tokens if token in candidate)
+    return int((hits / len(query_tokens)) * 70)
+
+
+@app.post("/unity/voice-command")
+async def unity_voice_command(req: dict):
+    """
+    Structured command router for Unity.
+    Returns:
+      - action: speak | navigate | cancel_navigation | error
+      - response_text: assistant text for TTS/UI
+      - destination: destination name when action=navigate
+      - intent: high-level intent label
+    """
+    command = (req.get("command") or "").strip()
+    mode = (req.get("mode") or "quick").strip()
+    if not command:
+        return {
+            "action": "error",
+            "intent": "invalid",
+            "response_text": "I did not hear a command.",
+            "destination": None,
+            "confidence": 0.0,
+        }
+
+    command_lower = command.lower()
+
+    # 1) Fast path for local date/time questions.
+    local_answer = _local_time_date_answer(command)
+    if local_answer:
+        return {
+            "action": "speak",
+            "intent": "time_date",
+            "response_text": local_answer,
+            "destination": None,
+            "confidence": 0.98,
+        }
+
+    # 2) Navigation cancellation intent.
+    if any(p in command_lower for p in ("stop navigation", "cancel navigation", "stop guiding", "stop guidance")):
+        return {
+            "action": "cancel_navigation",
+            "intent": "navigation_cancel",
+            "response_text": "Okay, navigation has been cancelled.",
+            "destination": None,
+            "confidence": 0.95,
+        }
+
+    # 3) Navigation intent with destination matching.
+    is_navigation_intent = any(
+        p in command_lower
+        for p in ("go to", "navigate to", "take me to", "guide me to", "where is", "direction", "directions")
+    )
+    if is_navigation_intent:
+        try:
+            from tools.navigation.navigation import load_graph, get_all_locations
+            graph = load_graph()
+            locations = get_all_locations(graph)
+        except Exception as e:
+            return {
+                "action": "error",
+                "intent": "navigation_error",
+                "response_text": f"I could not load navigation locations: {e}",
+                "destination": None,
+                "confidence": 0.3,
+            }
+
+        destination_query = _extract_destination_query(command)
+        best = None
+        best_score = -1
+        for location in locations:
+            candidate_norm = _normalize_location_name(location)
+            score = _score_destination(destination_query, candidate_norm)
+            if score > best_score:
+                best_score = score
+                best = location
+
+        if best and best_score >= 45:
+            return {
+                "action": "navigate",
+                "intent": "navigation_start",
+                "response_text": f"Starting navigation to {best}.",
+                "destination": best,
+                "confidence": min(0.99, best_score / 100.0),
+            }
+
+        return {
+            "action": "speak",
+            "intent": "navigation_unknown_destination",
+            "response_text": "I could not find that destination. Please repeat the location name.",
+            "destination": None,
+            "confidence": 0.4,
+        }
+
+    # 4) General task -> route through your MCP/LLM processing.
+    try:
+        result = await process_multimodal(MultimodalRequest(text=command, mode=mode))
+        response_text = (result.get("response") or "").strip()
+        if not response_text:
+            response_text = "I could not generate a response. Please try again."
+        return {
+            "action": "speak",
+            "intent": "general_query",
+            "response_text": response_text,
+            "destination": None,
+            "confidence": 0.8,
+        }
+    except Exception as e:
+        return {
+            "action": "error",
+            "intent": "llm_error",
+            "response_text": f"I hit an issue while processing your request: {e}",
+            "destination": None,
+            "confidence": 0.2,
+        }
 
 
 @app.post("/esp/process")
@@ -861,6 +1040,23 @@ _gateway_qr_telemetry = []
 _MAX_GATEWAY_QR_TELEMETRY = 200
 
 
+def _debug_log(run_id: str, hypothesis_id: str, location: str, message: str, data: dict):
+    try:
+        payload = {
+            "sessionId": "150f1d",
+            "runId": run_id,
+            "hypothesisId": hypothesis_id,
+            "location": location,
+            "message": message,
+            "data": data,
+            "timestamp": int(time.time() * 1000),
+        }
+        with open("debug-150f1d.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps(payload, ensure_ascii=True) + "\n")
+    except Exception:
+        pass
+
+
 def _update_state(**kwargs):
     """Update web app state."""
     import time
@@ -881,8 +1077,26 @@ def _consume_ui_flags():
 def _get_wakeword_service():
     try:
         from web_app.services import wakeword_service
+        # #region agent log
+        _debug_log(
+            "baseline",
+            "H2",
+            "server/gateway.py:_get_wakeword_service",
+            "wakeword service import ok",
+            {"service_exists": wakeword_service is not None},
+        )
+        # #endregion
         return wakeword_service
     except Exception as e:
+        # #region agent log
+        _debug_log(
+            "baseline",
+            "H2",
+            "server/gateway.py:_get_wakeword_service",
+            "wakeword service import failed",
+            {"error": str(e)},
+        )
+        # #endregion
         _update_state(error_message=f"Wakeword service unavailable: {e}")
         return None
 
@@ -919,6 +1133,15 @@ def _get_selected_mic_index():
 async def get_audio_devices():
     devices = _list_input_devices()
     selected = _get_selected_mic_index()
+    # #region agent log
+    _debug_log(
+        "baseline",
+        "H3",
+        "server/gateway.py:get_audio_devices",
+        "listed audio devices",
+        {"device_count": len(devices), "selected_index": selected},
+    )
+    # #endregion
     return {"devices": devices, "selected_index": selected}
 
 
@@ -988,6 +1211,19 @@ async def start_listening():
         return {"status": "error", "error": _webapp_state.get("error_message")}
 
     selected_mic = _webapp_state.get("selected_mic_index")
+    # #region agent log
+    _debug_log(
+        "baseline",
+        "H2",
+        "server/gateway.py:start_listening",
+        "start listening requested",
+        {
+            "service_exists": service is not None,
+            "selected_mic": selected_mic,
+            "service_device_index": getattr(service, "device_index", None) if service else None,
+        },
+    )
+    # #endregion
     if selected_mic is not None and service.device_index != selected_mic:
         try:
             service.set_input_device(int(selected_mic))
@@ -1104,8 +1340,26 @@ async def record_audio(req: dict = None):
                     break
 
         if device_index is None:
+            # #region agent log
+            _debug_log(
+                "baseline",
+                "H3",
+                "server/gateway.py:record_audio",
+                "no microphone found",
+                {"requested_index": requested_index, "preferred_indices": preferred_indices},
+            )
+            # #endregion
             return {"error": "No microphone found"}
 
+        # #region agent log
+        _debug_log(
+            "baseline",
+            "H3",
+            "server/gateway.py:record_audio",
+            "microphone selected for recording",
+            {"device_index": device_index, "preferred_indices": preferred_indices},
+        )
+        # #endregion
         stream = p.open(
             format=format_,
             channels=channels,
@@ -1136,6 +1390,15 @@ async def record_audio(req: dict = None):
         _update_state(ai_response=result.get("response"))
         return result
     except Exception as e:
+        # #region agent log
+        _debug_log(
+            "baseline",
+            "H4",
+            "server/gateway.py:record_audio",
+            "record audio failed",
+            {"error": str(e)},
+        )
+        # #endregion
         _update_state(error_message=str(e))
         return {"error": str(e)}
     finally:

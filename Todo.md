@@ -60,12 +60,12 @@ run all 3 previous unfinished tasks and fix all errors
       ~~~ take me from 46 to dean
       🤖 AI Assistant:
 
-                             Please choose a valid start location from the following: Entrance, Hall 2-0-25, Hall 2-0-16, Stairs G, Elevator G, Floor 1, Left Corridor, Elevator F1, TA Office, Section 2-1-52, Hall 2-1-45, Section 2-1-41, Right Corridor, Hall 2-1-76, Hall 2-1-77, Hall 2-1-83, Hall 2-1-84 ~~~
+                              Please choose a valid start location from the following: Entrance, Hall 2-0-25, Hall 2-0-16, Stairs G, Elevator G, Floor 1, Left Corridor, Elevator F1, TA Office, Section 2-1-52, Hall 2-1-45, Section 2-1-41, Right Corridor, Hall 2-1-76, Hall 2-1-77, Hall 2-1-83, Hall 2-1-84 ~~~
 
-                  take me from 2-1-45 to dean
-                  🤖 AI Assistant:
+                   take me from 2-1-45 to dean
+                   🤖 AI Assistant:
 
-                        Action already taken.
+                         Action already taken.
 
 - [ ] reset history due to task conflicts
 
@@ -678,10 +678,10 @@ Students should work on preparing power point slides include the following:
 - [x] fix my name in the file
 - [x] ABSTRACT
 
-                      Modern wearable technologies aim to enhance human–technology interaction; however, existing smart glasses solutions remain limited in personalization, contextual awareness, and seamless multimodal integration. This paper presents an advanced AI-powered smart glasses system designed to improve daily communication, productivity, accessibility, and decision-making through intelligent, hands-free interaction.
-                      The proposed system integrates speech recognition, real-time multilingual translation, large language models, computer vision, augmented reality, navigation, and smart home connectivity into a unified wearable platform. A YOLO-based computer vision module enables real-time object detection and face recognition, allowing personalized and context-aware interactions. Indoor navigation is supported through a custom mapping and graph-based routing approach, providing accurate guidance in complex indoor environments.
-                      Speech input is transcribed using a multilingual automatic speech recognition model and processed by a large language model to understand user intent and generate appropriate responses, which are delivered through natural text-to-speech output. A companion mobile and web platform enables device management, smart home control, accessibility customization, and real-time system monitoring.
-                      The system is designed with inclusivity as a core principle, supporting users with disabilities through voice-based interaction, visual aids, and hands-free operation, while also enhancing safety and efficiency in daily tasks. Experimental analysis and competitor comparison demonstrate that the proposed solution addresses key limitations of existing smart glasses platforms, particularly in advanced computer vision, indoor navigation, and AI-driven personalization.
+                       Modern wearable technologies aim to enhance human–technology interaction; however, existing smart glasses solutions remain limited in personalization, contextual awareness, and seamless multimodal integration. This paper presents an advanced AI-powered smart glasses system designed to improve daily communication, productivity, accessibility, and decision-making through intelligent, hands-free interaction.
+                       The proposed system integrates speech recognition, real-time multilingual translation, large language models, computer vision, augmented reality, navigation, and smart home connectivity into a unified wearable platform. A YOLO-based computer vision module enables real-time object detection and face recognition, allowing personalized and context-aware interactions. Indoor navigation is supported through a custom mapping and graph-based routing approach, providing accurate guidance in complex indoor environments.
+                       Speech input is transcribed using a multilingual automatic speech recognition model and processed by a large language model to understand user intent and generate appropriate responses, which are delivered through natural text-to-speech output. A companion mobile and web platform enables device management, smart home control, accessibility customization, and real-time system monitoring.
+                       The system is designed with inclusivity as a core principle, supporting users with disabilities through voice-based interaction, visual aids, and hands-free operation, while also enhancing safety and efficiency in daily tasks. Experimental analysis and competitor comparison demonstrate that the proposed solution addresses key limitations of existing smart glasses platforms, particularly in advanced computer vision, indoor navigation, and AI-driven personalization.
 
 - [x] fix bookmarks
 - [ ] TABLE OF CONTENTS
@@ -929,3 +929,116 @@ python test_system.py
 
 when i use touch twice. it should start recording a 5 second audio and send it to the server for processing.
 start removing words off the screen before TTS ends.
+
+---
+
+Setup
+Start backend gateway
+From repo root: python start_server.py (or your usual gateway start command).
+Confirm it’s up at:
+http://localhost:8000/health (or your PC IP + port if testing on headset).
+Open Unity scene you run
+Current build scene is Assets/Samples/MultiSet-SDK/1.11.2/Sample Scenes/Localization/Localization.unity.
+Make sure scripts compile (no red errors in Console).
+Configure the voice controller in Unity
+Select your navigation agent GameObject (the one with NavigationManager / VoiceGuide).
+Ensure it has VoiceNavigationController attached.
+In VoiceNavigationController:
+Use Server Command Router = true
+Server Base Url =
+http://localhost:8000 for Editor on same PC
+http://<YOUR_PC_IP>:8000 for HoloLens device
+Command Route Path = /unity/voice-command
+Auto Start Listening = true
+Restart After Phrase = true
+Mic permissions
+In Unity/Player settings for device builds, ensure microphone capability is enabled.
+On Windows, allow microphone access in OS privacy settings.
+Quick backend sanity checks
+Use Postman/curl to confirm router behavior before Play Mode:
+
+1. Day/time question
+   POST /unity/voice-command
+
+{
+"command": "what day is it",
+"mode": "quick"
+}
+Expect:
+
+action: "speak"
+intent: "time_date"
+response_text with current day/date. 2) Navigation request
+{
+"command": "take me to ta office",
+"mode": "quick"
+}
+Expect:
+
+action: "navigate"
+destination filled. 3) Cancel nav
+{
+"command": "stop navigation",
+"mode": "quick"
+}
+Expect:
+
+action: "cancel_navigation".
+In-Unity testing flow
+Enter Play Mode.
+Speak one command at a time:
+“What day is it?”
+“Take me to math ta office”
+“Stop navigation”
+Verify:
+Console logs from [VoiceNav] show heard text + action.
+NavigationManager starts route for navigation commands.
+VoiceGuide reads response_text.
+If it doesn’t work
+No response at all
+Check mic input device and Windows mic permission.
+Server route fails / fallback triggers
+Verify Server Base Url is reachable from Unity runtime/device.
+Confirm endpoint responds: POST /unity/voice-command.
+Navigation intent recognized but no movement
+Check destination exists in nav graph and Unity has valid NavMesh.
+Check NavigationManager has a valid NavMeshAgent.
+Wrong destination picked
+Say clearer names matching navigation.json location IDs/names.
+If you want, I can give you a 10-command test sheet (copy/paste) with expected action/intent for each so you can validate behavior quickly end-to-end.
+
+---
+
+10-command test sheet (copy/paste)
+Use these one-by-one and verify expected action + intent from /unity/voice-command.
+
+“what day is it”
+
+expected: action=speak, intent=time_date
+“what time is it now”
+
+expected: action=speak, intent=time_date
+“take me to cs department ta office”
+
+expected: action=navigate, intent=navigation_start
+“go to math ta office”
+
+expected: action=navigate, intent=navigation_start
+“navigate to lecture hall a”
+
+expected: action=navigate, intent=navigation_start
+“where is ta office 1”
+
+expected: action=navigate, intent=navigation_start
+“stop navigation”
+
+expected: action=cancel_navigation, intent=navigation_cancel
+“cancel navigation”
+
+expected: action=cancel_navigation, intent=navigation_cancel
+“tell me a joke”
+
+expected: action=speak, intent=general_query
+“take me to mars office” (unknown destination test)
+
+expected: action=speak, intent=navigation_unknown_destination

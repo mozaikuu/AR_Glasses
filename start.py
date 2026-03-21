@@ -13,6 +13,8 @@ import argparse
 import subprocess
 import sys
 import signal
+import json
+import time
 from pathlib import Path
 
 import uvicorn
@@ -22,6 +24,23 @@ from config.settings import API_HOST, API_PORT
 
 PROJECT_ROOT = Path(__file__).parent
 _child_processes = []
+
+
+def _debug_log(run_id: str, hypothesis_id: str, location: str, message: str, data: dict):
+    try:
+        payload = {
+            "sessionId": "150f1d",
+            "runId": run_id,
+            "hypothesisId": hypothesis_id,
+            "location": location,
+            "message": message,
+            "data": data,
+            "timestamp": int(time.time() * 1000),
+        }
+        with open("debug-150f1d.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps(payload, ensure_ascii=True) + "\n")
+    except Exception:
+        pass
 
 
 def _shutdown(*_args):
@@ -57,6 +76,15 @@ def main() -> None:
     parser.add_argument("--with-audio", action="store_true", help="Run websocket audio server sidecar")
     parser.add_argument("--reload", action="store_true", help="Enable auto-reload for development")
     args = parser.parse_args()
+    # #region agent log
+    _debug_log(
+        "baseline",
+        "H1",
+        "start.py:main",
+        "launcher args parsed",
+        {"with_audio": args.with_audio, "reload": args.reload},
+    )
+    # #endregion
 
     signal.signal(signal.SIGINT, _shutdown)
     signal.signal(signal.SIGTERM, _shutdown)

@@ -1,0 +1,106 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Browser Test</title>
+		<style>
+			body {
+				font-family: Arial;
+				padding: 20px;
+				text-align: center;
+			}
+			button {
+				background: #00d4ff;
+				padding: 15px 25px;
+				font-size: 16px;
+				margin: 10px;
+				cursor: pointer;
+			}
+			#out {
+				background: #eee;
+				padding: 10px;
+				margin: 10px 0;
+				text-align: left;
+				white-space: pre-wrap;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Browser Capability Test</h1>
+
+		<h2>Step 1: Test Browser API</h2>
+		<button onclick="testAPIs()">Test APIs</button>
+		<div id="apiResult"></div>
+
+		<h2>Step 2: Test Camera</h2>
+		<button onclick="testCamera()">Test Camera</button>
+		<video
+			id="video"
+			autoplay
+			playsinline
+			style="width: 100%; max-width: 400px"
+		></video>
+
+		<h2>Step 3: Test Microphone</h2>
+		<button onclick="testMic()">Test Microphone</button>
+
+		<h2>Results</h2>
+		<div id="out"></div>
+
+		<script>
+			function log(msg) {
+				document.getElementById("out").innerHTML += msg + "\n";
+			}
+
+			function testAPIs() {
+				var result = "";
+				result += "navigator: " + typeof navigator + "\n";
+				result +=
+					"navigator.mediaDevices: " +
+					typeof navigator.mediaDevices +
+					"\n";
+				result +=
+					"navigator.mediaDevices.getUserMedia: " +
+					typeof navigator.mediaDevices?.getUserMedia +
+					"\n";
+				result +=
+					"navigator.getUserMedia: " +
+					typeof navigator.getUserMedia +
+					"\n";
+				result += "Location protocol: " + location.protocol + "\n";
+				result += "Location hostname: " + location.hostname + "\n";
+				document.getElementById("apiResult").innerText = result;
+				log("API Test Results:\n" + result);
+			}
+
+			async function testCamera() {
+				try {
+					log("Requesting camera...");
+					var stream = await navigator.mediaDevices.getUserMedia({
+						video: true,
+					});
+					document.getElementById("video").srcObject = stream;
+					log("SUCCESS: Camera is working!");
+				} catch (e) {
+					log("ERROR: " + e.name + " - " + e.message);
+				}
+			}
+
+			async function testMic() {
+				try {
+					log("Requesting microphone...");
+					var stream = await navigator.mediaDevices.getUserMedia({
+						audio: true,
+					});
+					log("SUCCESS: Microphone is working!");
+					stream.getTracks().forEach((t) => t.stop());
+				} catch (e) {
+					log("ERROR: " + e.name + " - " + e.message);
+				}
+			}
+
+			testAPIs();
+		</script>
+	</body>
+</html>

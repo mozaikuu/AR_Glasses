@@ -2,6 +2,10 @@
 
 Your AI companion and navigation in Smart Glasses - A multimodal LLM agent with vision, voice, and text capabilities.
 
+## Repo Index
+
+See `docs/PROJECT_INDEX.md` for a map of all sub-projects in this monorepo (Python agent/UI/server, Unity HoloLens project, firmware, mobile, and prototypes).
+
 ## Project Structure
 
 The project follows a domain-driven architecture:
