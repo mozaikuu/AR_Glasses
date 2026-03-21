@@ -36,6 +36,7 @@ public class NavigationSetup : MonoBehaviour
   [SerializeField] private NavigationManager navigationManager;
   [SerializeField] private PathRenderer pathRenderer;
   [SerializeField] private VoiceGuide voiceGuide;
+  [SerializeField] private VoiceNavigationController voiceNavigationController;
   [SerializeField] private LocalizationWrapper localization;
 
   /// <summary>
@@ -140,6 +141,15 @@ public class NavigationSetup : MonoBehaviour
     {
       voiceGuide.SetEnabled(true);
       // Set turn threshold via reflection or public property
+    }
+
+    if (agentObject != null)
+    {
+      voiceNavigationController = agentObject.GetComponent<VoiceNavigationController>();
+      if (voiceNavigationController == null)
+      {
+        voiceNavigationController = agentObject.AddComponent<VoiceNavigationController>();
+      }
     }
 
     Debug.Log("[NavigationSetup] VoiceGuide configured");
