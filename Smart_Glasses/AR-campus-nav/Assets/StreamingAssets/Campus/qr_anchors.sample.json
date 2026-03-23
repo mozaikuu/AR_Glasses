@@ -1,0 +1,9 @@
+﻿{
+  "version": "1.0",
+  "anchors": [
+    { "qr_data": "UNI_GATE_A", "node_id": "gate_a", "confidence": 1.0 },
+    { "qr_data": "UNI_ENG_LOBBY", "node_id": "eng_lobby", "confidence": 1.0 },
+    { "qr_data": "UNI_LIB_ENTRY", "node_id": "lib_entry", "confidence": 1.0 },
+    { "qr_data": "UNI_CAFE", "node_id": "cafe", "confidence": 1.0 }
+  ]
+}

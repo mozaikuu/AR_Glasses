@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "steps": [
+    {
+      "name": "unit_tests",
+      "ok": true,
+      "duration_seconds": 1.414,
+      "output": "........\n----------------------------------------------------------------------\nRan 8 tests in 0.204s\n\nOK"
+    },
+    {
+      "name": "gateway_smoke",
+      "ok": true,
+      "duration_seconds": 0.983,
+      "output": "gateway smoke ok"
+    }
+  ]
+}

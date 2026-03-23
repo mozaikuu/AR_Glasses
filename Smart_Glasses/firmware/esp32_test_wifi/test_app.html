@@ -1,0 +1,325 @@
+<!doctype html>
+<html>
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Smart Glasses Test</title>
+		<style>
+			* {
+				box-sizing: border-box;
+			}
+			body {
+				font-family: Arial, sans-serif;
+				background: #1a1a2e;
+				color: #fff;
+				padding: 15px;
+				margin: 0;
+			}
+			h1 {
+				text-align: center;
+				color: #00d4ff;
+				font-size: 1.3rem;
+				margin-bottom: 15px;
+			}
+			.status {
+				padding: 15px;
+				margin: 10px 0;
+				background: #333;
+				border-radius: 8px;
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 10px;
+			}
+			.status p {
+				margin: 5px 0;
+			}
+			.status .label {
+				color: #888;
+				font-size: 0.8rem;
+			}
+			.status .val {
+				font-size: 1.1rem;
+				font-weight: bold;
+				color: #00d4ff;
+			}
+			.btn {
+				background: #00d4ff;
+				color: #000;
+				padding: 12px 20px;
+				border: none;
+				border-radius: 8px;
+				font-size: 14px;
+				margin: 3px;
+				cursor: pointer;
+				width: 48%;
+			}
+			.btn:hover {
+				transform: translateY(-1px);
+			}
+			.btn.on {
+				background: #ff6b6b;
+			}
+			.btn:disabled {
+				background: #555;
+				cursor: not-allowed;
+			}
+			#videoPreview {
+				width: 100%;
+				max-width: 300px;
+				border-radius: 8px;
+				margin: 10px auto;
+				display: block;
+				background: #000;
+				object-fit: cover;
+			}
+			.btn-row {
+				display: flex;
+				flex-wrap: wrap;
+				justify-content: center;
+			}
+			input {
+				width: 70%;
+				padding: 10px;
+				margin: 5px;
+				border-radius: 5px;
+				border: 1px solid #444;
+				background: #222;
+				color: #fff;
+			}
+			pre {
+				background: #000;
+				padding: 10px;
+				border-radius: 8px;
+				max-height: 150px;
+				overflow: auto;
+				font-size: 0.8rem;
+				margin-top: 10px;
+			}
+			.works {
+				color: #0f0;
+			}
+			.error {
+				color: #f00;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Smart Glasses Test Controller</h1>
+
+		<div class="status">
+			<div>
+				<span class="label">Server</span><br /><span
+					class="val"
+					id="srvStat"
+					>...</span
+				>
+			</div>
+			<div>
+				<span class="label">WiFi RSSI</span><br /><span
+					class="val"
+					id="rssi"
+					>...</span
+				>
+			</div>
+			<div>
+				<span class="label">Audio Packets</span><br /><span
+					class="val"
+					id="audCnt"
+					>0</span
+				>
+			</div>
+			<div>
+				<span class="label">Video Packets</span><br /><span
+					class="val"
+					id="vidCnt"
+					>0</span
+				>
+			</div>
+		</div>
+
+		<video id="videoPreview" autoplay playsinline muted></video>
+
+		<div class="btn-row">
+			<button class="btn" id="audBtn" onclick="toggleAudio()">
+				Start Audio
+			</button>
+			<button class="btn" id="vidBtn" onclick="toggleVideo()">
+				Start Video
+			</button>
+		</div>
+
+		<div style="margin: 15px 0; text-align: center">
+			<input type="text" id="cmdTxt" placeholder="Type command..." />
+			<button class="btn" onclick="sendCmd()">Send to Server</button>
+		</div>
+
+		<pre id="log"></pre>
+
+		<script>
+			// CHANGE THIS to your ESP32's IP address
+			const ESP_URL = "http://192.168.4.1";
+
+			let audStream = null,
+				vidStream = null;
+			let audActive = false,
+				vidActive = false;
+			let audInterval = null,
+				vidInterval = null;
+
+			function log(msg, isError = false) {
+				const el = document.getElementById("log");
+				el.innerHTML +=
+					'<span class="' +
+					(isError ? "error" : "works") +
+					'">' +
+					msg +
+					"</span>\n";
+				el.scrollTop = el.scrollHeight;
+			}
+
+			function $(id) {
+				return document.getElementById(id);
+			}
+
+			async function toggleAudio() {
+				if (audActive) {
+					// Stop audio
+					audActive = false;
+					if (audStream) {
+						audStream.getTracks().forEach((t) => t.stop());
+						audStream = null;
+					}
+					if (audInterval) {
+						clearInterval(audInterval);
+						audInterval = null;
+					}
+					$("audBtn").innerText = "Start Audio";
+					$("audBtn").className = "btn";
+					log("Audio stopped. Packets sent: " + $("audCnt").innerText);
+					try {
+						await fetch(ESP_URL + "/control?cmd=AUD:STOP");
+					} catch (e) {}
+				} else {
+					// Start audio
+					try {
+						audStream = await navigator.mediaDevices.getUserMedia({
+							audio: true,
+							video: false,
+						});
+						audActive = true;
+						$("audBtn").innerText = "Stop Audio";
+						$("audBtn").className = "btn on";
+						log("Audio started - speak now!");
+						try {
+							await fetch(ESP_URL + "/control?cmd=AUD:START");
+						} catch (e) {}
+
+						// Send audio data every 500ms
+						audInterval = setInterval(async () => {
+							if (!audActive || !audStream) return;
+							try {
+								const r = await fetch(
+									ESP_URL + "/control?cmd=AUD:data",
+								);
+								if (r.ok) {
+									const cnt = parseInt($("audCnt").innerText) + 1;
+									$("audCnt").innerText = cnt;
+								}
+							} catch (e) {}
+						}, 500);
+					} catch (e) {
+						log("Audio error: " + e.message, true);
+					}
+				}
+			}
+
+			async function toggleVideo() {
+				if (vidActive) {
+					// Stop video
+					vidActive = false;
+					if (vidStream) {
+						vidStream.getTracks().forEach((t) => t.stop());
+						vidStream = null;
+					}
+					if (vidInterval) {
+						clearInterval(vidInterval);
+						vidInterval = null;
+					}
+					$("vidBtn").innerText = "Start Video";
+					$("vidBtn").className = "btn";
+					$("videoPreview").srcObject = null;
+					log("Video stopped. Frames sent: " + $("vidCnt").innerText);
+					try {
+						await fetch(ESP_URL + "/control?cmd=VID:STOP");
+					} catch (e) {}
+				} else {
+					// Start video
+					try {
+						vidStream = await navigator.mediaDevices.getUserMedia({
+							audio: false,
+							video: { facingMode: "environment" },
+						});
+						$("videoPreview").srcObject = vidStream;
+						vidActive = true;
+						$("vidBtn").innerText = "Stop Video";
+						$("vidBtn").className = "btn on";
+						log("Video started - point camera!");
+						try {
+							await fetch(ESP_URL + "/control?cmd=VID:START");
+						} catch (e) {}
+
+						// Send video frames every 200ms (~5 fps)
+						vidInterval = setInterval(async () => {
+							if (!vidActive || !vidStream) return;
+							try {
+								const r = await fetch(
+									ESP_URL + "/control?cmd=VID:frame",
+								);
+								if (r.ok) {
+									const cnt = parseInt($("vidCnt").innerText) + 1;
+									$("vidCnt").innerText = cnt;
+								}
+							} catch (e) {}
+						}, 200);
+					} catch (e) {
+						log("Video error: " + e.message, true);
+					}
+				}
+			}
+
+			async function sendCmd() {
+				const txt = $("cmdTxt").value.trim();
+				if (!txt) return;
+				log("Sending: " + txt);
+				try {
+					const r = await fetch(
+						ESP_URL + "/control?cmd=TXT:" + encodeURIComponent(txt),
+					);
+					const resp = await r.text();
+					log("Response: " + resp);
+				} catch (e) {
+					log("Error: " + e.message, true);
+				}
+				$("cmdTxt").value = "";
+			}
+
+			// Update status every second
+			setInterval(async () => {
+				try {
+					const r = await fetch(ESP_URL + "/status");
+					const d = await r.json();
+					$("srvStat").innerText = d.server ? "Connected" : "Disconnected";
+					$("srvStat").className = "val " + (d.server ? "works" : "error");
+					$("rssi").innerText = d.rssi || "N/A";
+					$("audCnt").innerText = d.audio_packets || 0;
+					$("vidCnt").innerText = d.video_packets || 0;
+				} catch (e) {
+					$("srvStat").innerText = "Error";
+					$("srvStat").className = "val error";
+				}
+			}, 1000);
+
+			log("Ready. Connect to WiFi and start audio/video.");
+			log("ESP URL: " + ESP_URL);
+		</script>
+	</body>
+</html>

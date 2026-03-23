@@ -1,0 +1,86 @@
+[project]
+name = "smart-glasses"
+version = "0.1.0"
+description = "your ai companion and navigation in Smart Glasses"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+ # MCP & Server
+ "fastmcp==2.14.1",
+ "mcp==1.24.0",
+ "fastapi",
+ "uvicorn",
+ "aiohttp",
+ # Web UI
+ "flask",
+ "streamlit",
+ "streamlit-webrtc",
+ # ML/AI
+ "torch==2.5.1+cu124",
+ "transformers>=4.46,<5",
+ "tokenizers<0.21",
+ "ultralytics",
+ "mediapipe",
+ "scikit-learn",
+ # Computer Vision
+ "numpy",
+ "opencv-python",
+ # Audio
+ "piper-tts",
+ "onnxruntime<1.24",
+ "mutagen",
+ "pygame",
+ "pyaudio",
+ "speechrecognition",
+ # Navigation & Graphs
+ "networkx",
+ "matplotlib",
+ # Web & Data
+ "requests",
+ "duckduckgo-search",
+ "beautifulsoup4",
+ "python-dotenv",
+ # Utilities
+ "pydantic",
+ "python-dateutil",
+ "openai-whisper",
+ "pyvips>=3.1.1",
+ "numba>=0.59",
+ "torchvision==0.20.1+cu124",
+ "torchaudio==2.5.1+cu124",
+ "einops>=0.8.2",
+ "accelerate>=1.12.0",
+ "ddgs>=9.10.0",
+]
+[[project.authors]]
+name = "Ahmed Moussa"
+email = "ahmedmoussa.dev@gmail.com"
+
+[build-system]
+requires = [ "uv_build>=0.9.14,<0.10.0",]
+build-backend = "uv_build"
+
+[project.scripts]
+mcp-server = "mcp_server:main"
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+default = true
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
+[tool.setuptools]
+py-modules = ["mcp_server"]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+openai-whisper = { git = "https://github.com/openai/whisper.git" }
+torch = { index = "pytorch-cu124" }
+torchvision = { index = "pytorch-cu124" }
+torchaudio = { index = "pytorch-cu124" }
