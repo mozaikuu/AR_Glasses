@@ -103,18 +103,24 @@ def create_app() -> Flask:
       let lastFinalAtMs = 0;
       let lastStatusText = '';
       let requestInFlight = false;
-      const wakeWords = ['hey nova', 'nova'];
+      const wakeWords = ['computer', 'hey computer', 'ok computer', 'okay computer'];
+
+      function wakeRegex(wake) {
+        const words = wake.trim().split(/\s+/).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        const phrase = `\\b${words.join('[\\s,;:_-]*')}\\b`;
+        return new RegExp(`(?:^|[.!?]\\s*|[,;:]\\s*)${phrase}`, 'i');
+      }
 
       function hasWakeword(text) {
-        const normalized = (text || '').toLowerCase();
-        return wakeWords.some((wake) => normalized.includes(wake));
+        return wakeWords.some((wake) => wakeRegex(wake).test(text || ''));
       }
 
       function removeWakeword(text) {
         let cleaned = (text || '').trim();
         for (const wake of wakeWords) {
-          const escaped = wake.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&');
-          const pattern = new RegExp(`\\b${escaped}\\b[,:;\\s-]*`, 'ig');
+          const words = wake.trim().split(/\s+/).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+          const phrase = `\\b${words.join('[\\s,;:_-]*')}\\b`;
+          const pattern = new RegExp(`(?:^|[.!?]\\s*|[,;:]\\s*)${phrase}[,:;\\s-]*`, 'ig');
           cleaned = cleaned.replace(pattern, ' ');
         }
         return cleaned.replace(/\\s+/g, ' ').trim();

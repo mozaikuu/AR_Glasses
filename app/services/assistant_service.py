@@ -12,7 +12,7 @@ from tools.speech.transcription import transcribe_audio
 
 
 class AssistantService:
-    _wake_words = ("hey Computer", "Computer")
+    _wake_words = ("computer", "hey computer", "ok computer", "okay computer")
 
     def __init__(self) -> None:
         self._wake_context_by_client: dict[str, str] = {}
@@ -21,19 +21,24 @@ class AssistantService:
         if not text:
             return False, ""
 
+        normalized = re.sub(r"\s+", " ", text).strip()
         last_match: re.Match[str] | None = None
         for wake in self._wake_words:
             words = wake.split()
             if not words:
                 continue
             sep = r"[\s,;:\-_]*"
-            pattern = r"\b" + sep.join(re.escape(word) for word in words) + r"\b"
-            for match in re.finditer(pattern, text, flags=re.IGNORECASE):
+            phrase = r"\b" + sep.join(re.escape(word) for word in words) + r"\b"
+            # Treat wake-word hits as invocations to reduce false positives in normal speech.
+            pattern = rf"(?:^|[.!?]\s*|[,;:]\s*)({phrase})"
+            for match in re.finditer(pattern, normalized, flags=re.IGNORECASE):
                 if last_match is None or match.start() >= last_match.start():
                     last_match = match
 
         if last_match is not None:
-            cleaned = text[last_match.end() :]
+            phrase_match = last_match.group(1)
+            phrase_end = last_match.start(1) + len(phrase_match)
+            cleaned = normalized[phrase_end:]
             cleaned = re.sub(r"^[\s,;:\-_]+", "", cleaned)
             cleaned = re.sub(r"\s+", " ", cleaned).strip()
             return True, cleaned
