@@ -35,7 +35,7 @@ public class PathRenderer : MonoBehaviour
   {
     // Auto-find NavMeshAgent if not assigned
     if (navMeshAgent == null)
-      navMeshAgent = FindObjectOfType<UnityEngine.AI.NavMeshAgent>();
+      navMeshAgent = FindFirstObjectByType<UnityEngine.AI.NavMeshAgent>();
   }
 
   private void ConfigureLineRenderer()

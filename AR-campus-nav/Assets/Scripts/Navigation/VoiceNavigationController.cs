@@ -50,10 +50,10 @@ public class VoiceNavigationController : MonoBehaviour
   private void Awake()
   {
     if (navigationManager == null)
-      navigationManager = FindObjectOfType<NavigationManager>();
+      navigationManager = FindFirstObjectByType<NavigationManager>();
 
     if (voiceGuide == null)
-      voiceGuide = FindObjectOfType<VoiceGuide>();
+      voiceGuide = FindFirstObjectByType<VoiceGuide>();
   }
 
   private void Start()
@@ -229,7 +229,7 @@ public class VoiceNavigationController : MonoBehaviour
       string action = (response.action ?? string.Empty).Trim().ToLowerInvariant();
       if (action == "navigate" && !string.IsNullOrWhiteSpace(response.destination))
       {
-        navigationManager.NavigateTo(response.destination);
+        navigationManager.NavigateFromPrompt(response.destination);
       }
       else if (action == "cancel_navigation")
       {

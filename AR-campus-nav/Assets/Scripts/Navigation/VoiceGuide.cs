@@ -9,7 +9,7 @@ using UnityEngine.AI;
 public class VoiceGuide : MonoBehaviour
 {
   [Header("Configuration")]
-  [SerializeField] private bool enabled = true;
+  [SerializeField] private bool guideEnabled = true;
   [SerializeField] private float turnThresholdAngle = 30f; // Angle to trigger turn instruction
   [SerializeField] private float distanceToTriggerTurn = 2f; // Distance from corner to trigger
 
@@ -101,7 +101,7 @@ public class VoiceGuide : MonoBehaviour
 
   private void Update()
   {
-    if (!isEnabled || !enabled || navMeshAgent == null)
+    if (!isEnabled || !guideEnabled || navMeshAgent == null)
       return;
 
     // Check if agent has a path
@@ -220,7 +220,8 @@ public class VoiceGuide : MonoBehaviour
     {
       // MRTK 2.x uses TextToSpeechService
       // This is a placeholder - actual implementation depends on MRTK version
-      Debug.Log($"[VoiceGuide] MRTK Speech: {text}");
+      float clampedRate = Mathf.Clamp(speechRate, 0.1f, 2.0f);
+      Debug.Log($"[VoiceGuide] MRTK Speech(rate={clampedRate:0.0}): {text}");
 
       // For now, we'll use a simple approach
       // In production, integrate with MRTK's TextToSpeech
@@ -236,7 +237,8 @@ public class VoiceGuide : MonoBehaviour
   {
     // Windows Speech synthesis - requires System.Speech
     // This is a fallback for non-MRTK builds
-    Debug.Log($"[VoiceGuide] Windows Speech: {text}");
+    float clampedRate = Mathf.Clamp(speechRate, 0.1f, 2.0f);
+    Debug.Log($"[VoiceGuide] Windows Speech(rate={clampedRate:0.0}): {text}");
 
     // In a full implementation, you would use:
     // using System.Speech.Synthesis;
@@ -250,5 +252,10 @@ public class VoiceGuide : MonoBehaviour
   public void TestVoice()
   {
     PlayMessage("Navigation test. Turn right. Turn left. Go straight. You have arrived.");
+  }
+
+  public void SetTurnThreshold(float thresholdDegrees)
+  {
+    turnThresholdAngle = Mathf.Max(0f, thresholdDegrees);
   }
 }

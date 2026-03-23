@@ -13,6 +13,8 @@ public class NavigationManager : MonoBehaviour
   [Header("Configuration")]
   [SerializeField] private string serverBaseUrl = "http://localhost:8000";
   [SerializeField] private float serverTimeout = 10f;
+  [SerializeField] private bool warpGuideAgentToLocalizedStart = true;
+  [SerializeField] private float localizedStartSampleDistance = 2.0f;
 
   [Header("References")]
   [SerializeField] public NavMeshAgent navMeshAgent;
@@ -42,13 +44,13 @@ public class NavigationManager : MonoBehaviour
       navMeshAgent = GetComponent<NavMeshAgent>();
 
     if (pathRenderer == null)
-      pathRenderer = FindObjectOfType<PathRenderer>();
+      pathRenderer = FindFirstObjectByType<PathRenderer>();
 
     if (voiceGuide == null)
-      voiceGuide = FindObjectOfType<VoiceGuide>();
+      voiceGuide = FindFirstObjectByType<VoiceGuide>();
 
     if (localization == null)
-      localization = FindObjectOfType<LocalizationWrapper>();
+      localization = FindFirstObjectByType<LocalizationWrapper>();
   }
 
   /// <summary>
@@ -149,8 +151,22 @@ public class NavigationManager : MonoBehaviour
       }
     }
 
+    // Keep the guide capsule aligned with where localization says the user currently is.
+    if (warpGuideAgentToLocalizedStart)
+    {
+      TryWarpAgentToLocalizedStart();
+    }
+
     // Set destination - Unity's NavMesh calculates path automatically
-    navMeshAgent.SetDestination(targetPosition);
+    navMeshAgent.isStopped = false;
+    bool setDestinationOk = navMeshAgent.SetDestination(targetPosition);
+    if (!setDestinationOk)
+    {
+      string error = $"Could not set destination '{destinationName}' on NavMesh.";
+      Debug.LogError($"[NavigationManager] {error}");
+      OnNavigationError?.Invoke(error);
+      return;
+    }
 
     currentDestination = destinationName;
     isNavigating = true;
@@ -181,6 +197,21 @@ public class NavigationManager : MonoBehaviour
   public void NavigateFromServer(string destination)
   {
     NavigateTo(destination);
+  }
+
+  /// <summary>
+  /// Ask server to resolve a natural language destination, then navigate locally on NavMesh.
+  /// </summary>
+  public void NavigateFromPrompt(string destinationPrompt)
+  {
+    if (string.IsNullOrWhiteSpace(destinationPrompt))
+    {
+      OnNavigationError?.Invoke("Destination prompt is empty");
+      return;
+    }
+
+    string startLocation = localization != null ? localization.GetCurrentLocationName() : string.Empty;
+    StartCoroutine(RequestNavigationFromServer(startLocation, destinationPrompt));
   }
 
   /// <summary>
@@ -230,6 +261,21 @@ public class NavigationManager : MonoBehaviour
         Debug.LogError($"[NavigationManager] {error}");
         OnNavigationError?.Invoke(error);
       }
+    }
+  }
+
+  private void TryWarpAgentToLocalizedStart()
+  {
+    if (navMeshAgent == null || localization == null)
+      return;
+
+    Vector3? localizedPos = localization.GetUserPosition();
+    if (!localizedPos.HasValue)
+      return;
+
+    if (NavMesh.SamplePosition(localizedPos.Value, out NavMeshHit hit, localizedStartSampleDistance, NavMesh.AllAreas))
+    {
+      navMeshAgent.Warp(hit.position);
     }
   }
 

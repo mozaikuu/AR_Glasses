@@ -1,2 +1,0 @@
-{"sessionId": "150f1d", "runId": "baseline", "hypothesisId": "H1", "location": "start.py:main", "message": "launcher args parsed", "data": {"with_audio": false, "reload": false}, "timestamp": 1774108783194}
-{"sessionId": "150f1d", "runId": "baseline", "hypothesisId": "H2", "location": "server/gateway.py:_get_wakeword_service", "message": "wakeword service import failed", "data": {"error": "No module named 'web_app'"}, "timestamp": 1774108792842}

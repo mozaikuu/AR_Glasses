@@ -527,12 +527,6 @@ public class LocalizationWrapper : MonoBehaviour
             return false;
         }
 
-        Type[] argumentTypes = new Type[args.Length];
-        for (int i = 0; i < args.Length; i++)
-        {
-            argumentTypes[i] = args[i]?.GetType();
-        }
-
         MethodInfo method = target.GetType().GetMethod(methodName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
         if (method == null)
         {

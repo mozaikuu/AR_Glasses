@@ -59,7 +59,7 @@ public class NavigationSetup : MonoBehaviour
     if (agentObject == null)
     {
       // Try to find existing agent
-      NavMeshAgent existingAgent = FindObjectOfType<NavMeshAgent>();
+      NavMeshAgent existingAgent = FindFirstObjectByType<NavMeshAgent>();
 
       if (existingAgent != null)
       {
@@ -100,7 +100,7 @@ public class NavigationSetup : MonoBehaviour
     if (!enablePathRendering) return;
 
     // Try to find existing PathRenderer
-    pathRenderer = FindObjectOfType<PathRenderer>();
+    pathRenderer = FindFirstObjectByType<PathRenderer>();
 
     if (pathRenderer == null && agentObject != null)
     {
@@ -129,7 +129,7 @@ public class NavigationSetup : MonoBehaviour
     if (!enableVoiceGuidance) return;
 
     // Try to find existing VoiceGuide
-    voiceGuide = FindObjectOfType<VoiceGuide>();
+    voiceGuide = FindFirstObjectByType<VoiceGuide>();
 
     if (voiceGuide == null && agentObject != null)
     {
@@ -140,7 +140,7 @@ public class NavigationSetup : MonoBehaviour
     if (voiceGuide != null)
     {
       voiceGuide.SetEnabled(true);
-      // Set turn threshold via reflection or public property
+      voiceGuide.SetTurnThreshold(turnThreshold);
     }
 
     if (agentObject != null)
@@ -158,7 +158,7 @@ public class NavigationSetup : MonoBehaviour
   private void SetupLocalization()
   {
     // Try to find existing LocalizationWrapper
-    localization = FindObjectOfType<LocalizationWrapper>();
+    localization = FindFirstObjectByType<LocalizationWrapper>();
 
     if (localization == null)
     {
