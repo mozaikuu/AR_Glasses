@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import socket
 import threading
 import time
 from pathlib import Path
 from urllib.request import urlopen
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from app.config.settings import settings
@@ -32,6 +34,15 @@ from tools.speech.tts import synthesize_to_wav
 
 app = FastAPI(title="Smart Glasses Distilled Gateway", version="0.1.0")
 
+_allow_origins = list(settings.cors_allow_origins) or ["*"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"] if "*" in _allow_origins else _allow_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 _runtime_status: dict[str, object] = {
     "preloaded": False,
     "last_warmup_error": "",
@@ -40,6 +51,35 @@ _runtime_status: dict[str, object] = {
 _tts_root = Path("assets/esp_tts")
 _tts_root.mkdir(parents=True, exist_ok=True)
 _mic_test_page = Path("assets/mic_test.html")
+
+
+def _require_unity_api_key(x_unity_api_key: str | None) -> None:
+    expected = settings.unity_api_key.strip()
+    if not expected:
+        return
+
+    provided = (x_unity_api_key or "").strip()
+    if provided != expected:
+        raise HTTPException(status_code=401, detail="Invalid Unity API key")
+
+
+def _detect_lan_ips() -> list[str]:
+    candidates: list[str] = []
+    hostnames = {"localhost", socket.gethostname()}
+
+    for host in hostnames:
+        try:
+            _, _, ips = socket.gethostbyname_ex(host)
+        except Exception:
+            continue
+
+        for ip in ips:
+            if ip.startswith("127."):
+                continue
+            if ip not in candidates:
+                candidates.append(ip)
+
+    return candidates
 
 
 def _warmup_runtime() -> None:
@@ -104,6 +144,21 @@ def debug_status() -> dict[str, object]:
     }
 
 
+@app.get("/network/info")
+def network_info() -> dict[str, object]:
+    lan_ips = _detect_lan_ips()
+    lan_urls = [f"http://{ip}:{settings.api_port}" for ip in lan_ips]
+
+    return {
+        "api_host": settings.api_host,
+        "api_port": settings.api_port,
+        "lan_ips": lan_ips,
+        "lan_urls": lan_urls,
+        "public_base_url": settings.public_base_url,
+        "unity_api_key_required": bool(settings.unity_api_key.strip()),
+    }
+
+
 @app.post("/process", response_model=ProcessResponse)
 def process(payload: ProcessRequest) -> ProcessResponse:
     result = assistant_service.process(payload)
@@ -162,7 +217,11 @@ def record(payload: RecordRequest) -> dict[str, object]:
 
 
 @app.post("/unity/voice-command")
-def unity_voice_command(payload: UnityVoiceCommandRequest) -> dict[str, object]:
+def unity_voice_command(
+    payload: UnityVoiceCommandRequest,
+    x_unity_api_key: str | None = Header(default=None, alias="X-Unity-Api-Key"),
+) -> dict[str, object]:
+    _require_unity_api_key(x_unity_api_key)
     routed = assistant_service.route_unity_command(payload.command, mode=payload.mode)
     if routed.get("action") == "navigate" and "destination" in routed:
         routed["destination"] = navigation_service.normalize_destination(str(routed["destination"]))
@@ -204,7 +263,11 @@ def navigation_cancel(payload: NavigationCancelRequest) -> dict[str, object]:
 
 
 @app.post("/navigate")
-def navigate_alias(payload: NavigationStartRequest) -> dict[str, object]:
+def navigate_alias(
+    payload: NavigationStartRequest,
+    x_unity_api_key: str | None = Header(default=None, alias="X-Unity-Api-Key"),
+) -> dict[str, object]:
+    _require_unity_api_key(x_unity_api_key)
     # Unity MVP contract from NAVIGATION_PLAN.md: destination echo.
     return {"destination": navigation_service.normalize_destination(payload.destination)}
 

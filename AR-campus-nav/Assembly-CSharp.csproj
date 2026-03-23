@@ -62,6 +62,7 @@
     <Compile Include="Assets\Scripts\LocationInfo\LocationInfoPopup.cs" />
     <Compile Include="Assets\Scripts\LocationInfo\LocationDataManager.cs" />
     <Compile Include="Assets\Scripts\LocationInfo\LocationDataModels.cs" />
+    <Compile Include="Assets\Scripts\Navigation\ApiEndpointResolver.cs" />
     <Compile Include="Assets\Samples\MultiSet-SDK\1.11.2\Sample Scenes\OnDeviceLocalization\OnDeviceRuntimeDemo.cs" />
     <Compile Include="Assets\Scripts\Navigation\NavigationManager.cs" />
     <Compile Include="Assets\Scripts\Navigation\PathRenderer.cs" />

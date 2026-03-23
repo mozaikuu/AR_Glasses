@@ -11,12 +11,15 @@
 
 - Use `local.settings.json` at repo root to configure ports and toggles.
 - Environment variables are optional overrides when needed.
+- For LAN/internet multi-device setup, see:
+   - `docs/10_operations/multi_device_connectivity.md`
 
 ## Health Checks
 
 - Backend health: `GET /`
 - MCP status: `GET /mcp-status`
 - Debug status: `GET /debug`
+- Network profile and LAN/public URL hints: `GET /network/info`
 - Audio devices: `GET /audio/devices`
 
 ## Test Commands

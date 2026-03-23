@@ -220,7 +220,8 @@ public class NavigationManager : MonoBehaviour
   /// </summary>
   public IEnumerator RequestNavigationFromServer(string startLocation, string destination)
   {
-    string url = $"{serverBaseUrl}/navigate";
+    string resolvedBaseUrl = ApiEndpointResolver.Resolve(serverBaseUrl);
+    string url = $"{resolvedBaseUrl}/navigate";
 
     string jsonBody = JsonUtility.ToJson(new NavigateRequest
     {

@@ -64,6 +64,21 @@ def _pick_int(key: str, default: int) -> int:
     return int(raw)
 
 
+def _pick_csv(key: str, default: str) -> tuple[str, ...]:
+    env_value = os.getenv(key)
+    if env_value is not None:
+        raw = env_value
+    else:
+        raw = _file_settings.get(key, default)
+
+    if isinstance(raw, list):
+        return tuple(str(item).strip() for item in raw if str(item).strip())
+
+    text = str(raw)
+    parts = [part.strip() for part in text.split(",")]
+    return tuple(part for part in parts if part)
+
+
 @dataclass(frozen=True)
 class Settings:
     api_host: str = _pick("API_HOST", "0.0.0.0")
@@ -100,6 +115,11 @@ class Settings:
     api_key: str = _pick("API_KEY", "")
     max_agent_loops: int = _pick_int("MAX_AGENT_LOOPS", 3)
     max_answer_sentences: int = _pick_int("MAX_ANSWER_SENTENCES", 3)
+
+    # Client/network settings
+    cors_allow_origins: tuple[str, ...] = _pick_csv("CORS_ALLOW_ORIGINS", "*")
+    public_base_url: str = _pick("PUBLIC_BASE_URL", "")
+    unity_api_key: str = _pick("UNITY_API_KEY", "")
 
     # TTS (Piper)
     enable_piper_tts: bool = _pick_bool("ENABLE_PIPER_TTS", default=True)

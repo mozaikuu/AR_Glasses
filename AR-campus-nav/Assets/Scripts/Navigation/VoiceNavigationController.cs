@@ -188,7 +188,8 @@ public class VoiceNavigationController : MonoBehaviour
       yield break;
     }
 
-    string url = $"{serverBaseUrl.TrimEnd('/')}{commandRoutePath}";
+    string resolvedBaseUrl = ApiEndpointResolver.Resolve(serverBaseUrl);
+    string url = $"{resolvedBaseUrl}{commandRoutePath}";
     VoiceCommandRouterRequest payload = new VoiceCommandRouterRequest
     {
       command = rawText,
