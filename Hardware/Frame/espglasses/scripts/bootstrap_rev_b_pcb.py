@@ -107,18 +107,10 @@ def load_footprint(footprint_id: str):
     if not lib_path.exists():
         raise RuntimeError(f"Footprint library not found: {lib}")
 
-    lib_path_str = str(lib_path).replace("\\", "/")
-
+    lib_path_str = str(lib_path)
     try:
-        available = set(pcbnew.FootprintEnumerate(lib_path_str))
-    except Exception as exc:
-        raise RuntimeError(f"Failed to enumerate footprint library: {lib_path_str}") from exc
-
-    if name not in available:
-        raise RuntimeError(f"Footprint not found in library: {footprint_id}")
-
-    try:
-        module = pcbnew.FootprintLoad(lib_path_str, name)
+        plugin = pcbnew.GetPluginForPath(lib_path_str)
+        module = plugin.FootprintLoad(lib_path_str, name, False)
     except Exception as exc:
         raise RuntimeError(f"Failed to load footprint: {footprint_id}") from exc
     if module is None:
