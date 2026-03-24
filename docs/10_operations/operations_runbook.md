@@ -26,6 +26,8 @@
 
 - Automated full test run:
    - `uv run python scripts/run_all_tests.py`
+- Network diagnostics:
+   - `uv run python -m scripts.print_network_info`
 - Manual voice command validation:
    - follow `docs/07_api/10_command_test_sheet.md`
 

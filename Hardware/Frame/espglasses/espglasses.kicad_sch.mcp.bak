@@ -1,0 +1,334 @@
+(kicad_sch (version 20250114) (generator "KiCAD-MCP-Server") (uuid ee4050cb-8bb1-41f1-aebc-0a6a1e29bc8c) (paper "A4") (lib_symbols 
+
+(symbol "Device:R" (pin_numbers hide) (pin_names (offset 0)) (in_bom yes) (on_board yes) 
+
+(property "Reference" "R" (at 2.032 0 90) (effects (font (size 1.27 1.27)))) 
+
+(property "Value" "R" (at 0 0 90) (effects (font (size 1.27 1.27)))) 
+
+(property "Footprint" "" (at -1.778 0 90) (effects (font (size 1.27 1.27)) hide)) 
+
+(property "Datasheet" "~" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) 
+
+(symbol "R_0_1" 
+
+(rectangle (start -1.016 -2.54) (end 1.016 2.54) (stroke (width 0.254) (type default)) (fill (type none)))) 
+
+(symbol "R_1_1" (pin passive line (at 0 3.81 270) (length 1.27) (name "~" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -3.81 90) (length 1.27) (name "~" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27))))))) 
+
+(symbol "Device:C" (pin_numbers hide) (pin_names (offset 0.254)) (in_bom yes) (on_board yes) 
+
+(property "Reference" "C" (at 0.635 2.54 0) (effects (font (size 1.27 1.27)) (justify left))) 
+
+(property "Value" "C" (at 0.635 -2.54 0) (effects (font (size 1.27 1.27)) (justify left))) 
+
+(property "Footprint" "" (at 0.9652 -3.81 0) (effects (font (size 1.27 1.27)) hide)) 
+
+(property "Datasheet" "~" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) 
+
+(symbol "C_0_1" 
+
+(polyline (pts 
+
+(xy -2.032 -0.762) 
+
+(xy 2.032 -0.762)) (stroke (width 0.508) (type default)) (fill (type none))) 
+
+(polyline (pts 
+
+(xy -2.032 0.762) 
+
+(xy 2.032 0.762)) (stroke (width 0.508) (type default)) (fill (type none)))) 
+
+(symbol "C_1_1" (pin passive line (at 0 3.81 270) (length 2.794) (name "~" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -3.81 90) (length 2.794) (name "~" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27))))))) 
+
+(symbol "Device:LED" (pin_numbers hide) (pin_names (offset 1.016) hide) (in_bom yes) (on_board yes) 
+
+(property "Reference" "D" (at 0 2.54 0) (effects (font (size 1.27 1.27)))) 
+
+(property "Value" "LED" (at 0 -2.54 0) (effects (font (size 1.27 1.27)))) 
+
+(property "Footprint" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) 
+
+(property "Datasheet" "~" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) 
+
+(symbol "LED_0_1" 
+
+(polyline (pts 
+
+(xy -1.27 -1.27) 
+
+(xy -1.27 1.27)) (stroke (width 0.254) (type default)) (fill (type none))) 
+
+(polyline (pts 
+
+(xy -1.27 0) 
+
+(xy 1.27 0)) (stroke (width 0) (type default)) (fill (type none))) 
+
+(polyline (pts 
+
+(xy 1.27 -1.27) 
+
+(xy 1.27 1.27) 
+
+(xy -1.27 0) 
+
+(xy 1.27 -1.27)) (stroke (width 0.254) (type default)) (fill (type none)))) 
+
+(symbol "LED_1_1" (pin passive line (at -3.81 0 0) (length 2.54) (name "K" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 3.81 0 180) (length 2.54) (name "A" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))))
+        	(symbol "Connector_Generic:Conn_01x02"
+    		(pin_names
+    			(offset 1.016)
+    			(hide yes)
+    		)
+    		(exclude_from_sim no)
+    		(in_bom yes)
+    		(on_board yes)
+    		(property "Reference" "J"
+    			(at 0 2.54 0)
+    			(effects
+    				(font
+    					(size 1.27 1.27)
+    				)
+    			)
+    		)
+    		(property "Value" "Conn_01x02"
+    			(at 0 -5.08 0)
+    			(effects
+    				(font
+    					(size 1.27 1.27)
+    				)
+    			)
+    		)
+    		(property "Footprint" ""
+    			(at 0 0 0)
+    			(effects
+    				(font
+    					(size 1.27 1.27)
+    				)
+    				(hide yes)
+    			)
+    		)
+    		(property "Datasheet" "~"
+    			(at 0 0 0)
+    			(effects
+    				(font
+    					(size 1.27 1.27)
+    				)
+    				(hide yes)
+    			)
+    		)
+    		(property "Description" "Generic connector, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)"
+    			(at 0 0 0)
+    			(effects
+    				(font
+    					(size 1.27 1.27)
+    				)
+    				(hide yes)
+    			)
+    		)
+    		(property "ki_keywords" "connector"
+    			(at 0 0 0)
+    			(effects
+    				(font
+    					(size 1.27 1.27)
+    				)
+    				(hide yes)
+    			)
+    		)
+    		(property "ki_fp_filters" "Connector*:*_1x??_*"
+    			(at 0 0 0)
+    			(effects
+    				(font
+    					(size 1.27 1.27)
+    				)
+    				(hide yes)
+    			)
+    		)
+    		(symbol "Conn_01x02_1_1"
+    			(rectangle
+    				(start -1.27 1.27)
+    				(end 1.27 -3.81)
+    				(stroke
+    					(width 0.254)
+    					(type default)
+    				)
+    				(fill
+    					(type background)
+    				)
+    			)
+    			(rectangle
+    				(start -1.27 0.127)
+    				(end 0 -0.127)
+    				(stroke
+    					(width 0.1524)
+    					(type default)
+    				)
+    				(fill
+    					(type none)
+    				)
+    			)
+    			(rectangle
+    				(start -1.27 -2.413)
+    				(end 0 -2.667)
+    				(stroke
+    					(width 0.1524)
+    					(type default)
+    				)
+    				(fill
+    					(type none)
+    				)
+    			)
+    			(pin passive line
+    				(at -5.08 0 0)
+    				(length 3.81)
+    				(name "Pin_1"
+    					(effects
+    						(font
+    							(size 1.27 1.27)
+    						)
+    					)
+    				)
+    				(number "1"
+    					(effects
+    						(font
+    							(size 1.27 1.27)
+    						)
+    					)
+    				)
+    			)
+    			(pin passive line
+    				(at -5.08 -2.54 0)
+    				(length 3.81)
+    				(name "Pin_2"
+    					(effects
+    						(font
+    							(size 1.27 1.27)
+    						)
+    					)
+    				)
+    				(number "2"
+    					(effects
+    						(font
+    							(size 1.27 1.27)
+    						)
+    					)
+    				)
+    			)
+    		)
+    		(embedded_fonts no)
+    	)
+  ) 
+
+(symbol (lib_id "Device:R") (at -100 -100 0) (unit 1) (in_bom no) (on_board no) (dnp yes) (uuid 00000000-0000-0000-0000-000000000001) 
+
+(property "Reference" "_TEMPLATE_R" (at -100 -102.54 0) (effects (font (size 1.27 1.27)))) 
+
+(property "Value" "R_TEMPLATE" (at -100 -100 90) (effects (font (size 1.27 1.27)))) 
+
+(property "Footprint" "" (at -100 -100 90) (effects (font (size 1.27 1.27)) hide)) 
+
+(property "Datasheet" "~" (at -100 -100 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid 00000000-0000-0000-0000-000000000010)) (pin "2" (uuid 00000000-0000-0000-0000-000000000011))) 
+
+(symbol (lib_id "Device:C") (at -100 -110 0) (unit 1) (in_bom no) (on_board no) (dnp yes) (uuid 00000000-0000-0000-0000-000000000002) 
+
+(property "Reference" "_TEMPLATE_C" (at -100 -107.46 0) (effects (font (size 1.27 1.27)))) 
+
+(property "Value" "C_TEMPLATE" (at -100 -112.54 0) (effects (font (size 1.27 1.27)))) 
+
+(property "Footprint" "" (at -100 -110 0) (effects (font (size 1.27 1.27)) hide)) 
+
+(property "Datasheet" "~" (at -100 -110 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid 00000000-0000-0000-0000-000000000020)) (pin "2" (uuid 00000000-0000-0000-0000-000000000021))) 
+
+(symbol (lib_id "Device:LED") (at -100 -120 0) (unit 1) (in_bom no) (on_board no) (dnp yes) (uuid 00000000-0000-0000-0000-000000000003) 
+
+(property "Reference" "_TEMPLATE_D" (at -100 -117.46 0) (effects (font (size 1.27 1.27)))) 
+
+(property "Value" "LED_TEMPLATE" (at -100 -122.54 0) (effects (font (size 1.27 1.27)))) 
+
+(property "Footprint" "" (at -100 -120 0) (effects (font (size 1.27 1.27)) hide)) 
+
+(property "Datasheet" "~" (at -100 -120 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid 00000000-0000-0000-0000-000000000030)) (pin "2" (uuid 00000000-0000-0000-0000-000000000031)))   (symbol (lib_id "Connector_Generic:Conn_01x02") (at 55 40 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "527025c1-3309-44b5-b4fc-20b3813dec0d")
+    (property "Reference" "J1" (at 55 37.46 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Value" "BATTERY_1S" (at 55 42.54 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "" (at 55 40 0)
+      (effects (font (size 1.27 1.27)) (hide yes))
+    )
+    (property "Datasheet" "~" (at 55 40 0)
+      (effects (font (size 1.27 1.27)) (hide yes))
+    )
+  )
+    (symbol (lib_id "Device:R") (at 95 45 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "2e5180a8-a245-45f5-9504-80fb923d003a")
+    (property "Reference" "R10" (at 95 42.46 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Value" "10k" (at 95 47.54 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "" (at 95 45 0)
+      (effects (font (size 1.27 1.27)) (hide yes))
+    )
+    (property "Datasheet" "~" (at 95 45 0)
+      (effects (font (size 1.27 1.27)) (hide yes))
+    )
+  )
+  (sheet_instances (path "/" (page "1"))) 
+
+(symbol (lib_id "Device:R") (at 85 190 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid 9ad91326-76fe-46cd-81da-240cfaeb95a6) 
+
+(property "Reference" "R1_" (at -100 -102.54 0) (effects (font (size 1.27 1.27)))) 
+
+(property "Value" "1k" (at -100 -100 90) (effects (font (size 1.27 1.27)))) 
+
+(property "Footprint" "" (at -100 -100 90) (effects (font (size 1.27 1.27)) hide)) 
+
+(property "Datasheet" "~" (at -100 -100 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid a51a0245-dff5-4ef4-8b2c-a4c231be2975)) (pin "2" (uuid b7a083fe-0df5-4159-8012-f220826f5a24))) 
+
+(symbol (lib_id "Device:R") (at 100 55 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid a5e96cf8-2ab0-49bf-bf6f-cde234976620) 
+
+(property "Reference" "R2_" (at -100 -102.54 0) (effects (font (size 1.27 1.27)))) 
+
+(property "Value" "10k" (at -100 -100 90) (effects (font (size 1.27 1.27)))) 
+
+(property "Footprint" "" (at -100 -100 90) (effects (font (size 1.27 1.27)) hide)) 
+
+(property "Datasheet" "~" (at -100 -100 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid 2a3c7d1e-9b45-4fe3-b799-1a101db8a27d)) (pin "2" (uuid f9fdeb48-9747-4c93-bb4e-0929ee6ce364))) 
+
+(symbol (lib_id "Device:R") (at 110 55 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid 800f8a30-fbe6-4beb-b0f3-99622bd0f679) 
+
+(property "Reference" "R3_" (at -100 -102.54 0) (effects (font (size 1.27 1.27)))) 
+
+(property "Value" "10k" (at -100 -100 90) (effects (font (size 1.27 1.27)))) 
+
+(property "Footprint" "" (at -100 -100 90) (effects (font (size 1.27 1.27)) hide)) 
+
+(property "Datasheet" "~" (at -100 -100 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid c8d9363f-eba6-4919-9deb-573b35c16cf3)) (pin "2" (uuid 4b5bd0ef-3e62-4133-a27d-f3a89a433cba))) 
+
+(symbol (lib_id "Device:C") (at 120 40 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid adc524d7-57f3-4704-bef4-aa8ae99635ec) 
+
+(property "Reference" "C1_" (at -100 -107.46 0) (effects (font (size 1.27 1.27)))) 
+
+(property "Value" "10uF" (at -100 -112.54 0) (effects (font (size 1.27 1.27)))) 
+
+(property "Footprint" "" (at -100 -110 0) (effects (font (size 1.27 1.27)) hide)) 
+
+(property "Datasheet" "~" (at -100 -110 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid 45c113da-b6b3-4f63-95a6-fb9ab07c107f)) (pin "2" (uuid 2bf52581-f3c4-4de2-8a75-b26fa8465807))) 
+
+(symbol (lib_id "Device:C") (at 130 40 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid 3a4ab789-9f76-4980-b621-e3fc601b1824) 
+
+(property "Reference" "C2_" (at -100 -107.46 0) (effects (font (size 1.27 1.27)))) 
+
+(property "Value" "100nF" (at -100 -112.54 0) (effects (font (size 1.27 1.27)))) 
+
+(property "Footprint" "" (at -100 -110 0) (effects (font (size 1.27 1.27)) hide)) 
+
+(property "Datasheet" "~" (at -100 -110 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid 47cdc5d9-fb2f-4a84-b876-969788ee03c5)) (pin "2" (uuid 6401d6ff-13f0-43c2-bb53-6838f454c82d))))

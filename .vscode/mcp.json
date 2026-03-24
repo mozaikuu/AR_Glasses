@@ -1,0 +1,18 @@
+{
+	"servers": {
+		"kicad": {
+			"type": "stdio",
+			"command": "node",
+			"args": [
+				"D:/0_code/Smart_Glasses_Distilled/KiCAD-MCP-Server/dist/index.js"
+			],
+			"env": {
+				"PYTHONPATH": "D:/Program Files/KiCad/9.0/lib/python3/dist-packages",
+				// "PYTHONPATH": "D:/Program Files/KiCad/9.0/bin/Lib/site-packages",
+				"KICAD_PYTHON": "D:/Program Files/KiCad/9.0/bin/python.exe",
+				"KICAD_CLI": "D:/Program Files/KiCad/9.0/bin/kicad-cli.exe",
+				"KICAD9_SYMBOL_DIR": "D:/Program Files/KiCad/9.0/share/kicad/symbols"
+			}
+		}
+	}
+}

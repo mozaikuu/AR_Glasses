@@ -9,6 +9,7 @@ from urllib.request import urlopen
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 
 from app.config.settings import settings
 from app.models.requests import (
@@ -80,6 +81,15 @@ def _detect_lan_ips() -> list[str]:
                 candidates.append(ip)
 
     return candidates
+
+
+def _delete_file_safely(path: Path) -> None:
+    try:
+        if path.exists():
+            path.unlink()
+    except Exception:
+        # Best-effort cleanup; the response has already been sent.
+        pass
 
 
 def _warmup_runtime() -> None:
@@ -288,7 +298,12 @@ def esp_tts(filename: str) -> FileResponse:
     wav_path = _tts_root / filename
     if not wav_path.exists():
         raise HTTPException(status_code=404, detail="TTS file not found")
-    return FileResponse(path=wav_path, media_type="audio/wav", filename=filename)
+    return FileResponse(
+        path=wav_path,
+        media_type="audio/wav",
+        filename=filename,
+        background=BackgroundTask(_delete_file_safely, wav_path),
+    )
 
 
 @app.post("/qr/visible")

@@ -21,6 +21,7 @@ public class VoiceNavigationController : MonoBehaviour
   [Header("Server Routing")]
   [SerializeField] private bool useServerCommandRouter = true;
   [SerializeField] private string serverBaseUrl = "http://localhost:8000";
+  [SerializeField] private string unityApiKey = "";
   [SerializeField] private string commandRoutePath = "/unity/voice-command";
   [SerializeField] private string llmMode = "quick";
   [SerializeField] private float requestTimeoutSeconds = 8f;
@@ -204,6 +205,11 @@ public class VoiceNavigationController : MonoBehaviour
       request.downloadHandler = new DownloadHandlerBuffer();
       request.timeout = Mathf.CeilToInt(requestTimeoutSeconds);
       request.SetRequestHeader("Content-Type", "application/json");
+      string resolvedApiKey = ApiEndpointResolver.ResolveApiKey(unityApiKey);
+      if (!string.IsNullOrWhiteSpace(resolvedApiKey))
+      {
+        request.SetRequestHeader("X-Unity-Api-Key", resolvedApiKey);
+      }
 
       yield return request.SendWebRequest();
 

@@ -12,6 +12,7 @@ public class NavigationManager : MonoBehaviour
 {
   [Header("Configuration")]
   [SerializeField] private string serverBaseUrl = "http://localhost:8000";
+  [SerializeField] private string unityApiKey = "";
   [SerializeField] private float serverTimeout = 10f;
   [SerializeField] private bool warpGuideAgentToLocalizedStart = true;
   [SerializeField] private float localizedStartSampleDistance = 2.0f;
@@ -236,6 +237,11 @@ public class NavigationManager : MonoBehaviour
       request.downloadHandler = new DownloadHandlerBuffer();
       request.timeout = Mathf.CeilToInt(serverTimeout);
       request.SetRequestHeader("Content-Type", "application/json");
+      string resolvedApiKey = ApiEndpointResolver.ResolveApiKey(unityApiKey);
+      if (!string.IsNullOrWhiteSpace(resolvedApiKey))
+      {
+        request.SetRequestHeader("X-Unity-Api-Key", resolvedApiKey);
+      }
 
       yield return request.SendWebRequest();
 

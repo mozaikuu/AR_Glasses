@@ -7,7 +7,7 @@ This guide configures one PC as the backend host and connects Unity (Quest/Andro
 1. Start backend on the PC:
    - `uv run python start.py --profile production-local --host 0.0.0.0 --port 8000`
 2. Print LAN URLs:
-   - `uv run python scripts/print_network_info.py`
+   - `uv run python -m scripts.print_network_info`
 3. Make sure firewall allows TCP 8000.
 4. On each client, use:
    - `http://<PC_LAN_IP>:8000`
@@ -91,3 +91,34 @@ On new PC:
 3. Internet test
 
 - Switch base URL to tunnel URL and repeat same command.
+
+## 7) Device-By-Device Quick Steps
+
+### Browser (same LAN)
+
+1. Open `http://<PC_LAN_IP>:8000/`.
+2. Open `http://<PC_LAN_IP>:8000/network/info`.
+3. If Streamlit UI is used, open `http://<PC_LAN_IP>:8501`.
+
+### Android phone
+
+1. Connect phone and PC to same Wi-Fi.
+2. Set app backend URL to `http://<PC_LAN_IP>:8000`.
+3. If `UNITY_API_KEY` is configured, send header `X-Unity-Api-Key`.
+4. Test voice command routing with destination `Stairs_G`.
+
+### Meta Quest (Unity app)
+
+1. Connect Quest and PC to same Wi-Fi/subnet.
+2. Set runtime API URL once in Unity app:
+   - `ApiEndpointResolver.SetOverride("http://<PC_LAN_IP>:8000")`
+3. Optional API key override:
+   - `ApiEndpointResolver.SetApiKeyOverride("<key>")`
+4. Speak: "take me to stairs g" and verify navigation starts.
+
+### Internet (free tunnel)
+
+1. Start backend locally on the PC.
+2. Start free tunnel to `http://127.0.0.1:8000`.
+3. Update device base URL to tunnel URL.
+4. Repeat same command tests from external network.
