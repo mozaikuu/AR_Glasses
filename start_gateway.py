@@ -1,13 +1,16 @@
-"""Start the HTTP gateway server."""
-import uvicorn
-from config.settings import API_HOST, API_PORT
+"""Compatibility launcher for the unified startup path.
+
+Deprecated: prefer running start.py directly.
+"""
+
+import sys
+
+from start import main
+
 
 if __name__ == "__main__":
-    uvicorn.run(
-        "server.gateway:app",
-        host=API_HOST,
-        port=API_PORT,
-        reload=True,
-        log_level="info"
-    )
+    print("[DEPRECATED] start_gateway.py now delegates to start.py.")
+    if "--reload" not in sys.argv:
+        sys.argv.append("--reload")
+    main()
 

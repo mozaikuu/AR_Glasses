@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Mic Diagnostics</title>
+		<style>
+			body {
+				font-family:
+					Segoe UI,
+					Tahoma,
+					sans-serif;
+				background: #f8fafc;
+				color: #0f172a;
+				margin: 0;
+			}
+			.wrap {
+				max-width: 900px;
+				margin: 2rem auto;
+				background: #fff;
+				border-radius: 14px;
+				padding: 1.25rem;
+				box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+			}
+			h1 {
+				margin-top: 0;
+			}
+			.row {
+				display: flex;
+				gap: 0.5rem;
+				flex-wrap: wrap;
+				margin: 0.75rem 0;
+			}
+			button {
+				border: 0;
+				border-radius: 8px;
+				padding: 0.55rem 0.9rem;
+				background: #0f766e;
+				color: #fff;
+				cursor: pointer;
+			}
+			button.alt {
+				background: #334155;
+			}
+			.ok {
+				color: #166534;
+			}
+			.warn {
+				color: #b45309;
+			}
+			.bad {
+				color: #b91c1c;
+			}
+			#meter {
+				width: 100%;
+				height: 14px;
+				background: #e2e8f0;
+				border-radius: 999px;
+				overflow: hidden;
+			}
+			#meterFill {
+				height: 100%;
+				width: 0%;
+				background: linear-gradient(90deg, #0ea5e9, #10b981);
+			}
+			pre {
+				background: #0f172a;
+				color: #e2e8f0;
+				padding: 0.8rem;
+				border-radius: 10px;
+				overflow: auto;
+			}
+			.small {
+				font-size: 0.9rem;
+				color: #475569;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="wrap">
+			<h1>Microphone Diagnostics (Outside Flask Voice Loop)</h1>
+			<p class="small">
+				This page tests raw mic capture and browser speech recognition
+				independently.
+			</p>
+
+			<div id="env"></div>
+			<div class="row">
+				<button onclick="requestMic()">1) Request Mic Permission</button>
+				<button class="alt" onclick="startMeter()">
+					2) Start Level Meter
+				</button>
+				<button class="alt" onclick="stopMeter()">Stop Meter</button>
+			</div>
+			<div id="meter"><div id="meterFill"></div></div>
+			<div id="micStatus"></div>
+
+			<hr />
+
+			<div class="row">
+				<button onclick="startSpeechTest()">
+					3) Start SpeechRecognition Test
+				</button>
+				<button class="alt" onclick="stopSpeechTest()">
+					Stop Speech Test
+				</button>
+			</div>
+			<div id="speechStatus"></div>
+			<pre id="speechOut">No transcript yet.</pre>
+
+			<hr />
+			<p class="small">
+				If mic meter works but speech test fails with <b>network</b>, your
+				hardware is fine and the browser speech service is
+				blocked/unavailable. In that case use text input or server-side STT
+				path.
+			</p>
+		</div>
+
+		<script>
+			let stream = null;
+			let audioCtx = null;
+			let analyser = null;
+			let meterTimer = null;
+			let recognition = null;
+
+			function setEnv() {
+				const secureOk =
+					window.isSecureContext ||
+					location.hostname === "localhost" ||
+					location.hostname === "127.0.0.1";
+				const hasGetUserMedia = !!(
+					navigator.mediaDevices && navigator.mediaDevices.getUserMedia
+				);
+				const hasSpeech = !!(
+					window.SpeechRecognition || window.webkitSpeechRecognition
+				);
+				const cls = secureOk ? "ok" : "bad";
+				document.getElementById("env").innerHTML =
+					`<p><b>Origin:</b> ${location.origin}</p>` +
+					`<p class="${cls}"><b>Secure Context:</b> ${secureOk}</p>` +
+					`<p><b>getUserMedia:</b> ${hasGetUserMedia}</p>` +
+					`<p><b>SpeechRecognition API:</b> ${hasSpeech}</p>`;
+			}
+
+			function setMicStatus(text, cls = "") {
+				const el = document.getElementById("micStatus");
+				el.className = cls;
+				el.textContent = `Mic: ${text}`;
+			}
+
+			function setSpeechStatus(text, cls = "") {
+				const el = document.getElementById("speechStatus");
+				el.className = cls;
+				el.textContent = `Speech: ${text}`;
+			}
+
+			async function requestMic() {
+				try {
+					if (stream) {
+						stream.getTracks().forEach((t) => t.stop());
+					}
+					stream = await navigator.mediaDevices.getUserMedia({
+						audio: true,
+					});
+					setMicStatus("permission granted", "ok");
+				} catch (err) {
+					setMicStatus(
+						`permission failed (${err && err.name ? err.name : err})`,
+						"bad",
+					);
+				}
+			}
+
+			async function startMeter() {
+				try {
+					if (!stream) {
+						await requestMic();
+						if (!stream) return;
+					}
+					if (!audioCtx)
+						audioCtx = new (
+							window.AudioContext || window.webkitAudioContext
+						)();
+					const src = audioCtx.createMediaStreamSource(stream);
+					analyser = audioCtx.createAnalyser();
+					analyser.fftSize = 512;
+					src.connect(analyser);
+
+					const data = new Uint8Array(analyser.frequencyBinCount);
+					clearInterval(meterTimer);
+					meterTimer = setInterval(() => {
+						analyser.getByteTimeDomainData(data);
+						let sum = 0;
+						for (let i = 0; i < data.length; i++) {
+							const centered = (data[i] - 128) / 128;
+							sum += centered * centered;
+						}
+						const rms = Math.sqrt(sum / data.length);
+						const level = Math.max(
+							0,
+							Math.min(100, Math.round(rms * 220)),
+						);
+						document.getElementById("meterFill").style.width =
+							`${level}%`;
+					}, 70);
+					setMicStatus("meter running", "ok");
+				} catch (err) {
+					setMicStatus(`meter failed (${err})`, "bad");
+				}
+			}
+
+			function stopMeter() {
+				clearInterval(meterTimer);
+				meterTimer = null;
+				document.getElementById("meterFill").style.width = "0%";
+				setMicStatus("meter stopped");
+			}
+
+			function startSpeechTest() {
+				const SR =
+					window.SpeechRecognition || window.webkitSpeechRecognition;
+				if (!SR) {
+					setSpeechStatus("SpeechRecognition API not supported", "bad");
+					return;
+				}
+
+				recognition = new SR();
+				recognition.lang = "en-US";
+				recognition.interimResults = true;
+				recognition.continuous = true;
+
+				recognition.onstart = () => setSpeechStatus("listening...", "ok");
+				recognition.onresult = (event) => {
+					const lines = [];
+					for (let i = event.resultIndex; i < event.results.length; i++) {
+						const res = event.results[i];
+						const text = res[0] ? res[0].transcript : "";
+						lines.push(
+							`${res.isFinal ? "[final]" : "[interim]"} ${text}`,
+						);
+					}
+					document.getElementById("speechOut").textContent =
+						lines.join("\n") || "No transcript yet.";
+				};
+				recognition.onerror = (event) => {
+					if (event.error === "network") {
+						setSpeechStatus(
+							"network error: browser speech service unavailable/blocked",
+							"bad",
+						);
+					} else if (
+						event.error === "not-allowed" ||
+						event.error === "service-not-allowed"
+					) {
+						setSpeechStatus(`permission blocked (${event.error})`, "bad");
+					} else {
+						setSpeechStatus(`error (${event.error})`, "warn");
+					}
+				};
+				recognition.onend = () => setSpeechStatus("stopped");
+
+				try {
+					recognition.start();
+				} catch (err) {
+					setSpeechStatus(`start failed (${err})`, "bad");
+				}
+			}
+
+			function stopSpeechTest() {
+				if (recognition) {
+					try {
+						recognition.stop();
+					} catch (_err) {}
+				}
+			}
+
+			setEnv();
+		</script>
+	</body>
+</html>
