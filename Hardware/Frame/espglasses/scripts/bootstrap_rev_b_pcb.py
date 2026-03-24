@@ -6,6 +6,7 @@ import pcbnew
 
 
 BOARD_PATH = Path(__file__).resolve().parents[1] / "espglasses.kicad_pcb"
+FOOTPRINT_IO = pcbnew.PCB_IO_KICAD_SEXPR()
 
 # First-pass envelope for a glasses-arm style board.
 OUTLINE = {
@@ -18,18 +19,26 @@ OUTLINE = {
 PLACEMENTS = [
     # Core processing + camera/sensor/audio IC region
     {"ref": "U1", "value": "ESP32_WROVER_E_CORE", "footprint": "RF_Module:ESP32-WROOM-32E", "x": 145.0, "y": 26.0, "rot": 0.0, "layer": "F.Cu"},
-    {"ref": "U2", "value": "OV2640_CAMERA_IF", "footprint": "Connector_FFC-FPC:TE_1734839-0_1x20-1MP_P0.5mm_Horizontal", "x": 166.0, "y": 10.0, "rot": 180.0, "layer": "F.Cu"},
+    {"ref": "U2", "value": "OV2640_CAMERA_IF", "footprint": "Connector_FFC-FPC:TE_2-1734839-0_1x20-1MP_P0.5mm_Horizontal", "x": 166.0, "y": 10.0, "rot": 180.0, "layer": "F.Cu"},
     {"ref": "U3", "value": "MPU6050_CORE", "footprint": "Package_DFN_QFN:QFN-24-1EP_4x4mm_P0.5mm_EP2.65x2.65mm", "x": 125.0, "y": 12.0, "rot": 0.0, "layer": "F.Cu"},
-    {"ref": "U4", "value": "INMP441_CORE", "footprint": "Package_LGA:LGA-6_3x4mm_P0.5mm", "x": 117.0, "y": 18.0, "rot": 90.0, "layer": "F.Cu"},
+    {"ref": "U4", "value": "INMP441_CORE", "footprint": "Package_DFN_QFN:DFN-6-1EP_3x2mm_P0.5mm_EP1.65x1.35mm", "x": 117.0, "y": 18.0, "rot": 90.0, "layer": "F.Cu"},
     {"ref": "U5", "value": "LIION_CHARGER_IC_CORE", "footprint": "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm", "x": 30.0, "y": 26.0, "rot": 0.0, "layer": "F.Cu"},
     {"ref": "U6", "value": "REGULATOR_3V3_CORE", "footprint": "Package_TO_SOT_SMD:SOT-223-3_TabPin2", "x": 44.0, "y": 26.0, "rot": 0.0, "layer": "F.Cu"},
     {"ref": "U7", "value": "AUDIO_AMP_CORE", "footprint": "Package_SO:SOIC-16_3.9x9.9mm_P1.27mm", "x": 88.0, "y": 26.0, "rot": 0.0, "layer": "F.Cu"},
-    # External connectors
+    {"ref": "U8", "value": "USB_UART_BRIDGE_CORE", "footprint": "Package_DFN_QFN:QFN-28-1EP_5x5mm_P0.5mm_EP3.35x3.35mm", "x": 70.0, "y": 26.0, "rot": 0.0, "layer": "F.Cu"},
+    # External connectors (SMD only)
     {"ref": "J5", "value": "USBC_POWER_IN", "footprint": "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12", "x": 8.0, "y": 25.0, "rot": 270.0, "layer": "F.Cu"},
-    {"ref": "J1", "value": "BATTERY_1S", "footprint": "Connector_JST:JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical", "x": 18.0, "y": 40.0, "rot": 0.0, "layer": "F.Cu"},
-    {"ref": "J2", "value": "OLED_I2C_PANEL", "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical", "x": 70.0, "y": 42.0, "rot": 0.0, "layer": "F.Cu"},
-    {"ref": "J4", "value": "UART_BOOT_DEBUG", "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical", "x": 54.0, "y": 42.0, "rot": 0.0, "layer": "F.Cu"},
-    {"ref": "J3", "value": "SPEAKER_8OHM", "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical", "x": 102.0, "y": 42.0, "rot": 0.0, "layer": "F.Cu"},
+    {"ref": "J1", "value": "BATTERY_1S", "footprint": "Connector_JST:JST_GH_SM02B-GHS-TB_1x02-1MP_P1.25mm_Horizontal", "x": 18.0, "y": 41.0, "rot": 0.0, "layer": "F.Cu"},
+    {"ref": "J6", "value": "MICRO_USB_PROG", "footprint": "Connector_USB:USB_Micro-B_Molex-105017-0001", "x": 20.0, "y": 25.0, "rot": 270.0, "layer": "F.Cu"},
+    # Test points replacing external headers
+    {"ref": "TP1", "value": "TP_UART_TX", "footprint": "TestPoint:TestPoint_Pad_D1.0mm", "x": 54.0, "y": 41.0, "rot": 0.0, "layer": "F.Cu"},
+    {"ref": "TP2", "value": "TP_UART_RX", "footprint": "TestPoint:TestPoint_Pad_D1.0mm", "x": 58.0, "y": 41.0, "rot": 0.0, "layer": "F.Cu"},
+    {"ref": "TP3", "value": "TP_EN", "footprint": "TestPoint:TestPoint_Pad_D1.0mm", "x": 62.0, "y": 41.0, "rot": 0.0, "layer": "F.Cu"},
+    {"ref": "TP4", "value": "TP_IO0", "footprint": "TestPoint:TestPoint_Pad_D1.0mm", "x": 66.0, "y": 41.0, "rot": 0.0, "layer": "F.Cu"},
+    {"ref": "TP5", "value": "TP_I2C_SCL", "footprint": "TestPoint:TestPoint_Pad_D1.0mm", "x": 74.0, "y": 41.0, "rot": 0.0, "layer": "F.Cu"},
+    {"ref": "TP6", "value": "TP_I2C_SDA", "footprint": "TestPoint:TestPoint_Pad_D1.0mm", "x": 78.0, "y": 41.0, "rot": 0.0, "layer": "F.Cu"},
+    {"ref": "TP7", "value": "TP_SPK_P", "footprint": "TestPoint:TestPoint_Pad_D1.0mm", "x": 102.0, "y": 41.0, "rot": 0.0, "layer": "F.Cu"},
+    {"ref": "TP8", "value": "TP_SPK_N", "footprint": "TestPoint:TestPoint_Pad_D1.0mm", "x": 106.0, "y": 41.0, "rot": 0.0, "layer": "F.Cu"},
     # Passives and indicator clusters
     {"ref": "R1", "value": "1k", "footprint": "Resistor_SMD:R_0603_1608Metric", "x": 109.0, "y": 34.0, "rot": 0.0, "layer": "F.Cu"},
     {"ref": "D1", "value": "GREEN", "footprint": "LED_SMD:LED_0603_1608Metric", "x": 113.0, "y": 34.0, "rot": 0.0, "layer": "F.Cu"},
@@ -93,8 +102,12 @@ def reset_outline(board: pcbnew.BOARD) -> None:
 
 
 def clear_existing_footprints(board: pcbnew.BOARD) -> None:
+    if hasattr(board, "DeleteAllFootprints"):
+        board.DeleteAllFootprints()
+        return
+
     for footprint in list(board.GetFootprints()):
-        board.Remove(footprint)
+        board.Delete(footprint)
 
 
 def load_footprint(footprint_id: str):
@@ -109,10 +122,18 @@ def load_footprint(footprint_id: str):
 
     lib_path_str = str(lib_path)
     try:
-        plugin = pcbnew.GetPluginForPath(lib_path_str)
-        module = plugin.FootprintLoad(lib_path_str, name, False)
+        module = FOOTPRINT_IO.FootprintLoad(lib_path_str, name, False)
     except Exception as exc:
         raise RuntimeError(f"Failed to load footprint: {footprint_id}") from exc
+
+    if module is not None and not hasattr(module, "SetReference"):
+        try:
+            module = pcbnew.Cast_to_FOOTPRINT(module)
+        except Exception as exc:
+            raise RuntimeError(f"Failed to cast footprint object: {footprint_id}") from exc
+
+    if module is None:
+        raise RuntimeError(f"Footprint load returned null: {footprint_id}")
     if module is None:
         raise RuntimeError(f"Footprint load returned null: {footprint_id}")
     if module is None:
@@ -126,6 +147,20 @@ def place_components(board: pcbnew.BOARD) -> None:
             module = load_footprint(item["footprint"])
         except Exception as exc:
             raise RuntimeError(f"Failed loading {item['ref']} footprint {item['footprint']}") from exc
+
+        if module is not None and not hasattr(module, "SetReference"):
+            try:
+                module = pcbnew.Cast_to_FOOTPRINT(module)
+            except Exception as exc:
+                raise RuntimeError(
+                    f"Invalid footprint object for {item['ref']} ({item['footprint']}): {type(module)}"
+                ) from exc
+
+        if module is None or not hasattr(module, "SetReference"):
+            raise RuntimeError(
+                f"Unusable footprint object for {item['ref']} ({item['footprint']}): {type(module)}"
+            )
+
         module.SetReference(item["ref"])
         module.SetValue(item["value"])
         module.SetPosition(pt_mm(item["x"], item["y"]))

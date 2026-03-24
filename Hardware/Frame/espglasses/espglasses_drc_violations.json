@@ -1,13 +1,13 @@
 ** Drc report for espglasses.kicad_pcb **
-** Created on 2026-03-25T00:14:32+0200 **
+** Created on 2026-03-25T01:20:39+0200 **
 
 ** Found 0 DRC violations **
 
 ** Found 2 unconnected pads **
 [unconnected_items]: Missing connection between items
     Local override; error
-    @(12.0450 mm, 21.7500 mm): Pad B12 [GND] of J5 on F.Cu
-    @(12.0450 mm, 28.2500 mm): Pad A12 [GND] of J5 on F.Cu
+    @(12.0450 mm, 21.7500 mm): Pad A1 [GND] of J5 on F.Cu
+    @(12.0450 mm, 28.2500 mm): Pad B1 [GND] of J5 on F.Cu
 [unconnected_items]: Missing connection between items
     Local override; error
     @(12.0450 mm, 22.5500 mm): Pad B9 [VBUS_5V] of J5 on F.Cu
