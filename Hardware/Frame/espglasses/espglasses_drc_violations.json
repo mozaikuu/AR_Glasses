@@ -1,0 +1,118 @@
+** Drc report for espglasses.kicad_pcb **
+** Created on 2026-03-25T00:00:07+0200 **
+
+** Found 0 DRC violations **
+
+** Found 27 unconnected pads **
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(86.0000 mm, 36.5400 mm): PTH pad 2 [UART_RX_DBG] of J5
+    @(127.2500 mm, 27.7200 mm): Pad 12 [UART_RX_DBG] of U1 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(30.0000 mm, 41.6200 mm): PTH pad 4 [I2C_SDA] of J2
+    @(144.7500 mm, 18.8300 mm): Pad 34 [I2C_SDA] of U1 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(14.0000 mm, 34.0000 mm): PTH pad 2 [GND] of J1
+    @(30.0000 mm, 36.5400 mm): PTH pad 2 [GND] of J2
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(66.0000 mm, 36.5400 mm): PTH pad 2 [GND] of J4
+    @(30.0000 mm, 36.5400 mm): PTH pad 2 [GND] of J2
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(86.0000 mm, 46.7000 mm): PTH pad 6 [GND] of J5
+    @(66.0000 mm, 36.5400 mm): PTH pad 2 [GND] of J4
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(86.0000 mm, 46.7000 mm): PTH pad 6 [GND] of J5
+    @(106.0000 mm, 36.5400 mm): PTH pad 2 [GND] of J6
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(106.0000 mm, 36.5400 mm): PTH pad 2 [GND] of J6
+    @(118.7750 mm, 28.0000 mm): Pad 2 [GND] of C1 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(118.7750 mm, 28.0000 mm): Pad 2 [GND] of C1 on F.Cu
+    @(115.2125 mm, 20.0000 mm): Pad 1 [GND] of D1 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(122.7750 mm, 28.0000 mm): Pad 2 [GND] of C2 on F.Cu
+    @(118.7750 mm, 28.0000 mm): Pad 2 [GND] of C1 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(127.2500 mm, 13.7500 mm): Pad 1 [GND] of U1 on F.Cu
+    @(115.2125 mm, 20.0000 mm): Pad 1 [GND] of D1 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(30.0000 mm, 39.0800 mm): PTH pad 3 [I2C_SCL] of J2
+    @(144.7500 mm, 21.3700 mm): Pad 32 [I2C_SCL] of U1 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(112.8250 mm, 20.0000 mm): Pad 2 [LED_A] of R1 on F.Cu
+    @(116.7875 mm, 20.0000 mm): Pad 2 [LED_A] of D1 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(86.0000 mm, 41.6200 mm): PTH pad 4 [IO0] of J5
+    @(127.2500 mm, 17.5600 mm): Pad 4 [IO0] of U1 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(86.0000 mm, 39.0800 mm): PTH pad 3 [EN] of J5
+    @(127.2500 mm, 20.1000 mm): Pad 6 [EN] of U1 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(30.0000 mm, 34.0000 mm): PTH pad 1 [+3V3_DIG] of J2
+    @(86.0000 mm, 44.1600 mm): PTH pad 5 [+3V3_DIG] of J5
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(117.2250 mm, 28.0000 mm): Pad 1 [+3V3_DIG] of C1 on F.Cu
+    @(86.0000 mm, 44.1600 mm): PTH pad 5 [+3V3_DIG] of J5
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(121.2250 mm, 28.0000 mm): Pad 1 [+3V3_DIG] of C2 on F.Cu
+    @(117.2250 mm, 28.0000 mm): Pad 1 [+3V3_DIG] of C1 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(121.2250 mm, 28.0000 mm): Pad 1 [+3V3_DIG] of C2 on F.Cu
+    @(127.2500 mm, 15.0200 mm): Pad 2 [+3V3_DIG] of U1 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(48.0000 mm, 36.5400 mm): PTH pad 2 [TOUCH2_IN] of J3
+    @(141.7200 mm, 31.5100 mm): Pad 24 [TOUCH2_IN] of U1 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(48.0000 mm, 34.0000 mm): PTH pad 1 [TOUCH1_IN] of J3
+    @(144.7500 mm, 28.9900 mm): Pad 26 [TOUCH1_IN] of U1 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(70.8250 mm, 20.0000 mm): Pad 2 [DAC_SUM] of R2 on F.Cu
+    @(66.0000 mm, 34.0000 mm): PTH pad 1 [DAC_SUM] of J4
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(74.8250 mm, 20.0000 mm): Pad 2 [DAC_SUM] of R3 on F.Cu
+    @(70.8250 mm, 20.0000 mm): Pad 2 [DAC_SUM] of R2 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(73.1750 mm, 20.0000 mm): Pad 1 [DAC_R_OUT] of R3 on F.Cu
+    @(127.2500 mm, 30.2600 mm): Pad 14 [DAC_R_OUT] of U1 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(86.0000 mm, 34.0000 mm): PTH pad 1 [UART_TX_DBG] of J5
+    @(127.2500 mm, 25.1800 mm): Pad 10 [UART_TX_DBG] of U1 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(111.1750 mm, 20.0000 mm): Pad 1 [LED_STAT] of R1 on F.Cu
+    @(106.0000 mm, 34.0000 mm): PTH pad 1 [LED_STAT] of J6
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(127.2500 mm, 22.6400 mm): Pad 8 [LED_STAT] of U1 on F.Cu
+    @(111.1750 mm, 20.0000 mm): Pad 1 [LED_STAT] of R1 on F.Cu
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(69.1750 mm, 20.0000 mm): Pad 1 [DAC_L_OUT] of R2 on F.Cu
+    @(131.5600 mm, 31.5100 mm): Pad 16 [DAC_L_OUT] of U1 on F.Cu
+
+** Found 0 Footprint errors **
+
+** End of Report **

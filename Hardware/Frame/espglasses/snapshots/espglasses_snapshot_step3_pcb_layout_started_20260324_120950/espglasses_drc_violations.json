@@ -1,0 +1,46 @@
+{
+  "board": "d:\\0_code\\Smart_Glasses_Distilled\\Hardware\\Frame\\espglasses\\espglasses.kicad_pcb",
+  "timestamp": "2026-03-24T12:09:38+0200",
+  "total_violations": 3,
+  "violation_counts": {
+    "copper_edge_clearance": 1,
+    "silk_edge_clearance": 2
+  },
+  "severity_counts": {
+    "error": 1,
+    "warning": 2,
+    "info": 0
+  },
+  "violations": [
+    {
+      "type": "copper_edge_clearance",
+      "severity": "error",
+      "message": "Board edge clearance violation (board setup constraints edge clearance 0.5000 mm; actual 0.0000 mm)",
+      "location": {
+        "x": 170.0,
+        "y": 45.0,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "silk_edge_clearance",
+      "severity": "warning",
+      "message": "Silkscreen clipped by board edge",
+      "location": {
+        "x": 170.0,
+        "y": 45.0,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "silk_edge_clearance",
+      "severity": "warning",
+      "message": "Silkscreen clipped by board edge",
+      "location": {
+        "x": 170.0,
+        "y": 45.0,
+        "unit": "mm"
+      }
+    }
+  ]
+}

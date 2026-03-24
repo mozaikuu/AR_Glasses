@@ -148,41 +148,9 @@ def main() -> None:
         )
         print(f"Added {component['reference']}")
 
-    # Assign practical default footprints so PCB sync can proceed immediately.
-    footprints = {
-        "U1": "RF_Module:ESP32-WROOM-32",
-        "J1": "Connector_JST:JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical",
-        "J2": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
-        "J3": "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
-        "J4": "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
-        "J5": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
-        "J6": "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
-        "R1": "Resistor_SMD:R_0603_1608Metric",
-        "R2": "Resistor_SMD:R_0603_1608Metric",
-        "R3": "Resistor_SMD:R_0603_1608Metric",
-        "C1": "Capacitor_SMD:C_0603_1608Metric",
-        "C2": "Capacitor_SMD:C_0603_1608Metric",
-        "D1": "LED_SMD:LED_0603_1608Metric",
-    }
-
-    for ref, footprint in footprints.items():
-        run_cmd(
-            kicad,
-            "edit_schematic_component",
-            {
-                "schematicPath": str(SCH_PATH),
-                "reference": ref,
-                "footprint": footprint,
-            },
-        )
-        print(f"Set {ref} footprint -> {footprint}")
-
     # Phase-2 starter wiring: assign named nets to relevant connector pins and
     # representative U1 breakout pins so electrical intent is explicit.
     pin_net_connections = [
-        # Battery input connector J1
-        ("J1", "1", "VBAT_RAW"),
-        ("J1", "2", "GND"),
         # OLED connector J2: +3V3, GND, SCL, SDA
         ("J2", "1", "+3V3_DIG"),
         ("J2", "2", "GND"),
@@ -204,21 +172,6 @@ def main() -> None:
         # LED connector J6
         ("J6", "1", "LED_STAT"),
         ("J6", "2", "GND"),
-        # LED chain and passive networks
-        ("R1", "1", "LED_STAT"),
-        ("R1", "2", "LED_A"),
-        ("D1", "2", "LED_A"),
-        ("D1", "1", "GND"),
-        # DAC mono sum through resistors
-        ("R2", "1", "DAC_L_OUT"),
-        ("R2", "2", "DAC_SUM"),
-        ("R3", "1", "DAC_R_OUT"),
-        ("R3", "2", "DAC_SUM"),
-        # 3V3 decoupling caps
-        ("C1", "1", "+3V3_DIG"),
-        ("C1", "2", "GND"),
-        ("C2", "1", "+3V3_DIG"),
-        ("C2", "2", "GND"),
         # Representative U1 breakout mapping for firmware-critical signals
         ("U1", "2", "+3V3_DIG"),
         ("U1", "1", "GND"),
@@ -249,13 +202,23 @@ def main() -> None:
         print(f"Connected {ref}.{pin} -> {net_name}")
 
     labels = [
-        # Keep only high-level power rails as quick reference labels.
         ("VBUS_5V", 28, 36),
         ("VBAT_RAW", 28, 40),
         ("VSYS", 28, 44),
         ("+3V3_DIG", 28, 48),
         ("+3V3_AUD", 28, 52),
         ("GND", 28, 56),
+        ("I2C_SDA", 196, 86),
+        ("I2C_SCL", 196, 90),
+        ("TOUCH1_IN", 196, 98),
+        ("TOUCH2_IN", 196, 102),
+        ("DAC_L_OUT", 196, 110),
+        ("DAC_R_OUT", 196, 114),
+        ("LED_STAT", 196, 122),
+        ("UART_TX_DBG", 196, 130),
+        ("UART_RX_DBG", 196, 134),
+        ("EN", 196, 138),
+        ("IO0", 196, 142),
     ]
 
     for net_name, x, y in labels:

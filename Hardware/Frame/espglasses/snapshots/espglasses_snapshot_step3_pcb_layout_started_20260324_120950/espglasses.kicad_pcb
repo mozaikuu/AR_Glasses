@@ -78,22 +78,6 @@
 		)
 	)
 	(net 0 "")
-	(net 1 "UART_RX_DBG")
-	(net 2 "I2C_SDA")
-	(net 3 "VBAT_RAW")
-	(net 4 "GND")
-	(net 5 "I2C_SCL")
-	(net 6 "LED_A")
-	(net 7 "IO0")
-	(net 8 "EN")
-	(net 9 "+3V3_DIG")
-	(net 10 "TOUCH2_IN")
-	(net 11 "TOUCH1_IN")
-	(net 12 "DAC_SUM")
-	(net 13 "DAC_R_OUT")
-	(net 14 "UART_TX_DBG")
-	(net 15 "LED_STAT")
-	(net 16 "DAC_L_OUT")
 	(footprint "LED_0603_1608Metric"
 		(layer "F.Cu")
 		(uuid "19ce8a08-ea99-42ea-8f4d-f662f933bc7c")
@@ -254,7 +238,6 @@
 			(size 0.875 0.95)
 			(layers "F.Cu" "F.Mask" "F.Paste")
 			(roundrect_rratio 0.25)
-			(net 4 "GND")
 			(uuid "5e040442-6f4e-4f8c-b3d5-a3e459ed6919")
 		)
 		(pad "2" smd roundrect
@@ -262,7 +245,6 @@
 			(size 0.875 0.95)
 			(layers "F.Cu" "F.Mask" "F.Paste")
 			(roundrect_rratio 0.25)
-			(net 6 "LED_A")
 			(uuid "f075e446-0325-470c-b3a6-b9bd324f4505")
 		)
 		(embedded_fonts no)
@@ -469,7 +451,6 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net 9 "+3V3_DIG")
 			(uuid "5aacb649-c18b-4b84-a5a7-05bc12de2392")
 		)
 		(pad "2" thru_hole circle
@@ -478,7 +459,6 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net 4 "GND")
 			(uuid "cc1f6038-c42d-4abe-8d46-686efb788a1b")
 		)
 		(pad "3" thru_hole circle
@@ -487,7 +467,6 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net 5 "I2C_SCL")
 			(uuid "36656a4e-9262-44bc-a132-43aca0ccdf3f")
 		)
 		(pad "4" thru_hole circle
@@ -496,7 +475,6 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net 2 "I2C_SDA")
 			(uuid "29827976-f5f2-4c61-aa0f-7f02c39d5487")
 		)
 		(embedded_fonts no)
@@ -623,7 +601,6 @@
 			(size 0.8 0.95)
 			(layers "F.Cu" "F.Mask" "F.Paste")
 			(roundrect_rratio 0.25)
-			(net 16 "DAC_L_OUT")
 			(uuid "2409be14-730e-4ab6-af59-c1cbf4803488")
 		)
 		(pad "2" smd roundrect
@@ -631,7 +608,6 @@
 			(size 0.8 0.95)
 			(layers "F.Cu" "F.Mask" "F.Paste")
 			(roundrect_rratio 0.25)
-			(net 12 "DAC_SUM")
 			(uuid "2847449e-ece4-4227-bb72-a92fd523693d")
 		)
 		(embedded_fonts no)
@@ -838,7 +814,6 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net 12 "DAC_SUM")
 			(uuid "4a5cb2ca-9db0-4d45-96b9-8968500fe4d9")
 		)
 		(pad "2" thru_hole circle
@@ -847,7 +822,6 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net 4 "GND")
 			(uuid "8a83cd9f-ccf9-498e-9fba-3c9dfc4a22aa")
 		)
 		(embedded_fonts no)
@@ -974,7 +948,6 @@
 			(size 0.9 0.95)
 			(layers "F.Cu" "F.Mask" "F.Paste")
 			(roundrect_rratio 0.25)
-			(net 9 "+3V3_DIG")
 			(uuid "bba3a633-58e6-44bb-b421-9d1daa4cdc48")
 		)
 		(pad "2" smd roundrect
@@ -982,7 +955,6 @@
 			(size 0.9 0.95)
 			(layers "F.Cu" "F.Mask" "F.Paste")
 			(roundrect_rratio 0.25)
-			(net 4 "GND")
 			(uuid "ec23d130-64e3-4438-afd4-744b2584ab02")
 		)
 		(embedded_fonts no)
@@ -1109,7 +1081,6 @@
 			(size 0.8 0.95)
 			(layers "F.Cu" "F.Mask" "F.Paste")
 			(roundrect_rratio 0.25)
-			(net 15 "LED_STAT")
 			(uuid "72e7dd2a-6a4c-4e9a-a578-6f1a89310ea8")
 		)
 		(pad "2" smd roundrect
@@ -1117,7 +1088,6 @@
 			(size 0.8 0.95)
 			(layers "F.Cu" "F.Mask" "F.Paste")
 			(roundrect_rratio 0.25)
-			(net 6 "LED_A")
 			(uuid "77b0019c-cf2c-43e7-90bb-81f684d1a7ee")
 		)
 		(embedded_fonts no)
@@ -1244,7 +1214,6 @@
 			(size 0.8 0.95)
 			(layers "F.Cu" "F.Mask" "F.Paste")
 			(roundrect_rratio 0.25)
-			(net 13 "DAC_R_OUT")
 			(uuid "d59c3c44-2459-422d-9063-84964f378549")
 		)
 		(pad "2" smd roundrect
@@ -1252,7 +1221,6 @@
 			(size 0.8 0.95)
 			(layers "F.Cu" "F.Mask" "F.Paste")
 			(roundrect_rratio 0.25)
-			(net 12 "DAC_SUM")
 			(uuid "c03afc75-46fa-4b55-a7b9-b062b6b7e563")
 		)
 		(embedded_fonts no)
@@ -1602,7 +1570,6 @@
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
 			(roundrect_rratio 0.208333)
-			(net 3 "VBAT_RAW")
 			(uuid "a34d0f19-36ec-4ad4-ba53-556a26255ff6")
 		)
 		(pad "2" thru_hole oval
@@ -1611,7 +1578,6 @@
 			(drill 0.75)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net 4 "GND")
 			(uuid "08b2af10-9fef-493f-b769-6e34b3f532ea")
 		)
 		(embedded_fonts no)
@@ -1738,7 +1704,6 @@
 			(size 0.9 0.95)
 			(layers "F.Cu" "F.Mask" "F.Paste")
 			(roundrect_rratio 0.25)
-			(net 9 "+3V3_DIG")
 			(uuid "37a875e3-7bdb-47d7-9d5e-f9e404de9259")
 		)
 		(pad "2" smd roundrect
@@ -1746,7 +1711,6 @@
 			(size 0.9 0.95)
 			(layers "F.Cu" "F.Mask" "F.Paste")
 			(roundrect_rratio 0.25)
-			(net 4 "GND")
 			(uuid "e3d5b30e-1c4f-4779-a875-bbd64b77c0bb")
 		)
 		(embedded_fonts no)
@@ -1953,7 +1917,6 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net 11 "TOUCH1_IN")
 			(uuid "ef964078-0eea-4912-847b-e4d3c6e560ab")
 		)
 		(pad "2" thru_hole circle
@@ -1962,7 +1925,6 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net 10 "TOUCH2_IN")
 			(uuid "cfe7e7a5-157c-41a1-bf33-1d1a39b76674")
 		)
 		(embedded_fonts no)
@@ -2169,7 +2131,6 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net 14 "UART_TX_DBG")
 			(uuid "00ee895a-b84e-477b-bfea-4cbd5aad210e")
 		)
 		(pad "2" thru_hole circle
@@ -2178,7 +2139,6 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net 1 "UART_RX_DBG")
 			(uuid "dfec2553-4ad8-4580-90f7-da665ddbaf70")
 		)
 		(pad "3" thru_hole circle
@@ -2187,7 +2147,6 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net 8 "EN")
 			(uuid "d8a2c4e0-99c0-452c-a8d3-51ee2d28d362")
 		)
 		(pad "4" thru_hole circle
@@ -2196,7 +2155,6 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net 7 "IO0")
 			(uuid "c0fc73c3-1a2f-4721-831b-d1a0f66eacaa")
 		)
 		(pad "5" thru_hole circle
@@ -2205,7 +2163,6 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net 9 "+3V3_DIG")
 			(uuid "e3c27f89-421b-485c-849d-277af56cbdc1")
 		)
 		(pad "6" thru_hole circle
@@ -2214,7 +2171,6 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net 4 "GND")
 			(uuid "c2500cdb-b93c-426d-9e55-6e62551ca284")
 		)
 		(embedded_fonts no)
@@ -2554,14 +2510,12 @@
 			(at -8.75 -8.25)
 			(size 1.5 0.9)
 			(layers "F.Cu" "F.Mask" "F.Paste")
-			(net 4 "GND")
 			(uuid "fa9d959a-f408-48fc-8443-ef2ef4199a03")
 		)
 		(pad "2" smd rect
 			(at -8.75 -6.98)
 			(size 1.5 0.9)
 			(layers "F.Cu" "F.Mask" "F.Paste")
-			(net 9 "+3V3_DIG")
 			(uuid "d141550c-334d-4edd-bc7c-07ec4df95220")
 		)
 		(pad "3" smd rect
@@ -2574,7 +2528,6 @@
 			(at -8.75 -4.44)
 			(size 1.5 0.9)
 			(layers "F.Cu" "F.Mask" "F.Paste")
-			(net 7 "IO0")
 			(uuid "6236f6d4-3337-4195-92bf-65cf223cd61d")
 		)
 		(pad "5" smd rect
@@ -2587,7 +2540,6 @@
 			(at -8.75 -1.9)
 			(size 1.5 0.9)
 			(layers "F.Cu" "F.Mask" "F.Paste")
-			(net 8 "EN")
 			(uuid "5f742b52-7f23-4832-86ab-0f4c9456d451")
 		)
 		(pad "7" smd rect
@@ -2600,7 +2552,6 @@
 			(at -8.75 0.64)
 			(size 1.5 0.9)
 			(layers "F.Cu" "F.Mask" "F.Paste")
-			(net 15 "LED_STAT")
 			(uuid "33ebb0ce-93d9-4c6f-9b7a-dbd45c207314")
 		)
 		(pad "9" smd rect
@@ -2613,7 +2564,6 @@
 			(at -8.75 3.18)
 			(size 1.5 0.9)
 			(layers "F.Cu" "F.Mask" "F.Paste")
-			(net 14 "UART_TX_DBG")
 			(uuid "e1807e67-f493-43b5-8f92-2e1d2d098662")
 		)
 		(pad "11" smd rect
@@ -2626,7 +2576,6 @@
 			(at -8.75 5.72)
 			(size 1.5 0.9)
 			(layers "F.Cu" "F.Mask" "F.Paste")
-			(net 1 "UART_RX_DBG")
 			(uuid "0d24d942-dc42-4a3c-ac30-c5d9ae332c66")
 		)
 		(pad "13" smd rect
@@ -2639,7 +2588,6 @@
 			(at -8.75 8.26)
 			(size 1.5 0.9)
 			(layers "F.Cu" "F.Mask" "F.Paste")
-			(net 13 "DAC_R_OUT")
 			(uuid "cd907c81-2676-4241-86c9-7f7de97489de")
 		)
 		(pad "15" smd rect
@@ -2652,7 +2600,6 @@
 			(at -4.44 9.51 90)
 			(size 1.5 0.9)
 			(layers "F.Cu" "F.Mask" "F.Paste")
-			(net 16 "DAC_L_OUT")
 			(uuid "49e3d77e-a477-45c8-b13e-8bd372867036")
 		)
 		(pad "17" smd rect
@@ -2701,7 +2648,6 @@
 			(at 5.72 9.51 90)
 			(size 1.5 0.9)
 			(layers "F.Cu" "F.Mask" "F.Paste")
-			(net 10 "TOUCH2_IN")
 			(uuid "ece085d6-5d57-409f-afe3-e92300974994")
 		)
 		(pad "25" smd rect
@@ -2714,7 +2660,6 @@
 			(at 8.75 6.99)
 			(size 1.5 0.9)
 			(layers "F.Cu" "F.Mask" "F.Paste")
-			(net 11 "TOUCH1_IN")
 			(uuid "009388f8-ae75-4e60-a95b-bac7c1eaece7")
 		)
 		(pad "27" smd rect
@@ -2751,7 +2696,6 @@
 			(at 8.75 -0.63)
 			(size 1.5 0.9)
 			(layers "F.Cu" "F.Mask" "F.Paste")
-			(net 5 "I2C_SCL")
 			(uuid "df65b50a-8c44-4602-abbe-3466d66930a3")
 		)
 		(pad "33" smd rect
@@ -2764,7 +2708,6 @@
 			(at 8.75 -3.17)
 			(size 1.5 0.9)
 			(layers "F.Cu" "F.Mask" "F.Paste")
-			(net 2 "I2C_SDA")
 			(uuid "4cf9f72e-4e64-46d9-a77e-8db928ab5a96")
 		)
 		(pad "35" smd rect
@@ -3209,7 +3152,6 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net 15 "LED_STAT")
 			(uuid "9bc51a51-bdfd-48e7-bea0-913fd5f0e199")
 		)
 		(pad "2" thru_hole circle
@@ -3218,7 +3160,6 @@
 			(drill 1)
 			(layers "*.Cu" "*.Mask")
 			(remove_unused_layers no)
-			(net 4 "GND")
 			(uuid "afb4176e-5046-4dc8-a3fd-ac2f168a3c71")
 		)
 		(embedded_fonts no)
@@ -3234,16 +3175,45 @@
 			)
 		)
 	)
-	(gr_rect
-		(start 0 0)
+	(gr_line
+		(start 170 45)
+		(end 0 45)
+		(stroke
+			(width 0.1)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "45c31f51-8a82-45fc-bb53-c43ffe256dc4")
+	)
+	(gr_line
+		(start 0 45)
+		(end 0 0)
+		(stroke
+			(width 0.1)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "a3dfd8e8-d7f4-450d-8cf5-b2bd4856b08e")
+	)
+	(gr_line
+		(start 170 0)
 		(end 170 45)
 		(stroke
 			(width 0.1)
 			(type default)
 		)
-		(fill no)
 		(layer "Edge.Cuts")
-		(uuid "45c31f51-8a82-45fc-bb53-c43ffe256dc4")
+		(uuid "af9f0699-1e65-406f-a948-127a625353e3")
+	)
+	(gr_line
+		(start 0 0)
+		(end 170 0)
+		(stroke
+			(width 0.1)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "e56cc044-f59f-4a7e-90fc-5eb40f1a7363")
 	)
 	(embedded_fonts no)
 )
