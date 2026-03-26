@@ -1,18 +1,147 @@
-** Drc report for espglasses.kicad_pcb **
-** Created on 2026-03-25T01:20:39+0200 **
-
-** Found 0 DRC violations **
-
-** Found 2 unconnected pads **
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(12.0450 mm, 21.7500 mm): Pad A1 [GND] of J5 on F.Cu
-    @(12.0450 mm, 28.2500 mm): Pad B1 [GND] of J5 on F.Cu
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(12.0450 mm, 22.5500 mm): Pad B9 [VBUS_5V] of J5 on F.Cu
-    @(12.0450 mm, 27.4500 mm): Pad B4 [VBUS_5V] of J5 on F.Cu
-
-** Found 0 Footprint errors **
-
-** End of Report **
+{
+  "board": "d:\\0_code\\Smart_Glasses_Distilled\\Hardware\\Frame\\espglasses\\espglasses.kicad_pcb",
+  "timestamp": "2026-03-26T20:04:52+0200",
+  "total_violations": 13,
+  "violation_counts": {
+    "shorting_items": 6,
+    "clearance": 1,
+    "solder_mask_bridge": 6
+  },
+  "severity_counts": {
+    "error": 13,
+    "warning": 0,
+    "info": 0
+  },
+  "violations": [
+    {
+      "type": "shorting_items",
+      "severity": "error",
+      "message": "Items shorting two nets (nets VSYS and GND)",
+      "location": {
+        "x": 28.525,
+        "y": 25.635,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "shorting_items",
+      "severity": "error",
+      "message": "Items shorting two nets (nets +3V3_DIG and GND)",
+      "location": {
+        "x": 42.85,
+        "y": 25.0,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "shorting_items",
+      "severity": "error",
+      "message": "Items shorting two nets (nets LED_STAT and LED_A)",
+      "location": {
+        "x": 136.25,
+        "y": 41.63,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "clearance",
+      "severity": "error",
+      "message": "Clearance violation (netclass 'Default' clearance 0.2000 mm; actual 0.1859 mm)",
+      "location": {
+        "x": 42.85,
+        "y": 25.0,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "shorting_items",
+      "severity": "error",
+      "message": "Items shorting two nets (nets I2C_SCL and +3V3_DIG)",
+      "location": {
+        "x": 74.0,
+        "y": 33.174999,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "shorting_items",
+      "severity": "error",
+      "message": "Items shorting two nets (nets I2C_SDA and +3V3_DIG)",
+      "location": {
+        "x": 78.0,
+        "y": 33.174999,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "shorting_items",
+      "severity": "error",
+      "message": "Items shorting two nets (nets LED_A and GND)",
+      "location": {
+        "x": 109.825,
+        "y": 34.0,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "solder_mask_bridge",
+      "severity": "error",
+      "message": "Front solder mask aperture bridges items with different nets",
+      "location": {
+        "x": 28.525,
+        "y": 25.635,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "solder_mask_bridge",
+      "severity": "error",
+      "message": "Front solder mask aperture bridges items with different nets",
+      "location": {
+        "x": 42.85,
+        "y": 25.0,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "solder_mask_bridge",
+      "severity": "error",
+      "message": "Front solder mask aperture bridges items with different nets",
+      "location": {
+        "x": 136.25,
+        "y": 41.63,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "solder_mask_bridge",
+      "severity": "error",
+      "message": "Front solder mask aperture bridges items with different nets",
+      "location": {
+        "x": 74.0,
+        "y": 33.174999,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "solder_mask_bridge",
+      "severity": "error",
+      "message": "Front solder mask aperture bridges items with different nets",
+      "location": {
+        "x": 78.0,
+        "y": 33.174999,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "solder_mask_bridge",
+      "severity": "error",
+      "message": "Front solder mask aperture bridges items with different nets",
+      "location": {
+        "x": 109.825,
+        "y": 34.0,
+        "unit": "mm"
+      }
+    }
+  ]
+}
