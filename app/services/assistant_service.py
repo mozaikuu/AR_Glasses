@@ -211,7 +211,8 @@ class AssistantService:
                 if wakeword_triggered:
                     self._clear_wake_context(client_key)
 
-                text = stripped if wakeword_triggered and stripped else raw_transcript
+                # After a wake-word hit, forward only the post-wake command segment.
+                text = stripped if wakeword_triggered else raw_transcript
                 transcript_used = text.strip()
 
                 # Wake word may be detected before the spoken command arrives.

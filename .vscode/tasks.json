@@ -1,0 +1,87 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run pytest suite",
+			"type": "shell",
+			"command": "d:/0_code/Smart_Glasses_Distilled/.venv/Scripts/python.exe",
+			"args": [
+				"-m",
+				"pytest"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Install pytest dependencies",
+			"type": "shell",
+			"command": "d:/0_code/Smart_Glasses_Distilled/.venv/Scripts/python.exe",
+			"args": [
+				"-m",
+				"pip",
+				"install",
+				"pytest",
+				"pytest-cov"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Run pytest suite",
+			"type": "shell",
+			"command": "d:/0_code/Smart_Glasses_Distilled/.venv/Scripts/python.exe",
+			"args": [
+				"-m",
+				"pytest"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Run pytest suite",
+			"type": "shell",
+			"command": "d:/0_code/Smart_Glasses_Distilled/.venv/Scripts/python.exe",
+			"args": [
+				"-m",
+				"pytest"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Run pytest suite",
+			"type": "shell",
+			"command": "d:/0_code/Smart_Glasses_Distilled/.venv/Scripts/python.exe",
+			"args": [
+				"-m",
+				"pytest"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Run pytest suite",
+			"type": "shell",
+			"command": "d:/0_code/Smart_Glasses_Distilled/.venv/Scripts/python.exe",
+			"args": [
+				"-m",
+				"pytest"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Run pytest suite",
+			"type": "shell",
+			"command": "d:/0_code/Smart_Glasses_Distilled/.venv/Scripts/python.exe",
+			"args": [
+				"-m",
+				"pytest"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Run project test script",
+			"type": "shell",
+			"command": "d:/0_code/Smart_Glasses_Distilled/.venv/Scripts/python.exe",
+			"args": [
+				"scripts/run_all_tests.py"
+			],
+			"isBackground": false
+		}
+	]
+}

@@ -2,16 +2,27 @@
   "ok": true,
   "steps": [
     {
-      "name": "unit_tests",
+      "name": "python_unit_tests",
       "ok": true,
-      "duration_seconds": 1.414,
-      "output": "........\n----------------------------------------------------------------------\nRan 8 tests in 0.204s\n\nOK"
+      "skipped": false,
+      "duration_seconds": 2.459,
+      "output": "============================= test session starts =============================\nplatform win32 -- Python 3.14.2, pytest-9.0.2, pluggy-1.6.0\nrootdir: D:\\0_code\\Smart_Glasses_Distilled\nconfigfile: pyproject.toml\ntestpaths: tests\nplugins: anyio-4.12.1, cov-7.1.0\ncollected 67 items\n\ntests\\test_agent_loop.py ........                                        [ 11%]\ntests\\test_assistant_service.py ..............                           [ 32%]\ntests\\test_audio_service.py ....                                         [ 38%]\ntests\\test_compat_imports.py ..                                          [ 41%]\ntests\\test_gateway.py ......                                             [ 50%]\ntests\\test_llm.py .......                                                [ 61%]\ntests\\test_models.py .....                                               [ 68%]\ntests\\test_nav_runner.py ..                                              [ 71%]\ntests\\test_navigation_service.py ........                                [ 83%]\ntests\\test_qr_service.py ...                                             [ 88%]\ntests\\test_settings_helpers.py .....                                     [ 95%]\ntests\\test_voice_command_routing.py ...                                  [100%]\n\n============================== warnings summary ===============================\napp\\api\\gateway.py:106\n  D:\\0_code\\Smart_Glasses_Distilled\\app\\api\\gateway.py:106: DeprecationWarning: \n          on_event is deprecated, use lifespan event handlers instead.\n  \n          Read more about it in the\n          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).\n          \n    @app.on_event(\"startup\")\n\n.venv\\Lib\\site-packages\\fastapi\\applications.py:4599\n  D:\\0_code\\Smart_Glasses_Distilled\\.venv\\Lib\\site-packages\\fastapi\\applications.py:4599: DeprecationWarning: \n          on_event is deprecated, use lifespan event handlers instead.\n  \n          Read more about it in the\n          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).\n          \n    return self.router.on_event(event_type)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=============================== tests coverage ================================\n_______________ coverage: platform win32, python 3.14.2-final-0 _______________\n\nName                                 Stmts   Miss  Cover   Missing\n------------------------------------------------------------------\napp\\__init__.py                          0      0   100%\napp\\agent\\__init__.py                    0      0   100%\napp\\agent\\agent_loop.py                 32      0   100%\napp\\agent\\api_llm.py                    28      0   100%\napp\\agent\\llm.py                        13      0   100%\napp\\api\\__init__.py                      0      0   100%\napp\\api\\audio_sidecar.py                 6      6     0%   1-10\napp\\api\\gateway.py                     198     82    59%   62-64, 68-83, 87-92, 96-103, 108-113, 123-125, 130-138, 143, 159-162, 179-188, 194, 199, 204-206, 211-212, 217-218, 223, 243, 255, 264, 271, 280-282, 289-292, 298-301\napp\\config\\__init__.py                   0      0   100%\napp\\config\\settings.py                  92      8    91%   23-26, 50, 54-56, 70\napp\\models\\__init__.py                   0      0   100%\napp\\models\\requests.py                  40      0   100%\napp\\models\\responses.py                 20      0   100%\napp\\services\\__init__.py                 0      0   100%\napp\\services\\assistant_service.py      203     58    71%   22, 29, 61, 91, 95-109, 112-126, 131, 144-151, 154-166, 237-255, 277, 363-371, 388, 418\napp\\services\\audio_service.py           24      0   100%\napp\\services\\navigation_service.py      92     10    89%   38, 42-43, 47, 51, 54, 81, 85, 122, 132\napp\\services\\qr_service.py              17      0   100%\napp\\shared\\__init__.py                   0      0   100%\napp\\tools\\__init__.py                    0      0   100%\ntools\\navigation\\nav_runner.py          11      0   100%\ntools\\navigation\\navigation.py           3      3     0%   1-5\n------------------------------------------------------------------\nTOTAL                                  779    167    79%\nCoverage XML written to file artifacts/coverage.xml\n======================= 67 passed, 2 warnings in 0.62s ========================"
     },
     {
-      "name": "gateway_smoke",
+      "name": "firmware_native_tests",
       "ok": true,
-      "duration_seconds": 0.983,
-      "output": "gateway smoke ok"
+      "skipped": true,
+      "skip_reason": "PlatformIO CLI not found (install `platformio` or `pio`)",
+      "duration_seconds": 0.0,
+      "output": ""
+    },
+    {
+      "name": "unity_editmode_tests",
+      "ok": true,
+      "skipped": true,
+      "skip_reason": "UNITY_EXECUTABLE is not set",
+      "duration_seconds": 0.0,
+      "output": ""
     }
   ]
 }

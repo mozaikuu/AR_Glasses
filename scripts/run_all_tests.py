@@ -1,10 +1,21 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
 import subprocess
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
+
+
+@dataclass
+class TestStep:
+    name: str
+    command: list[str] | None
+    cwd: Path
+    skip_reason: str = ""
 
 
 def run_step(name: str, command: list[str], cwd: Path) -> tuple[bool, str, float]:
@@ -16,53 +27,147 @@ def run_step(name: str, command: list[str], cwd: Path) -> tuple[bool, str, float
     return (result.returncode == 0), output, duration
 
 
+def build_steps(repo_root: Path, artifacts_dir: Path) -> list[TestStep]:
+    steps: list[TestStep] = [
+        TestStep(
+            name="python_unit_tests",
+            command=[sys.executable, "-m", "pytest"],
+            cwd=repo_root,
+        )
+    ]
+
+    firmware_dir = repo_root / "Firmware"
+    firmware_ini = firmware_dir / "platformio.ini"
+    platformio_cmd = shutil.which("platformio") or shutil.which("pio")
+
+    if not firmware_ini.exists():
+        steps.append(
+            TestStep(
+                name="firmware_native_tests",
+                command=None,
+                cwd=repo_root,
+                skip_reason="Firmware/platformio.ini not found",
+            )
+        )
+    elif not platformio_cmd:
+        steps.append(
+            TestStep(
+                name="firmware_native_tests",
+                command=None,
+                cwd=repo_root,
+                skip_reason="PlatformIO CLI not found (install `platformio` or `pio`)",
+            )
+        )
+    else:
+        steps.append(
+            TestStep(
+                name="firmware_native_tests",
+                command=[platformio_cmd, "test", "-d", str(firmware_dir), "-e", "native"],
+                cwd=repo_root,
+            )
+        )
+
+    unity_project = repo_root / "AR-campus-nav"
+    unity_executable = os.environ.get("UNITY_EXECUTABLE", "").strip()
+    unity_results = artifacts_dir / "unity-editmode-results.xml"
+    unity_log = artifacts_dir / "unity-editmode.log"
+
+    if not unity_project.exists():
+        steps.append(
+            TestStep(
+                name="unity_editmode_tests",
+                command=None,
+                cwd=repo_root,
+                skip_reason="AR-campus-nav project folder not found",
+            )
+        )
+    elif not unity_executable:
+        steps.append(
+            TestStep(
+                name="unity_editmode_tests",
+                command=None,
+                cwd=repo_root,
+                skip_reason="UNITY_EXECUTABLE is not set",
+            )
+        )
+    elif not Path(unity_executable).exists():
+        steps.append(
+            TestStep(
+                name="unity_editmode_tests",
+                command=None,
+                cwd=repo_root,
+                skip_reason=f"UNITY_EXECUTABLE not found at {unity_executable}",
+            )
+        )
+    else:
+        steps.append(
+            TestStep(
+                name="unity_editmode_tests",
+                command=[
+                    unity_executable,
+                    "-batchmode",
+                    "-nographics",
+                    "-projectPath",
+                    str(unity_project),
+                    "-runTests",
+                    "-testPlatform",
+                    "EditMode",
+                    "-testResults",
+                    str(unity_results),
+                    "-logFile",
+                    str(unity_log),
+                    "-quit",
+                ],
+                cwd=repo_root,
+            )
+        )
+
+    return steps
+
+
 def main() -> int:
     repo_root = Path(__file__).resolve().parents[1]
-    steps = [
-        (
-            "unit_tests",
-            [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py"],
-        ),
-        (
-            "gateway_smoke",
-            [
-                sys.executable,
-                "-c",
-                (
-                    "from fastapi.testclient import TestClient; "
-                    "from app.api.gateway import app; "
-                    "c=TestClient(app); "
-                    "assert c.get('/').status_code == 200; "
-                    "assert c.post('/unity/voice-command', json={'command':'take me to ta office','mode':'quick'}).status_code == 200; "
-                    "assert c.get('/navigation/locations').status_code == 200; "
-                    "print('gateway smoke ok')"
-                ),
-            ],
-        ),
-    ]
+    artifacts_dir = repo_root / "artifacts"
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    steps = build_steps(repo_root, artifacts_dir)
 
     report: dict[str, object] = {"ok": True, "steps": []}
 
-    for name, command in steps:
-        ok, output, duration = run_step(name, command, repo_root)
+    for step in steps:
+        if step.command is None:
+            report["steps"].append(
+                {
+                    "name": step.name,
+                    "ok": True,
+                    "skipped": True,
+                    "skip_reason": step.skip_reason,
+                    "duration_seconds": 0.0,
+                    "output": "",
+                }
+            )
+            continue
+
+        ok, output, duration = run_step(step.name, step.command, step.cwd)
         if not ok:
             report["ok"] = False
         report["steps"].append(
             {
-                "name": name,
+                "name": step.name,
                 "ok": ok,
+                "skipped": False,
                 "duration_seconds": round(duration, 3),
                 "output": output,
             }
         )
 
-    artifacts_dir = repo_root / "artifacts"
-    artifacts_dir.mkdir(parents=True, exist_ok=True)
     report_path = artifacts_dir / "test_report.json"
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
 
     print("=== Test Summary ===")
     for step in report["steps"]:
+        if step.get("skipped"):
+            print(f"- {step['name']}: SKIP ({step['skip_reason']})")
+            continue
         status = "PASS" if step["ok"] else "FAIL"
         print(f"- {step['name']}: {status} ({step['duration_seconds']}s)")
 
