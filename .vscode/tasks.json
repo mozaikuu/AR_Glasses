@@ -82,6 +82,61 @@
 				"scripts/run_all_tests.py"
 			],
 			"isBackground": false
+		},
+		{
+			"label": "Echo sanity",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"echo sanity-check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Run unified test runner full-stack",
+			"type": "shell",
+			"command": "d:/0_code/Smart_Glasses_Distilled/.venv/Scripts/python.exe",
+			"args": [
+				"scripts/run_all_tests.py"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Run unified test runner full-stack",
+			"type": "shell",
+			"command": "d:/0_code/Smart_Glasses_Distilled/.venv/Scripts/python.exe",
+			"args": [
+				"scripts/run_all_tests.py"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Run unified test runner full-stack",
+			"type": "shell",
+			"command": "d:/0_code/Smart_Glasses_Distilled/.venv/Scripts/python.exe",
+			"args": [
+				"scripts/run_all_tests.py"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Run unified test runner full-stack",
+			"type": "shell",
+			"command": "d:/0_code/Smart_Glasses_Distilled/.venv/Scripts/python.exe",
+			"args": [
+				"scripts/run_all_tests.py"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Run unified test runner full-stack",
+			"type": "shell",
+			"command": "d:/0_code/Smart_Glasses_Distilled/.venv/Scripts/python.exe",
+			"args": [
+				"scripts/run_all_tests.py"
+			],
+			"isBackground": false
 		}
 	]
 }

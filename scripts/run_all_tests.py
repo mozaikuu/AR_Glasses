@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import sys
+from importlib.util import find_spec
 from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
@@ -27,18 +28,71 @@ def run_step(name: str, command: list[str], cwd: Path) -> tuple[bool, str, float
     return (result.returncode == 0), output, duration
 
 
+def resolve_platformio_command() -> tuple[list[str] | None, str]:
+    cli_path = shutil.which("platformio") or shutil.which("pio")
+    if cli_path:
+        return [cli_path], ""
+
+    # If PATH does not expose platformio, use the package in the active interpreter.
+    if find_spec("platformio") is not None:
+        return [sys.executable, "-m", "platformio"], ""
+
+    return None, "PlatformIO CLI not found (install `platformio` or `pio`)"
+
+
+def resolve_unity_executable() -> tuple[str, str]:
+    unity_executable = os.environ.get("UNITY_EXECUTABLE", "").strip()
+    if unity_executable:
+        if Path(unity_executable).exists():
+            return unity_executable, ""
+        return "", f"UNITY_EXECUTABLE not found at {unity_executable}"
+
+    # Auto-detect common Unity Hub install locations on Windows.
+    candidate_roots = [
+        Path("G:/Unity Hub/Editor"),
+        Path("C:/Program Files/Unity/Hub/Editor"),
+        Path("C:/Unity/Hub/Editor"),
+    ]
+    discovered: list[Path] = []
+    for root in candidate_roots:
+        if root.exists():
+            discovered.extend(root.glob("*/Editor/Unity.exe"))
+
+    if discovered:
+        # Prefer lexicographically latest version directory.
+        unity_path = str(sorted(discovered, reverse=True)[0])
+        return unity_path, ""
+
+    return "", "UNITY_EXECUTABLE is not set"
+
+
 def build_steps(repo_root: Path, artifacts_dir: Path) -> list[TestStep]:
     steps: list[TestStep] = [
         TestStep(
             name="python_unit_tests",
-            command=[sys.executable, "-m", "pytest"],
+            command=[sys.executable, "-m", "pytest", "-m", "not integration"],
             cwd=repo_root,
         )
     ]
 
+    steps.append(
+        TestStep(
+            name="system_integration_tests",
+            command=[
+                sys.executable,
+                "-m",
+                "pytest",
+                "-m",
+                "integration",
+                "tests/test_system_integration_smoke.py",
+            ],
+            cwd=repo_root,
+        )
+    )
+
     firmware_dir = repo_root / "Firmware"
     firmware_ini = firmware_dir / "platformio.ini"
-    platformio_cmd = shutil.which("platformio") or shutil.which("pio")
+    platformio_cmd, platformio_skip_reason = resolve_platformio_command()
 
     if not firmware_ini.exists():
         steps.append(
@@ -55,20 +109,20 @@ def build_steps(repo_root: Path, artifacts_dir: Path) -> list[TestStep]:
                 name="firmware_native_tests",
                 command=None,
                 cwd=repo_root,
-                skip_reason="PlatformIO CLI not found (install `platformio` or `pio`)",
+                skip_reason=platformio_skip_reason,
             )
         )
     else:
         steps.append(
             TestStep(
                 name="firmware_native_tests",
-                command=[platformio_cmd, "test", "-d", str(firmware_dir), "-e", "native"],
+                command=platformio_cmd + ["test", "-d", str(firmware_dir), "-e", "native"],
                 cwd=repo_root,
             )
         )
 
     unity_project = repo_root / "AR-campus-nav"
-    unity_executable = os.environ.get("UNITY_EXECUTABLE", "").strip()
+    unity_executable, unity_resolution_error = resolve_unity_executable()
     unity_results = artifacts_dir / "unity-editmode-results.xml"
     unity_log = artifacts_dir / "unity-editmode.log"
 
@@ -87,16 +141,7 @@ def build_steps(repo_root: Path, artifacts_dir: Path) -> list[TestStep]:
                 name="unity_editmode_tests",
                 command=None,
                 cwd=repo_root,
-                skip_reason="UNITY_EXECUTABLE is not set",
-            )
-        )
-    elif not Path(unity_executable).exists():
-        steps.append(
-            TestStep(
-                name="unity_editmode_tests",
-                command=None,
-                cwd=repo_root,
-                skip_reason=f"UNITY_EXECUTABLE not found at {unity_executable}",
+                skip_reason=unity_resolution_error,
             )
         )
     else:

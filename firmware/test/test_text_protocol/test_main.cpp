@@ -4,6 +4,10 @@
 
 #include "text_protocol.h"
 
+extern "C" void setUp(void) {}
+
+extern "C" void tearDown(void) {}
+
 namespace {
 
 using smart_glasses::fw::EscapeJson;
@@ -24,7 +28,7 @@ void test_unescape_json_handles_common_escapes() {
 
 void test_parse_json_string_field_reads_response_text() {
   const std::string json =
-      "{\"response\":\"Hello\\\\nWorld\",\"tts_url\":\"http:\\\\/\\\\/x\\\\/y.wav\"}";
+      "{\"response\":\"Hello\\nWorld\",\"tts_url\":\"http:\\\\/\\\\/x\\\\/y.wav\"}";
   const std::string expected = "Hello\nWorld";
   TEST_ASSERT_EQUAL_STRING(expected.c_str(), ParseJsonStringField(json, "response").c_str());
 }
