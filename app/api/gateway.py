@@ -284,7 +284,9 @@ def navigate_alias(
 
 @app.post("/esp/process")
 def esp_process(payload: EspProcessRequest) -> dict[str, object]:
-    result = {"text": assistant_service.compose_answer(payload.text, mode="quick")}
+    answer = assistant_service.compose_answer(payload.text, mode="quick")
+    # Keep both keys for firmware compatibility during migration.
+    result = {"text": answer, "response": answer}
     if payload.wants_audio:
         filename = "latest.wav"
         wav_path = _tts_root / filename

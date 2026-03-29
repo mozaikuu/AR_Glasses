@@ -137,6 +137,26 @@
 				"scripts/run_all_tests.py"
 			],
 			"isBackground": false
+		},
+		{
+			"label": "Run unified test runner full-stack",
+			"type": "shell",
+			"command": "d:/0_code/Smart_Glasses_Distilled/.venv/Scripts/python.exe",
+			"args": [
+				"scripts/run_all_tests.py"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Validate live HIL checker",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$ErrorActionPreference='Stop'; $py='d:/0_code/Smart_Glasses_Distilled/.venv/Scripts/python.exe'; $repo='d:/0_code/Smart_Glasses_Distilled'; $proc=Start-Process -FilePath $py -ArgumentList '-m','uvicorn','app.api.gateway:app','--host','127.0.0.1','--port','8000' -WorkingDirectory $repo -PassThru; try { Start-Sleep -Seconds 2; & $py 'scripts/run_live_hil_check.py' '--base-url' 'http://127.0.0.1:8000'; $code=$LASTEXITCODE } finally { if (!$proc.HasExited) { Stop-Process -Id $proc.Id -Force } }; exit $code"
+			],
+			"isBackground": false
 		}
 	]
 }

@@ -46,6 +46,7 @@ def test_esp_process_basic(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["text"] == "ping"
+    assert body["response"] == "ping"
     assert "tts_url" not in body
 
 

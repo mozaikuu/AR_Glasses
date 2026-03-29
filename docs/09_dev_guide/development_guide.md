@@ -41,6 +41,10 @@
    - unit tests under `tests/`
    - gateway smoke checks for core API paths
    - writes JSON report to `artifacts/test_report.json`
+- Live HIL smoke check against a running gateway:
+   - `uv run python scripts/run_live_hil_check.py --base-url http://127.0.0.1:8000`
+- Live HIL report output:
+   - `artifacts/live_hil_report.json`
 - Manual voice-router validation sheet:
    - `docs/07_api/10_command_test_sheet.md`
 

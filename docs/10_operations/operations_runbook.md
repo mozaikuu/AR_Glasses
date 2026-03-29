@@ -26,10 +26,17 @@
 
 - Automated full test run:
    - `uv run python scripts/run_all_tests.py`
+- Live HIL HTTP smoke check (run against active gateway):
+   - `uv run python scripts/run_live_hil_check.py --base-url http://127.0.0.1:8000`
 - Network diagnostics:
    - `uv run python -m scripts.print_network_info`
 - Manual voice command validation:
    - follow `docs/07_api/10_command_test_sheet.md`
+
+### Validation Artifacts
+
+- Full stack report: `artifacts/test_report.json`
+- Live HIL report: `artifacts/live_hil_report.json`
 
 ## Failure Scenarios
 

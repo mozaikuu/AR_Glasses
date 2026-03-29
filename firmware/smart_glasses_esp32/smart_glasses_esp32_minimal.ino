@@ -95,6 +95,8 @@ void ensureWiFiConnected();
 String escapeJson(const String &text);
 String unescapeJson(const String &text);
 String parseJsonStringField(const String &json, const String &key);
+String buildServerBaseUrl();
+String normalizeTtsUrl(const String &ttsUrl);
 bool sendTextToServer(const String &text, String &responseOut, String &ttsUrlOut);
 void processTextCommand(const String &userCommand);
 void handleSerialInput();
@@ -663,6 +665,48 @@ String parseJsonStringField(const String &json, const String &key)
   return "";
 }
 
+String buildServerBaseUrl()
+{
+  String processUrl = String(SERVER_PROCESS_URL);
+  int schemeIdx = processUrl.indexOf("://");
+  if (schemeIdx < 0)
+  {
+    return "";
+  }
+
+  int hostStart = schemeIdx + 3;
+  int pathIdx = processUrl.indexOf('/', hostStart);
+  if (pathIdx < 0)
+  {
+    return processUrl;
+  }
+  return processUrl.substring(0, pathIdx);
+}
+
+String normalizeTtsUrl(const String &ttsUrl)
+{
+  if (ttsUrl.length() == 0)
+  {
+    return "";
+  }
+
+  if (ttsUrl.startsWith("http://") || ttsUrl.startsWith("https://"))
+  {
+    return ttsUrl;
+  }
+
+  if (ttsUrl[0] == '/')
+  {
+    String baseUrl = buildServerBaseUrl();
+    if (baseUrl.length() > 0)
+    {
+      return baseUrl + ttsUrl;
+    }
+  }
+
+  return ttsUrl;
+}
+
 bool sendTextToServer(const String &text, String &responseOut, String &ttsUrlOut)
 {
   responseOut = "";
@@ -699,7 +743,12 @@ bool sendTextToServer(const String &text, String &responseOut, String &ttsUrlOut
   }
 
   responseOut = parseJsonStringField(body, "response");
-  ttsUrlOut = parseJsonStringField(body, "tts_url");
+  if (responseOut.length() == 0)
+  {
+    responseOut = parseJsonStringField(body, "text");
+  }
+
+  ttsUrlOut = normalizeTtsUrl(parseJsonStringField(body, "tts_url"));
   if (responseOut.length() == 0)
   {
     Serial.println("ERR:SERVER:BAD_RESPONSE");

@@ -75,6 +75,7 @@ def test_system_smoke_cross_component_flow(client: TestClient) -> None:
     assert esp.status_code == 200
     esp_payload = esp.json()
     assert esp_payload["text"] == "status please"
+    assert esp_payload["response"] == "status please"
     assert esp_payload["tts_url"].startswith("/esp/tts/")
 
     tts = client.get(esp_payload["tts_url"])
