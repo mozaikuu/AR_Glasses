@@ -67,8 +67,18 @@ Report output:
 
 1. [docs/14_graduation/README.md](docs/14_graduation/README.md)
 2. [docs/14_graduation/full_project_documentation.md](docs/14_graduation/full_project_documentation.md)
-3. [docs/14_graduation/design_decisions_and_tradeoffs.md](docs/14_graduation/design_decisions_and_tradeoffs.md)
-4. [docs/14_graduation/future_roadmap_and_research.md](docs/14_graduation/future_roadmap_and_research.md)
+3. [docs/14_graduation/thesis_chapterized_report.md](docs/14_graduation/thesis_chapterized_report.md)
+4. [docs/14_graduation/architecture_and_dataflow_diagrams.md](docs/14_graduation/architecture_and_dataflow_diagrams.md)
+5. [docs/14_graduation/design_decisions_and_tradeoffs.md](docs/14_graduation/design_decisions_and_tradeoffs.md)
+6. [docs/14_graduation/future_roadmap_and_research.md](docs/14_graduation/future_roadmap_and_research.md)
+
+### Presentation Drafts
+
+1. [docs/15_presentations/README.md](docs/15_presentations/README.md)
+2. [docs/15_presentations/01_graduation_defense_15min.md](docs/15_presentations/01_graduation_defense_15min.md)
+3. [docs/15_presentations/02_technical_deep_dive_30min.md](docs/15_presentations/02_technical_deep_dive_30min.md)
+4. [docs/15_presentations/03_demo_day_pitch_8min.md](docs/15_presentations/03_demo_day_pitch_8min.md)
+5. [docs/15_presentations/04_qna_bank.md](docs/15_presentations/04_qna_bank.md)
 
 ### Core Technical Docs
 

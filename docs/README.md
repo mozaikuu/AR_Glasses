@@ -5,11 +5,14 @@ This folder contains all technical and product documentation for the project.
 ## Recommended Reading Order
 
 1. [14_graduation/full_project_documentation.md](14_graduation/full_project_documentation.md)
-2. [14_graduation/design_decisions_and_tradeoffs.md](14_graduation/design_decisions_and_tradeoffs.md)
-3. [14_graduation/future_roadmap_and_research.md](14_graduation/future_roadmap_and_research.md)
-4. [02_architecture/architecture.md](02_architecture/architecture.md)
-5. [07_api/api_reference.md](07_api/api_reference.md)
-6. [10_operations/operations_runbook.md](10_operations/operations_runbook.md)
+2. [14_graduation/thesis_chapterized_report.md](14_graduation/thesis_chapterized_report.md)
+3. [14_graduation/architecture_and_dataflow_diagrams.md](14_graduation/architecture_and_dataflow_diagrams.md)
+4. [14_graduation/design_decisions_and_tradeoffs.md](14_graduation/design_decisions_and_tradeoffs.md)
+5. [14_graduation/future_roadmap_and_research.md](14_graduation/future_roadmap_and_research.md)
+6. [15_presentations/README.md](15_presentations/README.md)
+7. [02_architecture/architecture.md](02_architecture/architecture.md)
+8. [07_api/api_reference.md](07_api/api_reference.md)
+9. [10_operations/operations_runbook.md](10_operations/operations_runbook.md)
 
 ## Complete Documentation Tree
 
@@ -27,6 +30,7 @@ This folder contains all technical and product documentation for the project.
 12.   Product narrative: [12_product/product_narrative.md](12_product/product_narrative.md)
 13.   Historical planning: [13_old_plan/PROJECT_INDEX.md](13_old_plan/PROJECT_INDEX.md)
 14.   Graduation package: [14_graduation/README.md](14_graduation/README.md)
+15.   Presentation drafts: [15_presentations/README.md](15_presentations/README.md)
 
 ## Validation Evidence Files
 
