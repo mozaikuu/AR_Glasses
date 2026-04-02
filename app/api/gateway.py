@@ -6,9 +6,9 @@ import time
 from pathlib import Path
 from urllib.request import urlopen
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from starlette.background import BackgroundTask
 
 from app.config.settings import settings
@@ -52,6 +52,17 @@ _runtime_status: dict[str, object] = {
 _tts_root = Path("assets/esp_tts")
 _tts_root.mkdir(parents=True, exist_ok=True)
 _mic_test_page = Path("assets/mic_test.html")
+_mcp_gate_bypass_paths = {
+    "/",
+    "/mcp-status",
+    "/debug",
+    "/network/info",
+    "/openapi.json",
+    "/mic-test",
+    "/docs",
+    "/redoc",
+    "/docs/oauth2-redirect",
+}
 
 
 def _require_unity_api_key(x_unity_api_key: str | None) -> None:
@@ -62,6 +73,26 @@ def _require_unity_api_key(x_unity_api_key: str | None) -> None:
     provided = (x_unity_api_key or "").strip()
     if provided != expected:
         raise HTTPException(status_code=401, detail="Invalid Unity API key")
+
+
+def _probe_mcp() -> tuple[bool, str]:
+    if not settings.enable_mcp_server:
+        return False, "MCP is disabled by configuration."
+
+    mcp_url = f"http://{settings.mcp_host}:{settings.mcp_port}/"
+    try:
+        with urlopen(mcp_url, timeout=1.5) as response:
+            if response.status == 200:
+                return True, ""
+            return False, f"Unexpected MCP status: {response.status}"
+    except Exception as exc:
+        return False, str(exc)
+
+
+def _is_mcp_bypass_path(path: str) -> bool:
+    if path in _mcp_gate_bypass_paths:
+        return True
+    return path.startswith("/docs")
 
 
 def _detect_lan_ips() -> list[str]:
@@ -127,15 +158,35 @@ def mic_test() -> FileResponse:
 
 @app.get("/mcp-status")
 def mcp_status() -> dict[str, object]:
-    if not settings.enable_mcp_server:
-        return {"connected": False, "enabled": False, "note": "MCP is disabled by configuration."}
+    connected, note = _probe_mcp()
+    return {
+        "connected": connected,
+        "enabled": bool(settings.enable_mcp_server),
+        "url": f"http://{settings.mcp_host}:{settings.mcp_port}/",
+        "note": note,
+    }
 
-    mcp_url = f"http://{settings.mcp_host}:{settings.mcp_port}/"
-    try:
-        with urlopen(mcp_url, timeout=1.5) as response:
-            return {"connected": response.status == 200, "enabled": True, "url": mcp_url}
-    except Exception as exc:
-        return {"connected": False, "enabled": True, "url": mcp_url, "note": str(exc)}
+
+@app.middleware("http")
+async def enforce_mcp_fail_closed(request: Request, call_next):
+    path = request.url.path
+    if _is_mcp_bypass_path(path):
+        return await call_next(request)
+
+    connected, note = _probe_mcp()
+    if not connected:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error": "MCP_UNAVAILABLE",
+                "message": "MCP is required and fail-closed mode blocks this route.",
+                "path": path,
+                "mcp_enabled": bool(settings.enable_mcp_server),
+                "mcp_url": f"http://{settings.mcp_host}:{settings.mcp_port}/",
+                "note": note,
+            },
+        )
+    return await call_next(request)
 
 
 @app.get("/debug")
@@ -232,10 +283,7 @@ def unity_voice_command(
     x_unity_api_key: str | None = Header(default=None, alias="X-Unity-Api-Key"),
 ) -> dict[str, object]:
     _require_unity_api_key(x_unity_api_key)
-    routed = assistant_service.route_unity_command(payload.command, mode=payload.mode)
-    if routed.get("action") == "navigate" and "destination" in routed:
-        routed["destination"] = navigation_service.normalize_destination(str(routed["destination"]))
-    return routed
+    return assistant_service.route_unity_command(payload.command, mode=payload.mode)
 
 
 @app.get("/navigation/locations")
@@ -245,6 +293,8 @@ def navigation_locations() -> dict[str, object]:
 
 @app.post("/navigation/start", response_model=NavigationSessionResponse)
 def navigation_start(payload: NavigationStartRequest) -> NavigationSessionResponse:
+    if not navigation_service.is_authoritative_destination_id(payload.destination):
+        raise HTTPException(status_code=400, detail="Destination must be a valid navigation.json ID")
     return NavigationSessionResponse(**navigation_service.start(payload.destination, start=payload.start))
 
 
@@ -278,8 +328,9 @@ def navigate_alias(
     x_unity_api_key: str | None = Header(default=None, alias="X-Unity-Api-Key"),
 ) -> dict[str, object]:
     _require_unity_api_key(x_unity_api_key)
-    # Unity MVP contract from NAVIGATION_PLAN.md: destination echo.
-    return {"destination": navigation_service.normalize_destination(payload.destination)}
+    if not navigation_service.is_authoritative_destination_id(payload.destination):
+        raise HTTPException(status_code=400, detail="Destination must be a valid navigation.json ID")
+    return {"destination": payload.destination.strip()}
 
 
 @app.post("/esp/process")

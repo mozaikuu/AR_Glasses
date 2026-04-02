@@ -90,7 +90,7 @@ class Settings:
     # Flask interface defaults
     flask_host: str = _pick("FLASK_HOST", "0.0.0.0")
     flask_port: int = _pick_int("FLASK_PORT", 5000)
-    enable_flask: bool = _pick_bool("ENABLE_FLASK", default=True)
+    enable_flask: bool = _pick_bool("ENABLE_FLASK", default=False)
 
     # Streamlit interface defaults
     streamlit_host: str = _pick("STREAMLIT_HOST", "0.0.0.0")

@@ -2,20 +2,28 @@ from __future__ import annotations
 
 import datetime
 import json
+import logging
 import re
+import time
 from urllib.request import Request, urlopen
 
 from app.agent.llm import complete
 from app.config.settings import settings
 from app.models.requests import ProcessRequest, TextRequest
-from tools.speech.transcription import transcribe_audio
+from app.services.navigation_service import navigation_service
+from tools.speech.transcription import transcribe_audio_detailed
+
+
+logger = logging.getLogger(__name__)
 
 
 class AssistantService:
     _wake_words = ("computer", "hey computer", "ok computer", "okay computer")
+    _wake_followup_window_seconds = 8.0
 
     def __init__(self) -> None:
         self._wake_context_by_client: dict[str, str] = {}
+        self._wake_armed_until_by_client: dict[str, float] = {}
 
     def _check_wakeword(self, text: str) -> tuple[bool, str]:
         if not text:
@@ -29,8 +37,8 @@ class AssistantService:
                 continue
             sep = r"[\s,;:\-_]*"
             phrase = r"\b" + sep.join(re.escape(word) for word in words) + r"\b"
-            # Treat wake-word hits as invocations to reduce false positives in normal speech.
-            pattern = rf"(?:^|[.!?]\s*|[,;:]\s*)({phrase})"
+            # Accept wake words in natural speech, not only after sentence boundaries.
+            pattern = rf"(?<!\w)({phrase})(?!\w)"
             for match in re.finditer(pattern, normalized, flags=re.IGNORECASE):
                 if last_match is None or match.start() >= last_match.start():
                     last_match = match
@@ -55,6 +63,21 @@ class AssistantService:
 
     def _clear_wake_context(self, client: str) -> None:
         self._wake_context_by_client.pop(client, None)
+
+    def _arm_wake_followup(self, client: str) -> None:
+        self._wake_armed_until_by_client[client] = time.monotonic() + self._wake_followup_window_seconds
+
+    def _is_wake_followup_armed(self, client: str) -> bool:
+        armed_until = self._wake_armed_until_by_client.get(client)
+        if armed_until is None:
+            return False
+        if armed_until <= time.monotonic():
+            self._wake_armed_until_by_client.pop(client, None)
+            return False
+        return True
+
+    def _clear_wake_followup(self, client: str) -> None:
+        self._wake_armed_until_by_client.pop(client, None)
 
     def _postprocess_answer(self, text: str) -> str:
         if not text:
@@ -174,20 +197,31 @@ class AssistantService:
         if request.audio_base64:
             source_signals.append("audio")
 
+        request_metadata = request.metadata if isinstance(request.metadata, dict) else {}
         text = request.text or ""
         raw_transcript = ""
         transcript_used = ""
         wakeword_triggered = False
-        always_listen = bool(request.metadata.get("always_listen")) if isinstance(request.metadata, dict) else False
+        stt_debug: dict[str, object] = {}
+        always_listen = bool(request_metadata.get("always_listen"))
         client_key = (request.client or "default").strip() or "default"
         if not text and request.audio_base64:
-            raw_transcript = transcribe_audio(request.audio_base64)
+            raw_transcript, stt_debug = transcribe_audio_detailed(request.audio_base64, metadata=request_metadata)
             if raw_transcript:
                 wake_check_source = raw_transcript
+                wake_followup_armed = False
                 if always_listen:
                     wake_check_source = self._append_wake_context(client_key, raw_transcript)
+                    wake_followup_armed = self._is_wake_followup_armed(client_key)
 
                 wakeword_triggered, stripped = self._check_wakeword(wake_check_source)
+
+                if always_listen and not wakeword_triggered and wake_followup_armed:
+                    # Wake word landed on previous chunk; treat this transcript as command continuation.
+                    wakeword_triggered = True
+                    stripped = raw_transcript
+                    self._clear_wake_followup(client_key)
+                    self._clear_wake_context(client_key)
 
                 # In always-listen mode, only forward to LLM after wakeword trigger.
                 if always_listen and not wakeword_triggered:
@@ -202,7 +236,9 @@ class AssistantService:
                             "transcript": raw_transcript,
                             "wakeword_triggered": False,
                             "wakeword": "",
-                            "stt_provider": "google_speech_recognition",
+                            "wakeword_followup_armed": self._is_wake_followup_armed(client_key),
+                            "stt_provider": str(stt_debug.get("provider") or "google_speech_recognition"),
+                            "stt_debug": stt_debug,
                             "llm_provider": "",
                             "ignored_audio": True,
                         },
@@ -210,6 +246,7 @@ class AssistantService:
 
                 if wakeword_triggered:
                     self._clear_wake_context(client_key)
+                    self._clear_wake_followup(client_key)
 
                 # After a wake-word hit, forward only the post-wake command segment.
                 text = stripped if wakeword_triggered else raw_transcript
@@ -217,6 +254,7 @@ class AssistantService:
 
                 # Wake word may be detected before the spoken command arrives.
                 if always_listen and wakeword_triggered and not transcript_used:
+                    self._arm_wake_followup(client_key)
                     return {
                         "text": "Wake word detected. Listening for your command.",
                         "mode": request.mode,
@@ -228,13 +266,17 @@ class AssistantService:
                             "transcript": "",
                             "wakeword_triggered": True,
                             "wakeword": "Computer",
-                            "stt_provider": "google_speech_recognition",
+                            "wakeword_followup_armed": True,
+                            "stt_provider": str(stt_debug.get("provider") or "google_speech_recognition"),
+                            "stt_debug": stt_debug,
                             "llm_provider": "",
                             "ignored_audio": True,
                         },
                     }
             else:
                 if always_listen:
+                    if self._is_wake_followup_armed(client_key):
+                        logger.debug("Waiting for post-wake command transcript for client=%s", client_key)
                     return {
                         "text": "Listening...",
                         "mode": request.mode,
@@ -246,7 +288,9 @@ class AssistantService:
                             "transcript": "",
                             "wakeword_triggered": False,
                             "wakeword": "",
-                            "stt_provider": "google_speech_recognition",
+                            "wakeword_followup_armed": self._is_wake_followup_armed(client_key),
+                            "stt_provider": str(stt_debug.get("provider") or "google_speech_recognition"),
+                            "stt_debug": stt_debug,
                             "llm_provider": "",
                             "ignored_audio": True,
                         },
@@ -263,7 +307,9 @@ class AssistantService:
                         "transcript": "",
                         "wakeword_triggered": False,
                         "wakeword": "",
-                        "stt_provider": "google_speech_recognition",
+                        "wakeword_followup_armed": self._is_wake_followup_armed(client_key),
+                        "stt_provider": str(stt_debug.get("provider") or "google_speech_recognition"),
+                        "stt_debug": stt_debug,
                         "llm_provider": "",
                         "ignored_audio": True,
                     },
@@ -271,6 +317,7 @@ class AssistantService:
         else:
             if text:
                 self._clear_wake_context(client_key)
+                self._clear_wake_followup(client_key)
             transcript_used = text
 
         if not (text or "").strip():
@@ -285,7 +332,9 @@ class AssistantService:
                     "transcript": "",
                     "wakeword_triggered": wakeword_triggered,
                     "wakeword": "Computer" if wakeword_triggered else "",
-                    "stt_provider": "google_speech_recognition" if request.audio_base64 else "",
+                    "wakeword_followup_armed": self._is_wake_followup_armed(client_key),
+                    "stt_provider": str(stt_debug.get("provider") or "google_speech_recognition") if request.audio_base64 else "",
+                    "stt_debug": stt_debug if request.audio_base64 else {},
                     "llm_provider": "",
                     "ignored_audio": True,
                 },
@@ -305,7 +354,9 @@ class AssistantService:
                         "transcript": transcript_used,
                         "wakeword_triggered": wakeword_triggered,
                         "wakeword": "Computer" if wakeword_triggered else "",
-                        "stt_provider": "google_speech_recognition" if request.audio_base64 else "",
+                        "wakeword_followup_armed": self._is_wake_followup_armed(client_key),
+                        "stt_provider": str(stt_debug.get("provider") or "google_speech_recognition") if request.audio_base64 else "",
+                        "stt_debug": stt_debug if request.audio_base64 else {},
                         "llm_provider": settings.model_provider,
                     },
                 }
@@ -324,7 +375,9 @@ class AssistantService:
                         "transcript": transcript_used,
                         "wakeword_triggered": wakeword_triggered,
                         "wakeword": "Computer" if wakeword_triggered else "",
-                        "stt_provider": "google_speech_recognition" if request.audio_base64 else "",
+                        "wakeword_followup_armed": self._is_wake_followup_armed(client_key),
+                        "stt_provider": str(stt_debug.get("provider") or "google_speech_recognition") if request.audio_base64 else "",
+                        "stt_debug": stt_debug if request.audio_base64 else {},
                         "llm_provider": settings.model_provider,
                     },
                 }
@@ -341,7 +394,9 @@ class AssistantService:
                 "transcript": transcript_used,
                 "wakeword_triggered": wakeword_triggered,
                 "wakeword": "Computer" if wakeword_triggered else "",
-                "stt_provider": "google_speech_recognition" if request.audio_base64 else "",
+                "wakeword_followup_armed": self._is_wake_followup_armed(client_key),
+                "stt_provider": str(stt_debug.get("provider") or "google_speech_recognition") if request.audio_base64 else "",
+                "stt_debug": stt_debug if request.audio_base64 else {},
                 "llm_provider": settings.model_provider,
             },
         }
@@ -357,18 +412,7 @@ class AssistantService:
         }
 
     def resolve_destination_from_command(self, command: str) -> str:
-        lowered = command.lower()
-        if "ta" in lowered and "office" in lowered:
-            return "TA_Office"
-        if "entrance" in lowered:
-            return "Entrance"
-        if "stairs" in lowered:
-            return "Stairs_G"
-        if "elevator" in lowered:
-            return "Elevator"
-        if "library" in lowered:
-            return "Library"
-        return "Entrance"
+        return navigation_service.resolve_authoritative_destination_id(command)
 
     def route_unity_command(self, command: str, mode: str = "quick") -> dict[str, object]:
         lowered = command.strip().lower()
@@ -396,12 +440,11 @@ class AssistantService:
         navigation_cues = ["take me", "go to", "navigate", "where is"]
         if any(cue in lowered for cue in navigation_cues):
             destination = self.resolve_destination_from_command(command)
-            unknown_markers = ["mars", "moon", "jupiter"]
-            if any(marker in lowered for marker in unknown_markers):
+            if not destination:
                 return {
                     "action": "speak",
                     "intent": "navigation_unknown_destination",
-                    "response_text": "I could not map that destination to known campus locations.",
+                    "response_text": "I could not map that destination to a known navigation ID.",
                     "mode": mode,
                     "confidence": 0.62,
                 }

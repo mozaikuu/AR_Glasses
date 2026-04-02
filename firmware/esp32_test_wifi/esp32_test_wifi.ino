@@ -152,6 +152,7 @@ const unsigned long OLED_SCROLL_INTERVAL_MS = 120;
 const uint8_t OLED_SCROLL_STEP_CHARS = 2;
 const uint16_t OLED_SCROLL_GAP_SPACES = 8;
 const unsigned long TOUCH2_LONG_PRESS_MS = 900;
+const unsigned long TOUCH2_DOUBLE_TAP_MS = 450;
 
 const uint32_t MIC_SAMPLE_RATE = 16000;
 const uint32_t MIC_MAX_RECORD_MS = 5000;
@@ -190,6 +191,7 @@ int16_t *micPcmBuffer = nullptr;
 size_t micRecordedSamples = 0;
 unsigned long micRecordingStartMs = 0;
 unsigned long touch2PressStartMs = 0;
+unsigned long lastTouch2TapMs = 0;
 String displayLine1Cache = "";
 String displayLine2Cache = "";
 String displayScrollBuffer = "";
@@ -231,6 +233,7 @@ void startMicRecording();
 void stopAndSendRecording(const String &source);
 bool ensureMicBuffer();
 void releaseMicBuffer();
+int32_t centerMicSamplesAndMeasurePeak(size_t sampleCount);
 bool appendBase64(String &out, const uint8_t *data, size_t len);
 bool captureAndAnalyzeCamera(const String &prompt, const String &source, String &responseTextOut);
 void handleCameraStatus();
@@ -1242,6 +1245,45 @@ void releaseMicBuffer()
   }
 }
 
+int32_t centerMicSamplesAndMeasurePeak(size_t sampleCount)
+{
+  if (!micPcmBuffer || sampleCount == 0)
+  {
+    return 0;
+  }
+
+  int64_t sum = 0;
+  for (size_t i = 0; i < sampleCount; ++i)
+  {
+    sum += micPcmBuffer[i];
+  }
+
+  int32_t dcOffset = (int32_t)(sum / (int64_t)sampleCount);
+  int32_t peak = 0;
+
+  for (size_t i = 0; i < sampleCount; ++i)
+  {
+    int32_t centered = (int32_t)micPcmBuffer[i] - dcOffset;
+    if (centered > 32767)
+    {
+      centered = 32767;
+    }
+    else if (centered < -32768)
+    {
+      centered = -32768;
+    }
+
+    micPcmBuffer[i] = (int16_t)centered;
+    int32_t absVal = centered >= 0 ? centered : -centered;
+    if (absVal > peak)
+    {
+      peak = absVal;
+    }
+  }
+
+  return peak;
+}
+
 void startMicRecording()
 {
 #if USE_I2S_MIC_MODULE
@@ -1268,7 +1310,7 @@ void startMicRecording()
   micRecordingStartMs = millis();
   isRecording = true;
   i2s_zero_dma_buffer(I2S_NUM_0);
-  updateDisplay("Recording", "Touch2 tap to send");
+  updateDisplay("Recording", "Auto-send at 5s");
   notifyMessage("EVT:REC:START");
 #else
   notifyMessage("ERR:REC:DISABLED");
@@ -1300,6 +1342,12 @@ void stopAndSendRecording(const String &source)
     return;
   }
 
+  int32_t signalPeak = centerMicSamplesAndMeasurePeak(micRecordedSamples);
+  if (signalPeak < 220)
+  {
+    notifyMessage("WARN:REC:LOW_SIGNAL");
+  }
+
   size_t pcmBytes = micRecordedSamples * sizeof(int16_t);
   size_t b64Len = ((pcmBytes + 2) / 3) * 4;
 
@@ -1321,8 +1369,12 @@ void stopAndSendRecording(const String &source)
   releaseMicBuffer();
   payload += "\",\"mode\":\"quick\",\"client\":\"";
   payload += source;
-  payload += "\",\"metadata\":{\"audio_format\":\"pcm16\",\"sample_rate\":";
+  payload += "\",\"metadata\":{\"audio_format\":\"pcm_s16le\",\"sample_rate\":";
   payload += String(MIC_SAMPLE_RATE);
+  payload += ",\"sample_width\":2,\"channels\":1,\"endian\":\"little\",\"signal_peak\":";
+  payload += String(signalPeak);
+  payload += ",\"sample_count\":";
+  payload += String((unsigned int)micRecordedSamples);
   payload += "}}";
 
   updateDisplay("Sending", "Audio to backend");
@@ -1386,16 +1438,26 @@ void tickMicRecording()
   }
 
   size_t bytesRead = 0;
+  static uint8_t readErrorBursts = 0;
   esp_err_t err = i2s_read(
       I2S_NUM_0,
       reinterpret_cast<void *>(micPcmBuffer + micRecordedSamples),
       chunkSamples * sizeof(int16_t),
       &bytesRead,
-      0);
+      pdMS_TO_TICKS(20));
 
   if (err == ESP_OK && bytesRead > 0)
   {
     micRecordedSamples += (bytesRead / sizeof(int16_t));
+    readErrorBursts = 0;
+  }
+  else if (err != ESP_OK)
+  {
+    if (readErrorBursts < 3)
+    {
+      notifyMessage("ERR:REC:I2S_READ");
+    }
+    readErrorBursts++;
   }
 
   if (micRecordedSamples >= MIC_MAX_SAMPLES)
@@ -1886,7 +1948,7 @@ void setup()
   Serial.println("Server started");
   updateDisplay("Ready", serverConnected ? "WiFi+AP" : "AP only");
   logMemorySnapshot("ready");
-  Serial.println("Single touch mode: tap=start/stop-send, long-press=toggle mode");
+  Serial.println("Touch mode: double-tap=start, tap=stop/send, long-press=toggle mode");
 }
 
 // ============== LOOP ==============
@@ -1939,21 +2001,39 @@ void loop()
     if (heldMs >= TOUCH2_LONG_PRESS_MS)
     {
       toggleOperationMode();
+      lastTouch2TapMs = 0;
     }
     else
     {
+      unsigned long nowMs = millis();
       if (isRecording)
       {
         stopAndSendRecording("esp32_touch");
+        lastTouch2TapMs = 0;
       }
       else
       {
-        notifyMessage("EVT:TOUCH2:START_REC");
-        startMicRecording();
+        if (lastTouch2TapMs > 0 && (nowMs - lastTouch2TapMs) <= TOUCH2_DOUBLE_TAP_MS)
+        {
+          notifyMessage("EVT:TOUCH2:START_REC");
+          startMicRecording();
+          lastTouch2TapMs = 0;
+        }
+        else
+        {
+          lastTouch2TapMs = nowMs;
+          notifyMessage("EVT:TOUCH2:WAIT_DOUBLE");
+          updateDisplay("Ready", "Tap again to rec");
+        }
       }
     }
   }
   lastTouch2 = touch2;
+
+  if (!isRecording && lastTouch2TapMs > 0 && (millis() - lastTouch2TapMs) > TOUCH2_DOUBLE_TAP_MS)
+  {
+    lastTouch2TapMs = 0;
+  }
 
   static unsigned long last = 0;
   if (millis() - last > 1000)
