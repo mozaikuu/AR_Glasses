@@ -16,7 +16,7 @@
 // ============== BUILD PROFILE ==============
 // Select one profile at compile time (PlatformIO build flags).
 // If none is set, default to PROFILE_FULL.
-#if !defined(PROFILE_FULL) && !defined(PROFILE_WIFI_ONLY) && !defined(PROFILE_AUDIO_TEST) && !defined(PROFILE_MINIMAL)
+#if !defined(PROFILE_FULL) && !defined(PROFILE_WIFI_ONLY) && !defined(PROFILE_AUDIO_TEST) && !defined(PROFILE_MINIMAL) && !defined(PROFILE_CAMERA_TEST)
 #define PROFILE_FULL 1
 #endif
 
@@ -25,21 +25,36 @@
 #define PROFILE_USE_DAC_TTS 0
 #define PROFILE_USE_I2S_MIC 0
 #define PROFILE_USE_BLE 0
+#define PROFILE_USE_CAMERA 0
+#define PROFILE_USE_TOUCH 1
 #elif defined(PROFILE_AUDIO_TEST)
 #define PROFILE_USE_SH1106 0
 #define PROFILE_USE_DAC_TTS 1
 #define PROFILE_USE_I2S_MIC 1
 #define PROFILE_USE_BLE 0
+#define PROFILE_USE_CAMERA 0
+#define PROFILE_USE_TOUCH 1
+#elif defined(PROFILE_CAMERA_TEST)
+#define PROFILE_USE_SH1106 0
+#define PROFILE_USE_DAC_TTS 0
+#define PROFILE_USE_I2S_MIC 0
+#define PROFILE_USE_BLE 0
+#define PROFILE_USE_CAMERA 1
+#define PROFILE_USE_TOUCH 0
 #elif defined(PROFILE_MINIMAL)
 #define PROFILE_USE_SH1106 0
 #define PROFILE_USE_DAC_TTS 0
 #define PROFILE_USE_I2S_MIC 0
 #define PROFILE_USE_BLE 0
+#define PROFILE_USE_CAMERA 0
+#define PROFILE_USE_TOUCH 1
 #else
 #define PROFILE_USE_SH1106 1
 #define PROFILE_USE_DAC_TTS 1
 #define PROFILE_USE_I2S_MIC 1
 #define PROFILE_USE_BLE 1
+#define PROFILE_USE_CAMERA 0
+#define PROFILE_USE_TOUCH 1
 #endif
 
 #ifndef ENABLE_BLE_BRIDGE
@@ -65,6 +80,18 @@
 #define USE_I2S_MIC_MODULE PROFILE_USE_I2S_MIC
 #endif
 
+#ifndef USE_CAMERA
+#define USE_CAMERA PROFILE_USE_CAMERA
+#endif
+
+#ifndef USE_TOUCH
+#define USE_TOUCH PROFILE_USE_TOUCH
+#endif
+
+#if USE_CAMERA
+#include "esp_camera.h"
+#endif
+
 #if USE_SH1106
 #include <U8g2lib.h>
 U8G2_SH1106_128X64_NONAME_F_HW_I2C gDisplay(U8G2_R0, U8X8_PIN_NONE);
@@ -87,7 +114,11 @@ const char *SERVER_URL = "http://192.168.100.2:8000/process";
 #endif
 
 #define LED_PIN 2
+#if USE_CAMERA
+#define TOUCH_PAD_PIN 13
+#else
 #define TOUCH_PAD_PIN 18
+#endif
 #define I2C_SDA_PIN 21
 #define I2C_SCL_PIN 22
 #define I2S_MIC_BCK 14
@@ -95,6 +126,25 @@ const char *SERVER_URL = "http://192.168.100.2:8000/process";
 #define I2S_MIC_DATA 4
 #define DAC_TTS_LEFT_PIN 25
 #define DAC_TTS_RIGHT_PIN 26
+
+#if USE_CAMERA
+#define CAM_PIN_PWDN -1
+#define CAM_PIN_RESET -1
+#define CAM_PIN_XCLK 21
+#define CAM_PIN_SIOD 26
+#define CAM_PIN_SIOC 27
+#define CAM_PIN_D7 35
+#define CAM_PIN_D6 34
+#define CAM_PIN_D5 39
+#define CAM_PIN_D4 36
+#define CAM_PIN_D3 19
+#define CAM_PIN_D2 18
+#define CAM_PIN_D1 5
+#define CAM_PIN_D0 4
+#define CAM_PIN_VSYNC 25
+#define CAM_PIN_HREF 23
+#define CAM_PIN_PCLK 22
+#endif
 
 const uint16_t OLED_MAX_CHARS_PER_LINE = 21;
 const uint16_t OLED_MAX_LINES = 3;
@@ -146,6 +196,8 @@ String displayScrollBuffer = "";
 size_t displayScrollOffset = 0;
 bool displayScrollEnabled = false;
 unsigned long lastDisplayScrollMs = 0;
+bool cameraReady = false;
+String cameraLastError = "DISABLED";
 
 // Forward declarations for functions referenced before their definitions.
 void connectToWiFi();
@@ -172,6 +224,7 @@ void tickDisplayScroll();
 void drawWrappedText(int x, int yStart, int maxCharsPerLine, int maxLines, const String &text);
 bool fetchAndPlayTtsFromUrl(const String &ttsUrl);
 void setupMicInput();
+void setupCameraInput();
 void logMemorySnapshot(const char *stage);
 void tickMicRecording();
 void startMicRecording();
@@ -179,6 +232,9 @@ void stopAndSendRecording(const String &source);
 bool ensureMicBuffer();
 void releaseMicBuffer();
 bool appendBase64(String &out, const uint8_t *data, size_t len);
+bool captureAndAnalyzeCamera(const String &prompt, const String &source, String &responseTextOut);
+void handleCameraStatus();
+void handleCameraAnalyzeRoute();
 void toggleOperationMode();
 #if USE_DAC_TTS_MODULE
 void setupTtsAudio();
@@ -230,6 +286,12 @@ input[type=file]{margin:10px}
 <h3>4. Mode</h3>
 <button class="btn" onclick="setMode('MODE:WIFI')">WiFi Direct</button>
 <button class="btn" onclick="setMode('MODE:PHONE')">Phone Relay</button>
+</div>
+
+<div>
+<h3>5. Onboard Camera</h3>
+<input type="text" id="camPrompt" placeholder="Prompt for onboard camera" value="Describe what you see">
+<button class="btn" onclick="analyzeEspCamera()">Capture ESP Camera</button>
 </div>
 
 <div id="out"></div>
@@ -310,6 +372,20 @@ async function setMode(mode){
     });
     var resp = await r.text();
     log('Mode response: ' + resp);
+  }catch(e){log('Error: '+e.message);}
+}
+
+async function analyzeEspCamera(){
+  var prompt = document.getElementById('camPrompt').value || 'Describe what you see';
+  log('Capturing onboard camera...');
+  try{
+    var r = await fetch(ESP + '/camera/analyze', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({prompt:prompt})
+    });
+    var resp = await r.text();
+    log('Camera: ' + resp);
   }catch(e){log('Error: '+e.message);}
 }
 
@@ -907,6 +983,153 @@ void setupMicInput()
 #endif
 }
 
+void setupCameraInput()
+{
+#if USE_CAMERA
+  camera_config_t config;
+  memset(&config, 0, sizeof(config));
+
+  config.ledc_channel = LEDC_CHANNEL_0;
+  config.ledc_timer = LEDC_TIMER_0;
+  config.pin_d0 = CAM_PIN_D0;
+  config.pin_d1 = CAM_PIN_D1;
+  config.pin_d2 = CAM_PIN_D2;
+  config.pin_d3 = CAM_PIN_D3;
+  config.pin_d4 = CAM_PIN_D4;
+  config.pin_d5 = CAM_PIN_D5;
+  config.pin_d6 = CAM_PIN_D6;
+  config.pin_d7 = CAM_PIN_D7;
+  config.pin_xclk = CAM_PIN_XCLK;
+  config.pin_pclk = CAM_PIN_PCLK;
+  config.pin_vsync = CAM_PIN_VSYNC;
+  config.pin_href = CAM_PIN_HREF;
+  config.pin_sccb_sda = CAM_PIN_SIOD;
+  config.pin_sccb_scl = CAM_PIN_SIOC;
+  config.pin_pwdn = CAM_PIN_PWDN;
+  config.pin_reset = CAM_PIN_RESET;
+  config.xclk_freq_hz = 10000000;
+  config.pixel_format = PIXFORMAT_JPEG;
+  config.frame_size = FRAMESIZE_QVGA;
+  config.jpeg_quality = 12;
+  config.fb_count = 2;
+  config.grab_mode = CAMERA_GRAB_LATEST;
+  config.fb_location = CAMERA_FB_IN_PSRAM;
+
+  esp_err_t err = esp_camera_init(&config);
+  if (err != ESP_OK)
+  {
+    cameraReady = false;
+    cameraLastError = "CAM_INIT_ERR:" + String((int)err);
+    Serial.printf("ERR:CAM:INIT:%d\n", (int)err);
+    return;
+  }
+
+  cameraReady = true;
+  cameraLastError = "";
+  Serial.println("Camera ready (ESP-WROVER)");
+#else
+  cameraReady = false;
+  cameraLastError = "DISABLED";
+#endif
+}
+
+bool captureAndAnalyzeCamera(const String &prompt, const String &source, String &responseTextOut)
+{
+  responseTextOut = "";
+#if USE_CAMERA
+  if (!cameraReady)
+  {
+    notifyMessage("ERR:CAM:NOT_READY");
+    if (cameraLastError.length() > 0)
+    {
+      notifyMessage("ERR:CAM:" + cameraLastError);
+    }
+    return false;
+  }
+
+  camera_fb_t *fb = nullptr;
+  for (int attempt = 0; attempt < 3; ++attempt)
+  {
+    fb = esp_camera_fb_get();
+    if (fb)
+    {
+      break;
+    }
+    delay(40);
+  }
+  if (!fb)
+  {
+    cameraLastError = "CAPTURE_FAIL";
+    notifyMessage("ERR:CAM:CAPTURE");
+    return false;
+  }
+
+  size_t b64Len = ((fb->len + 2) / 3) * 4;
+  String payload;
+  if (!payload.reserve(b64Len + 300))
+  {
+    esp_camera_fb_return(fb);
+    notifyMessage("ERR:CAM:NO_MEM");
+    return false;
+  }
+
+  payload = "{\"image_base64\":\"";
+  if (!appendBase64(payload, fb->buf, fb->len))
+  {
+    esp_camera_fb_return(fb);
+    notifyMessage("ERR:CAM:B64");
+    return false;
+  }
+  esp_camera_fb_return(fb);
+
+  payload += "\",\"text\":\"";
+  payload += escapeJson(prompt.length() > 0 ? prompt : String("Describe what you see"));
+  payload += "\",\"mode\":\"quick\",\"client\":\"";
+  payload += source;
+  payload += "\"}";
+
+  updateDisplay("Camera", "Analyzing...");
+  String response;
+  bool ok = sendProcessPayload(payload, response);
+  if (!ok)
+  {
+    notifyMessage("ERR:CAM:SERVER");
+    notifyMessage("ERR:HTTP:" + String(lastBackendHttpCode));
+    if (lastBackendError.length() > 0)
+    {
+      notifyMessage("ERR:DETAIL:" + lastBackendError);
+    }
+    return false;
+  }
+
+  responseTextOut = parseJsonStringField(response, "text");
+  if (responseTextOut.length() == 0)
+  {
+    responseTextOut = response;
+  }
+
+  notifyMessage("TTS:" + responseTextOut);
+  speakText(responseTextOut);
+
+  String ttsUrl = parseJsonStringField(response, "tts_url");
+  if (ttsUrl.length() > 0)
+  {
+    notifyMessage("TTS_URL:" + ttsUrl);
+    if (!fetchAndPlayTtsFromUrl(ttsUrl))
+    {
+      notifyMessage("ERR:TTS_PLAYBACK");
+    }
+  }
+
+  return true;
+#else
+  (void)prompt;
+  (void)source;
+  notifyMessage("ERR:CAM:DISABLED");
+  return false;
+#endif
+}
+
 void logMemorySnapshot(const char *stage)
 {
   size_t internalFree = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
@@ -1391,6 +1614,30 @@ void handleCommand(const String &cmd, const String &source)
     notifyMessage("ACK:OLED");
     return;
   }
+  if (cmd == "CAM:SNAP")
+  {
+    String responseText;
+    if (captureAndAnalyzeCamera("Describe what you see", source, responseText))
+    {
+      notifyMessage("ACK:CAM:SNAP");
+    }
+    return;
+  }
+  if (cmd.startsWith("CAM:SNAP:"))
+  {
+    String prompt = cmd.substring(9);
+    prompt.trim();
+    if (prompt.length() == 0)
+    {
+      prompt = "Describe what you see";
+    }
+    String responseText;
+    if (captureAndAnalyzeCamera(prompt, source, responseText))
+    {
+      notifyMessage("ACK:CAM:SNAP");
+    }
+    return;
+  }
 
   processTextCommand(cmd, source);
 }
@@ -1499,6 +1746,40 @@ void handleCommandRoute()
   server.send(200, "application/json", "{\"ok\":true}");
 }
 
+void handleCameraStatus()
+{
+  String json = "{\"enabled\":" + String(USE_CAMERA ? "true" : "false") +
+                ",\"ready\":" + String(cameraReady ? "true" : "false") +
+                ",\"last_error\":\"" + escapeJson(cameraLastError) + "\"}";
+  server.send(200, "application/json", json);
+}
+
+void handleCameraAnalyzeRoute()
+{
+  String prompt = "Describe what you see";
+  if (server.hasArg("plain"))
+  {
+    String body = server.arg("plain");
+    String parsedPrompt = parseJsonStringField(body, "prompt");
+    if (parsedPrompt.length() > 0)
+    {
+      prompt = parsedPrompt;
+    }
+  }
+
+  String responseText;
+  bool ok = captureAndAnalyzeCamera(prompt, "esp32_camera", responseText);
+  if (!ok)
+  {
+    String errJson = "{\"ok\":false,\"error\":\"camera_analyze_failed\",\"http\":" + String(lastBackendHttpCode) + "}";
+    server.send(502, "application/json", errJson);
+    return;
+  }
+
+  String json = "{\"ok\":true,\"text\":\"" + escapeJson(responseText) + "\"}";
+  server.send(200, "application/json", json);
+}
+
 void handleNotFound()
 {
   server.send(404, "text/plain", "Not Found");
@@ -1547,17 +1828,25 @@ void setup()
                 USE_I2S_MIC_MODULE,
                 USE_DAC_TTS_MODULE,
                 ENABLE_BLE_BRIDGE);
+  Serial.printf("PROFILE_FLAGS CAMERA=%d TOUCH=%d\n", USE_CAMERA, USE_TOUCH);
   logMemorySnapshot("boot");
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, LOW);
+#if USE_TOUCH
   pinMode(TOUCH_PAD_PIN, INPUT_PULLDOWN);
+#endif
+#if USE_SH1106
   Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
+#endif
 
 #if USE_SH1106
   gDisplay.begin();
 #endif
 #if USE_DAC_TTS_MODULE
   setupTtsAudio();
+#endif
+#if USE_CAMERA
+  setupCameraInput();
 #endif
   updateDisplay("Boot", "Starting...");
 
@@ -1590,6 +1879,8 @@ void setup()
   server.on("/status", handleStatus);
   server.on("/process", HTTP_POST, handleProcess);
   server.on("/command", HTTP_POST, handleCommandRoute);
+  server.on("/camera/status", HTTP_GET, handleCameraStatus);
+  server.on("/camera/analyze", HTTP_POST, handleCameraAnalyzeRoute);
   server.onNotFound(handleNotFound);
   server.begin();
   Serial.println("Server started");
@@ -1632,7 +1923,10 @@ void loop()
   }
 #endif
 
-  bool touch2 = digitalRead(TOUCH_PAD_PIN) == HIGH;
+  bool touch2 = false;
+#if USE_TOUCH
+  touch2 = digitalRead(TOUCH_PAD_PIN) == HIGH;
+#endif
 
   if (touch2 && !lastTouch2)
   {

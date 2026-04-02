@@ -259,7 +259,7 @@ with right:
                 async_processing=True,
                 desired_playing_state=True,
                 # Larger receiver queue helps avoid overflow when network/API latency spikes.
-                audio_receiver_size=8192,
+                audio_receiver_size=16384,
             )
 
             if webrtc_ctx and webrtc_ctx.state.playing and webrtc_ctx.audio_receiver:
