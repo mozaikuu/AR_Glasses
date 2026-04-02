@@ -8,8 +8,42 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <HTTPClient.h>
+#include <cstring>
+#include "esp_system.h"
+#include "esp_heap_caps.h"
+#include "driver/i2s.h"
+
+// ============== BUILD PROFILE ==============
+// Select one profile at compile time (PlatformIO build flags).
+// If none is set, default to PROFILE_FULL.
+#if !defined(PROFILE_FULL) && !defined(PROFILE_WIFI_ONLY) && !defined(PROFILE_AUDIO_TEST) && !defined(PROFILE_MINIMAL)
+#define PROFILE_FULL 1
+#endif
+
+#if defined(PROFILE_WIFI_ONLY)
+#define PROFILE_USE_SH1106 1
+#define PROFILE_USE_DAC_TTS 0
+#define PROFILE_USE_I2S_MIC 0
+#define PROFILE_USE_BLE 0
+#elif defined(PROFILE_AUDIO_TEST)
+#define PROFILE_USE_SH1106 0
+#define PROFILE_USE_DAC_TTS 1
+#define PROFILE_USE_I2S_MIC 1
+#define PROFILE_USE_BLE 0
+#elif defined(PROFILE_MINIMAL)
+#define PROFILE_USE_SH1106 0
+#define PROFILE_USE_DAC_TTS 0
+#define PROFILE_USE_I2S_MIC 0
+#define PROFILE_USE_BLE 0
+#else
+#define PROFILE_USE_SH1106 1
+#define PROFILE_USE_DAC_TTS 1
+#define PROFILE_USE_I2S_MIC 1
+#define PROFILE_USE_BLE 1
+#endif
+
 #ifndef ENABLE_BLE_BRIDGE
-#define ENABLE_BLE_BRIDGE 0
+#define ENABLE_BLE_BRIDGE PROFILE_USE_BLE
 #endif
 
 #if ENABLE_BLE_BRIDGE
@@ -20,11 +54,15 @@
 #endif
 
 #ifndef USE_SH1106
-#define USE_SH1106 1
+#define USE_SH1106 PROFILE_USE_SH1106
 #endif
 
 #ifndef USE_DAC_TTS_MODULE
-#define USE_DAC_TTS_MODULE 1
+#define USE_DAC_TTS_MODULE PROFILE_USE_DAC_TTS
+#endif
+
+#ifndef USE_I2S_MIC_MODULE
+#define USE_I2S_MIC_MODULE PROFILE_USE_I2S_MIC
 #endif
 
 #if USE_SH1106
@@ -49,10 +87,12 @@ const char *SERVER_URL = "http://192.168.100.2:8000/process";
 #endif
 
 #define LED_PIN 2
-#define TOUCH1_PIN 5
-#define TOUCH2_PIN 18
+#define TOUCH_PAD_PIN 18
 #define I2C_SDA_PIN 21
 #define I2C_SCL_PIN 22
+#define I2S_MIC_BCK 14
+#define I2S_MIC_WS 15
+#define I2S_MIC_DATA 4
 #define DAC_TTS_LEFT_PIN 25
 #define DAC_TTS_RIGHT_PIN 26
 
@@ -61,6 +101,14 @@ const uint16_t OLED_MAX_LINES = 3;
 const unsigned long OLED_SCROLL_INTERVAL_MS = 120;
 const uint8_t OLED_SCROLL_STEP_CHARS = 2;
 const uint16_t OLED_SCROLL_GAP_SPACES = 8;
+const unsigned long TOUCH2_LONG_PRESS_MS = 900;
+
+const uint32_t MIC_SAMPLE_RATE = 16000;
+const uint32_t MIC_MAX_RECORD_MS = 5000;
+const size_t MIC_MAX_SAMPLES = (MIC_SAMPLE_RATE * MIC_MAX_RECORD_MS) / 1000;
+const size_t MIC_READ_CHUNK_SAMPLES = 256;
+const bool MIC_PREFER_PSRAM = true;
+const bool MIC_ALLOW_INTERNAL_HEAP_FALLBACK = false;
 
 enum OperationMode
 {
@@ -84,8 +132,14 @@ portMUX_TYPE bleMux = portMUX_INITIALIZER_UNLOCKED;
 #endif
 OperationMode currentMode = MODE_WIFI_DIRECT;
 String lastPrompt = "";
-bool lastTouch1 = false;
 bool lastTouch2 = false;
+bool micReady = false;
+bool micDriverInstalled = false;
+bool isRecording = false;
+int16_t *micPcmBuffer = nullptr;
+size_t micRecordedSamples = 0;
+unsigned long micRecordingStartMs = 0;
+unsigned long touch2PressStartMs = 0;
 String displayLine1Cache = "";
 String displayLine2Cache = "";
 String displayScrollBuffer = "";
@@ -110,12 +164,22 @@ void handleProcess();
 void handleCommandRoute();
 void handleNotFound();
 void speakText(const String &text);
+const char *resetReasonToText(esp_reset_reason_t reason);
 void updateDisplay(const String &line1, const String &line2);
 void setDisplayContent(const String &line1, const String &line2, bool resetScroll);
 void renderDisplay();
 void tickDisplayScroll();
 void drawWrappedText(int x, int yStart, int maxCharsPerLine, int maxLines, const String &text);
 bool fetchAndPlayTtsFromUrl(const String &ttsUrl);
+void setupMicInput();
+void logMemorySnapshot(const char *stage);
+void tickMicRecording();
+void startMicRecording();
+void stopAndSendRecording(const String &source);
+bool ensureMicBuffer();
+void releaseMicBuffer();
+bool appendBase64(String &out, const uint8_t *data, size_t len);
+void toggleOperationMode();
 #if USE_DAC_TTS_MODULE
 void setupTtsAudio();
 bool playWavFromHttp(HTTPClient &http);
@@ -286,7 +350,7 @@ class CharacteristicCallbacks : public BLECharacteristicCallbacks
 {
   void onWrite(BLECharacteristic *characteristic) override
   {
-    String cmd = characteristic->getValue();
+    String cmd = String(characteristic->getValue().c_str());
     cmd.trim();
     if (cmd.length() == 0)
     {
@@ -787,6 +851,350 @@ inline void writeDacPair(uint8_t value)
 }
 #endif
 
+void setupMicInput()
+{
+#if USE_I2S_MIC_MODULE
+  i2s_config_t i2sConfig;
+  memset(&i2sConfig, 0, sizeof(i2sConfig));
+  i2sConfig.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX);
+  i2sConfig.sample_rate = MIC_SAMPLE_RATE;
+  i2sConfig.bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT;
+  i2sConfig.channel_format = I2S_CHANNEL_FMT_ONLY_LEFT;
+  i2sConfig.communication_format = I2S_COMM_FORMAT_I2S;
+  i2sConfig.intr_alloc_flags = 0;
+  i2sConfig.dma_buf_count = 4;
+  i2sConfig.dma_buf_len = 256;
+  i2sConfig.use_apll = false;
+  i2sConfig.tx_desc_auto_clear = false;
+  i2sConfig.fixed_mclk = 0;
+
+  i2s_pin_config_t pinConfig;
+  memset(&pinConfig, 0, sizeof(pinConfig));
+  pinConfig.bck_io_num = I2S_MIC_BCK;
+  pinConfig.ws_io_num = I2S_MIC_WS;
+  pinConfig.data_out_num = -1;
+  pinConfig.data_in_num = I2S_MIC_DATA;
+
+  if (micDriverInstalled)
+  {
+    i2s_driver_uninstall(I2S_NUM_0);
+    micDriverInstalled = false;
+  }
+  esp_err_t err = i2s_driver_install(I2S_NUM_0, &i2sConfig, 0, nullptr);
+  if (err != ESP_OK)
+  {
+    micReady = false;
+    Serial.printf("ERR:MIC:I2S_INIT:%d\n", (int)err);
+    return;
+  }
+
+  err = i2s_set_pin(I2S_NUM_0, &pinConfig);
+  if (err != ESP_OK)
+  {
+    i2s_driver_uninstall(I2S_NUM_0);
+    micDriverInstalled = false;
+    micReady = false;
+    Serial.printf("ERR:MIC:I2S_PIN:%d\n", (int)err);
+    return;
+  }
+
+  i2s_zero_dma_buffer(I2S_NUM_0);
+  micDriverInstalled = true;
+  micReady = true;
+  Serial.println("I2S mic ready (GPIO14/15/4)");
+#else
+  micReady = false;
+#endif
+}
+
+void logMemorySnapshot(const char *stage)
+{
+  size_t internalFree = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+  size_t internalLargest = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
+  size_t psramTotal = heap_caps_get_total_size(MALLOC_CAP_SPIRAM);
+  size_t psramFree = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+  size_t psramLargest = heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM);
+
+  Serial.printf("MEM[%s] INT_FREE=%u INT_LARGEST=%u PSRAM_TOTAL=%u PSRAM_FREE=%u PSRAM_LARGEST=%u\n",
+                stage,
+                (unsigned)internalFree,
+                (unsigned)internalLargest,
+                (unsigned)psramTotal,
+                (unsigned)psramFree,
+                (unsigned)psramLargest);
+}
+
+bool appendBase64(String &out, const uint8_t *data, size_t len)
+{
+  static const char kTable[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  if (!data || len == 0)
+  {
+    return false;
+  }
+
+  for (size_t i = 0; i < len; i += 3)
+  {
+    uint32_t block = ((uint32_t)data[i]) << 16;
+    bool hasSecond = (i + 1) < len;
+    bool hasThird = (i + 2) < len;
+    if (hasSecond)
+    {
+      block |= ((uint32_t)data[i + 1]) << 8;
+    }
+    if (hasThird)
+    {
+      block |= ((uint32_t)data[i + 2]);
+    }
+
+    out += kTable[(block >> 18) & 0x3F];
+    out += kTable[(block >> 12) & 0x3F];
+    out += hasSecond ? kTable[(block >> 6) & 0x3F] : '=';
+    out += hasThird ? kTable[block & 0x3F] : '=';
+  }
+
+  return true;
+}
+
+bool ensureMicBuffer()
+{
+  if (micPcmBuffer)
+  {
+    return true;
+  }
+
+  size_t bytesNeeded = MIC_MAX_SAMPLES * sizeof(int16_t);
+  size_t psramTotal = heap_caps_get_total_size(MALLOC_CAP_SPIRAM);
+  bool triedPsram = false;
+
+  if (MIC_PREFER_PSRAM && psramTotal > 0)
+  {
+    triedPsram = true;
+    micPcmBuffer = reinterpret_cast<int16_t *>(heap_caps_malloc(bytesNeeded, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+  }
+
+  if (!micPcmBuffer && MIC_ALLOW_INTERNAL_HEAP_FALLBACK)
+  {
+    micPcmBuffer = reinterpret_cast<int16_t *>(heap_caps_malloc(bytesNeeded, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
+  }
+
+  if (!micPcmBuffer)
+  {
+    if (MIC_PREFER_PSRAM && !MIC_ALLOW_INTERNAL_HEAP_FALLBACK)
+    {
+      if (psramTotal == 0)
+      {
+        notifyMessage("ERR:REC:NO_PSRAM");
+        updateDisplay("Recording", "PSRAM required");
+      }
+      else if (triedPsram)
+      {
+        notifyMessage("ERR:REC:NO_PSRAM_BUF");
+        updateDisplay("Recording", "PSRAM alloc fail");
+      }
+      else
+      {
+        notifyMessage("ERR:REC:NO_BUF");
+        updateDisplay("Recording", "No RAM buffer");
+      }
+    }
+    else
+    {
+      notifyMessage("ERR:REC:NO_BUF");
+      updateDisplay("Recording", "No RAM buffer");
+    }
+    logMemorySnapshot("mic_alloc_fail");
+    return false;
+  }
+
+  notifyMessage((MIC_PREFER_PSRAM && psramTotal > 0) ? "MSG:REC:BUF_PSRAM" : "MSG:REC:BUF_HEAP");
+  return true;
+}
+
+void releaseMicBuffer()
+{
+  if (micPcmBuffer)
+  {
+    free(micPcmBuffer);
+    micPcmBuffer = nullptr;
+  }
+}
+
+void startMicRecording()
+{
+#if USE_I2S_MIC_MODULE
+  if (!micReady)
+  {
+    setupMicInput();
+  }
+  if (!micReady)
+  {
+    notifyMessage("ERR:REC:MIC_NOT_READY");
+    return;
+  }
+  if (isRecording)
+  {
+    notifyMessage("EVT:REC:ALREADY");
+    return;
+  }
+  if (!ensureMicBuffer())
+  {
+    return;
+  }
+
+  micRecordedSamples = 0;
+  micRecordingStartMs = millis();
+  isRecording = true;
+  i2s_zero_dma_buffer(I2S_NUM_0);
+  updateDisplay("Recording", "Touch2 tap to send");
+  notifyMessage("EVT:REC:START");
+#else
+  notifyMessage("ERR:REC:DISABLED");
+#endif
+}
+
+void stopAndSendRecording(const String &source)
+{
+#if USE_I2S_MIC_MODULE
+  if (!isRecording)
+  {
+    notifyMessage("EVT:REC:NOT_ACTIVE");
+    return;
+  }
+  if (!micPcmBuffer)
+  {
+    notifyMessage("ERR:REC:NO_BUF");
+    isRecording = false;
+    return;
+  }
+
+  isRecording = false;
+
+  if (micRecordedSamples < (MIC_SAMPLE_RATE / 10))
+  {
+    notifyMessage("ERR:REC:TOO_SHORT");
+    updateDisplay("Recording", "Too short");
+    releaseMicBuffer();
+    return;
+  }
+
+  size_t pcmBytes = micRecordedSamples * sizeof(int16_t);
+  size_t b64Len = ((pcmBytes + 2) / 3) * 4;
+
+  String payload;
+  if (!payload.reserve(b64Len + 220))
+  {
+    notifyMessage("ERR:REC:NO_MEM");
+    releaseMicBuffer();
+    return;
+  }
+
+  payload = "{\"audio_base64\":\"";
+  if (!appendBase64(payload, reinterpret_cast<const uint8_t *>(micPcmBuffer), pcmBytes))
+  {
+    notifyMessage("ERR:REC:B64");
+    releaseMicBuffer();
+    return;
+  }
+  releaseMicBuffer();
+  payload += "\",\"mode\":\"quick\",\"client\":\"";
+  payload += source;
+  payload += "\",\"metadata\":{\"audio_format\":\"pcm16\",\"sample_rate\":";
+  payload += String(MIC_SAMPLE_RATE);
+  payload += "}}";
+
+  updateDisplay("Sending", "Audio to backend");
+  notifyMessage("EVT:REC:SEND");
+
+  String response;
+  bool ok = sendProcessPayload(payload, response);
+  if (!ok)
+  {
+    notifyMessage("ERR:SERVER");
+    notifyMessage("ERR:HTTP:" + String(lastBackendHttpCode));
+    if (lastBackendError.length() > 0)
+    {
+      notifyMessage("ERR:DETAIL:" + lastBackendError);
+    }
+    updateDisplay("Server", "Audio send failed");
+    return;
+  }
+
+  String responseText = parseJsonStringField(response, "text");
+  String ttsUrl = parseJsonStringField(response, "tts_url");
+  if (responseText.length() == 0)
+  {
+    responseText = response;
+  }
+  notifyMessage("TTS:" + responseText);
+  speakText(responseText);
+  if (ttsUrl.length() > 0)
+  {
+    notifyMessage("TTS_URL:" + ttsUrl);
+    if (!fetchAndPlayTtsFromUrl(ttsUrl))
+    {
+      notifyMessage("ERR:TTS_PLAYBACK");
+    }
+  }
+#else
+  (void)source;
+#endif
+}
+
+void tickMicRecording()
+{
+#if USE_I2S_MIC_MODULE
+  if (!isRecording || !micReady || !micPcmBuffer)
+  {
+    return;
+  }
+
+  size_t remaining = MIC_MAX_SAMPLES - micRecordedSamples;
+  if (remaining == 0)
+  {
+    notifyMessage("EVT:REC:MAXLEN");
+    stopAndSendRecording("esp32_touch");
+    return;
+  }
+
+  size_t chunkSamples = remaining;
+  if (chunkSamples > MIC_READ_CHUNK_SAMPLES)
+  {
+    chunkSamples = MIC_READ_CHUNK_SAMPLES;
+  }
+
+  size_t bytesRead = 0;
+  esp_err_t err = i2s_read(
+      I2S_NUM_0,
+      reinterpret_cast<void *>(micPcmBuffer + micRecordedSamples),
+      chunkSamples * sizeof(int16_t),
+      &bytesRead,
+      0);
+
+  if (err == ESP_OK && bytesRead > 0)
+  {
+    micRecordedSamples += (bytesRead / sizeof(int16_t));
+  }
+
+  if (micRecordedSamples >= MIC_MAX_SAMPLES)
+  {
+    notifyMessage("EVT:REC:MAXLEN");
+    stopAndSendRecording("esp32_touch");
+  }
+#endif
+}
+
+void toggleOperationMode()
+{
+#if ENABLE_BLE_BRIDGE
+  currentMode = (currentMode == MODE_WIFI_DIRECT) ? MODE_PHONE_RELAY : MODE_WIFI_DIRECT;
+  notifyMessage(currentMode == MODE_WIFI_DIRECT ? "MODE:WIFI" : "MODE:PHONE");
+#else
+  currentMode = MODE_WIFI_DIRECT;
+  notifyMessage("ERR:BLE:DISABLED");
+  notifyMessage("MODE:WIFI");
+#endif
+}
+
 String normalizeProcessPayload(String body)
 {
   body.replace("\"audio\"", "\"audio_base64\"");
@@ -1096,15 +1504,53 @@ void handleNotFound()
   server.send(404, "text/plain", "Not Found");
 }
 
+const char *resetReasonToText(esp_reset_reason_t reason)
+{
+  switch (reason)
+  {
+  case ESP_RST_POWERON:
+    return "POWERON";
+  case ESP_RST_EXT:
+    return "EXTERNAL_PIN";
+  case ESP_RST_SW:
+    return "SOFTWARE";
+  case ESP_RST_PANIC:
+    return "PANIC";
+  case ESP_RST_INT_WDT:
+    return "INT_WDT";
+  case ESP_RST_TASK_WDT:
+    return "TASK_WDT";
+  case ESP_RST_WDT:
+    return "WDT_OTHER";
+  case ESP_RST_DEEPSLEEP:
+    return "DEEPSLEEP";
+  case ESP_RST_BROWNOUT:
+    return "BROWNOUT";
+  case ESP_RST_SDIO:
+    return "SDIO";
+  default:
+    return "UNKNOWN";
+  }
+}
+
 // ============== SETUP ==============
 void setup()
 {
   Serial.begin(115200);
+  delay(150);
   Serial.println("\n=== Smart Glasses ===");
+  esp_reset_reason_t rr = esp_reset_reason();
+  Serial.printf("RESET_REASON: %s (%d)\n", resetReasonToText(rr), (int)rr);
+  Serial.printf("FREE_HEAP_BOOT: %u\n", (unsigned int)ESP.getFreeHeap());
+  Serial.printf("PROFILE_FLAGS OLED=%d MIC=%d DAC_TTS=%d BLE=%d\n",
+                USE_SH1106,
+                USE_I2S_MIC_MODULE,
+                USE_DAC_TTS_MODULE,
+                ENABLE_BLE_BRIDGE);
+  logMemorySnapshot("boot");
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, LOW);
-  pinMode(TOUCH1_PIN, INPUT);
-  pinMode(TOUCH2_PIN, INPUT);
+  pinMode(TOUCH_PAD_PIN, INPUT_PULLDOWN);
   Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
 
 #if USE_SH1106
@@ -1136,6 +1582,7 @@ void setup()
   WiFi.softAPConfig(AP_IP, AP_GATEWAY, AP_SUBNET);
   WiFi.softAP(AP_SSID, AP_PASSWORD);
   Serial.println("AP: " + String(AP_SSID) + " IP: 192.168.4.1");
+  updateDisplay("Boot", "AP ready");
 
   connectToWiFi();
 
@@ -1146,6 +1593,9 @@ void setup()
   server.onNotFound(handleNotFound);
   server.begin();
   Serial.println("Server started");
+  updateDisplay("Ready", serverConnected ? "WiFi+AP" : "AP only");
+  logMemorySnapshot("ready");
+  Serial.println("Single touch mode: tap=start/stop-send, long-press=toggle mode");
 }
 
 // ============== LOOP ==============
@@ -1154,6 +1604,7 @@ void loop()
   server.handleClient();
   handleSerialInput();
   tickDisplayScroll();
+  tickMicRecording();
 
 #if ENABLE_BLE_BRIDGE
   if (bleConnectEvent)
@@ -1181,31 +1632,33 @@ void loop()
   }
 #endif
 
-  bool touch1 = digitalRead(TOUCH1_PIN) == HIGH;
-  bool touch2 = digitalRead(TOUCH2_PIN) == HIGH;
-  if (touch1 && !lastTouch1)
+  bool touch2 = digitalRead(TOUCH_PAD_PIN) == HIGH;
+
+  if (touch2 && !lastTouch2)
   {
-    if (lastPrompt.length() > 0)
+    touch2PressStartMs = millis();
+  }
+
+  if (!touch2 && lastTouch2)
+  {
+    unsigned long heldMs = millis() - touch2PressStartMs;
+    if (heldMs >= TOUCH2_LONG_PRESS_MS)
     {
-      handleCommand("TXT:" + lastPrompt, "esp32_touch");
+      toggleOperationMode();
     }
     else
     {
-      notifyMessage("EVT:TOUCH1:NO_PROMPT");
+      if (isRecording)
+      {
+        stopAndSendRecording("esp32_touch");
+      }
+      else
+      {
+        notifyMessage("EVT:TOUCH2:START_REC");
+        startMicRecording();
+      }
     }
   }
-  if (touch2 && !lastTouch2)
-  {
-#if ENABLE_BLE_BRIDGE
-    currentMode = (currentMode == MODE_WIFI_DIRECT) ? MODE_PHONE_RELAY : MODE_WIFI_DIRECT;
-    notifyMessage(currentMode == MODE_WIFI_DIRECT ? "MODE:WIFI" : "MODE:PHONE");
-#else
-    currentMode = MODE_WIFI_DIRECT;
-    notifyMessage("ERR:BLE:DISABLED");
-    notifyMessage("MODE:WIFI");
-#endif
-  }
-  lastTouch1 = touch1;
   lastTouch2 = touch2;
 
   static unsigned long last = 0;
@@ -1214,4 +1667,6 @@ void loop()
     last = millis();
     digitalWrite(LED_PIN, !digitalRead(LED_PIN));
   }
+
+  delay(2);
 }

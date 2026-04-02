@@ -194,12 +194,12 @@ Capabilities:
 
 Key file:
 
-1. [Firmware/smart_glasses_esp32/smart_glasses_esp32_minimal.ino](../../Firmware/smart_glasses_esp32/smart_glasses_esp32_minimal.ino)
+1. [Firmware/esp32_test_wifi/esp32_test_wifi.ino](../../Firmware/esp32_test_wifi/esp32_test_wifi.ino)
 
 Supporting hardware docs:
 
-1. [Firmware/smart_glasses_esp32/HARDWARE_WIRING.md](../../Firmware/smart_glasses_esp32/HARDWARE_WIRING.md)
-2. [Firmware/smart_glasses_esp32/COMPONENTS_GUIDE.md](../../Firmware/smart_glasses_esp32/COMPONENTS_GUIDE.md)
+1. [Firmware/HARDWARE_WIRING.md](../../Firmware/HARDWARE_WIRING.md)
+2. [Firmware/deprecated/smart_glasses_esp32/COMPONENTS_GUIDE.md](../../Firmware/deprecated/smart_glasses_esp32/COMPONENTS_GUIDE.md)
 
 Current runtime compatibility behavior:
 

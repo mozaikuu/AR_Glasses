@@ -19,26 +19,26 @@
 ## Tools
 
 - Speech:
-  - `tools/speech/transcription.py` (Google SR -> Whisper fallback)
-  - `tools/speech/tts.py` (Piper synthesis, playback, file generation)
+   - `tools/speech/transcription.py` (Google SR -> Whisper fallback)
+   - `tools/speech/tts.py` (Piper synthesis, playback, file generation)
 - Vision:
-  - `tools/vision/moondream.py` (preferred VLM path)
-  - `tools/vision/yolo.py` (fallback object detection)
+   - `tools/vision/moondream.py` (preferred VLM path)
+   - `tools/vision/yolo.py` (fallback object detection)
 - Navigation:
-  - `tools/navigation/navigation.py` (A* graph route + directions)
-  - `tools/navigation/nav_runner.py` (session-based step delivery)
+   - `tools/navigation/navigation.py` (A\* graph route + directions)
+   - `tools/navigation/nav_runner.py` (session-based step delivery)
 - Wakeword:
-  - `tools/wakeword/wakeword_system.py` (always-listen state machine)
+   - `tools/wakeword/wakeword_system.py` (always-listen state machine)
 
 ## Clients
 
 - Flask primary interface target: `flask.py` (**expected but currently missing**)
 - Unity MetaQuest base: `hololens2-campus-nav/Assets/Scripts/...`
 - Android gateway: `mobile_native/android/app/src/main/java/...`
-- ESP32 firmware: `firmware/smart_glasses_esp32/*.ino`
+- ESP32 firmware (canonical): `Firmware/esp32_test_wifi/esp32_test_wifi.ino`
+- Deprecated firmware variants: `Firmware/deprecated/**`
 
 ## Known Structural Risk
 
 - `run_flask.py` imports `web_app.create_app`, but `web_app` package is not present in current core tree.
 - Path duplication appears (`server/gateway.py` and `server\gateway.py`), indicating potential tooling/path normalization issues on Windows.
-
