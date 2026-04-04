@@ -20,7 +20,11 @@ class NavigationService:
         self._location_meta: dict[str, dict[str, object]] = {}
         self._legacy_aliases = {
             "ta_office": "ta_office_1",
-            "ta office": "ta_office_1",
+            "ta_office_1": "ta_office_1",
+            "ta_s_office": "ta_office_1",
+            "tas_office": "ta_office_1",
+            "the_ta_office": "ta_office_1",
+            "the_ta_s_office": "ta_office_1",
             "ta_office_1": "ta_office_1",
             "cs_department_ta_office": "ta_office_1",
             "math_ta_office": "ta_office_2",
@@ -115,6 +119,8 @@ class NavigationService:
             and "ta" in lowered
             and self.is_authoritative_destination_id("ta_office_1")
         ):
+            return "ta_office_1"
+        if "ta" in lowered and "office" in lowered and self.is_authoritative_destination_id("ta_office_1"):
             return "ta_office_1"
 
         search_key = self._normalize_key(raw)

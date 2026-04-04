@@ -187,17 +187,32 @@ def main() -> int:
     )
     _add_check(report, "unity_voice_command", voice)
 
-    destination = "TA_Office"
+    destination = "ta_office_1"
+    should_start_navigation = False
     if isinstance(voice.get("body"), dict):
-        destination = str(voice["body"].get("destination") or destination)
+        action = str(voice["body"].get("action") or "").strip().lower()
+        routed_destination = str(voice["body"].get("destination") or "").strip()
+        if action == "navigate" and routed_destination:
+            destination = routed_destination
+            should_start_navigation = True
 
-    nav_start = _request_json(
-        base_url,
-        "/navigation/start",
-        method="POST",
-        payload={"destination": destination, "start": "Entrance"},
-        timeout=args.timeout,
-    )
+    nav_start: dict[str, object]
+    if should_start_navigation:
+        nav_start = _request_json(
+            base_url,
+            "/navigation/start",
+            method="POST",
+            payload={"destination": destination, "start": "Entrance"},
+            timeout=args.timeout,
+        )
+    else:
+        nav_start = {
+            "ok": False,
+            "status": 0,
+            "url": urljoin(base_url.rstrip("/") + "/", "navigation/start"),
+            "body": {},
+            "error": "Unity did not return action=navigate with a destination ID",
+        }
     _add_check(report, "navigation_start", nav_start)
 
     session_id = ""

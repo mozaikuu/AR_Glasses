@@ -5,11 +5,11 @@ import threading
 import time
 from pathlib import Path
 from urllib.request import urlopen
+from uuid import uuid4
 
-from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
-from starlette.background import BackgroundTask
+from fastapi.responses import FileResponse, Response
 
 from app.config.settings import settings
 from app.models.requests import (
@@ -49,20 +49,10 @@ _runtime_status: dict[str, object] = {
     "last_warmup_error": "",
 }
 
-_tts_root = Path("assets/esp_tts")
-_tts_root.mkdir(parents=True, exist_ok=True)
 _mic_test_page = Path("assets/mic_test.html")
-_mcp_gate_bypass_paths = {
-    "/",
-    "/mcp-status",
-    "/debug",
-    "/network/info",
-    "/openapi.json",
-    "/mic-test",
-    "/docs",
-    "/redoc",
-    "/docs/oauth2-redirect",
-}
+_tts_cache_lock = threading.Lock()
+_tts_cache: dict[str, tuple[bytes, float]] = {}
+_tts_cache_ttl_seconds = 180.0
 
 
 def _require_unity_api_key(x_unity_api_key: str | None) -> None:
@@ -89,12 +79,6 @@ def _probe_mcp() -> tuple[bool, str]:
         return False, str(exc)
 
 
-def _is_mcp_bypass_path(path: str) -> bool:
-    if path in _mcp_gate_bypass_paths:
-        return True
-    return path.startswith("/docs")
-
-
 def _detect_lan_ips() -> list[str]:
     candidates: list[str] = []
     hostnames = {"localhost", socket.gethostname()}
@@ -114,13 +98,28 @@ def _detect_lan_ips() -> list[str]:
     return candidates
 
 
-def _delete_file_safely(path: Path) -> None:
-    try:
-        if path.exists():
-            path.unlink()
-    except Exception:
-        # Best-effort cleanup; the response has already been sent.
-        pass
+def _prune_tts_cache_locked(now_monotonic: float) -> None:
+    expired_tokens = [token for token, (_, expires_at) in _tts_cache.items() if expires_at <= now_monotonic]
+    for token in expired_tokens:
+        _tts_cache.pop(token, None)
+
+
+def _store_tts_clip(wav_bytes: bytes) -> str:
+    token = f"{int(time.time() * 1000)}_{uuid4().hex}"
+    expires_at = time.monotonic() + _tts_cache_ttl_seconds
+    with _tts_cache_lock:
+        _prune_tts_cache_locked(time.monotonic())
+        _tts_cache[token] = (wav_bytes, expires_at)
+    return token
+
+
+def _consume_tts_clip(token: str) -> bytes | None:
+    with _tts_cache_lock:
+        _prune_tts_cache_locked(time.monotonic())
+        item = _tts_cache.pop(token, None)
+    if item is None:
+        return None
+    return item[0]
 
 
 def _warmup_runtime() -> None:
@@ -167,28 +166,6 @@ def mcp_status() -> dict[str, object]:
     }
 
 
-@app.middleware("http")
-async def enforce_mcp_fail_closed(request: Request, call_next):
-    path = request.url.path
-    if _is_mcp_bypass_path(path):
-        return await call_next(request)
-
-    connected, note = _probe_mcp()
-    if not connected:
-        return JSONResponse(
-            status_code=503,
-            content={
-                "error": "MCP_UNAVAILABLE",
-                "message": "MCP is required and fail-closed mode blocks this route.",
-                "path": path,
-                "mcp_enabled": bool(settings.enable_mcp_server),
-                "mcp_url": f"http://{settings.mcp_host}:{settings.mcp_port}/",
-                "note": note,
-            },
-        )
-    return await call_next(request)
-
-
 @app.get("/debug")
 def debug_status() -> dict[str, object]:
     return {
@@ -227,11 +204,10 @@ def process(payload: ProcessRequest) -> ProcessResponse:
         try:
             wav_bytes = synthesize_to_wav(str(result.get("text") or ""))
             if wav_bytes and len(wav_bytes) > 16:
-                filename = f"response_{int(time.time() * 1000)}.wav"
-                wav_path = _tts_root / filename
-                wav_path.write_bytes(wav_bytes)
+                token = _store_tts_clip(wav_bytes)
                 metadata = result.get("metadata") if isinstance(result.get("metadata"), dict) else {}
-                metadata["tts_url"] = f"/esp/tts/{filename}"
+                metadata["tts_url"] = f"/esp/tts/{token}"
+                metadata["tts_storage"] = "memory"
                 result["metadata"] = metadata
         except Exception as exc:
             metadata = result.get("metadata") if isinstance(result.get("metadata"), dict) else {}
@@ -283,7 +259,28 @@ def unity_voice_command(
     x_unity_api_key: str | None = Header(default=None, alias="X-Unity-Api-Key"),
 ) -> dict[str, object]:
     _require_unity_api_key(x_unity_api_key)
-    return assistant_service.route_unity_command(payload.command, mode=payload.mode)
+    routed = assistant_service.route_unity_command(payload.command, mode=payload.mode)
+
+    # For non-navigation interactions, allow Unity/Quest to include a camera frame
+    # so server-side vision can enrich the spoken response.
+    if payload.image_base64 and str(routed.get("action") or "").lower() == "speak":
+        try:
+            processed = assistant_service.process(
+                ProcessRequest(
+                    text=payload.command,
+                    image_base64=payload.image_base64,
+                    mode=payload.mode,
+                    client=payload.client,
+                    metadata=payload.metadata,
+                )
+            )
+            routed["response_text"] = str(processed.get("text") or routed.get("response_text") or "")
+            routed["tool_calls"] = processed.get("tool_calls", [])
+            routed["metadata"] = processed.get("metadata", {})
+        except Exception as exc:
+            routed["error"] = f"unity_image_context_failed: {exc}"
+
+    return routed
 
 
 @app.get("/navigation/locations")
@@ -339,24 +336,22 @@ def esp_process(payload: EspProcessRequest) -> dict[str, object]:
     # Keep both keys for firmware compatibility during migration.
     result = {"text": answer, "response": answer}
     if payload.wants_audio:
-        filename = "latest.wav"
-        wav_path = _tts_root / filename
-        wav_path.write_bytes(b"RIFF....WAVEfmt ")
-        result["tts_url"] = f"/esp/tts/{filename}"
+        wav_bytes = synthesize_to_wav(answer)
+        if wav_bytes and len(wav_bytes) > 16:
+            token = _store_tts_clip(wav_bytes)
+            result["tts_url"] = f"/esp/tts/{token}"
+            result["tts_storage"] = "memory"
+        else:
+            result["tts_error"] = "tts_unavailable"
     return result
 
 
 @app.get("/esp/tts/{filename}")
-def esp_tts(filename: str) -> FileResponse:
-    wav_path = _tts_root / filename
-    if not wav_path.exists():
+def esp_tts(filename: str) -> Response:
+    wav_bytes = _consume_tts_clip(filename)
+    if wav_bytes is None:
         raise HTTPException(status_code=404, detail="TTS file not found")
-    return FileResponse(
-        path=wav_path,
-        media_type="audio/wav",
-        filename=filename,
-        background=BackgroundTask(_delete_file_safely, wav_path),
-    )
+    return Response(content=wav_bytes, media_type="audio/wav", headers={"Cache-Control": "no-store"})
 
 
 @app.post("/qr/visible")

@@ -40,6 +40,9 @@ class NavigationCancelRequest(BaseModel):
 class UnityVoiceCommandRequest(BaseModel):
     command: str = Field(..., min_length=1)
     mode: Literal["quick", "thinking"] = "quick"
+    image_base64: str | None = None
+    client: str = "unity_quest"
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class EspProcessRequest(BaseModel):

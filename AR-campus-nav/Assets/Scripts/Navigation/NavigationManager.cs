@@ -108,6 +108,19 @@ public class NavigationManager : MonoBehaviour
 
       if (target == null)
       {
+        // Authoritative IDs from navigation.json often map to trigger objects.
+        string raw = destinationName.Trim();
+        string normalized = raw.Replace(" ", "_");
+        GameObject trigger = GameObject.Find($"Trigger_{raw}") ?? GameObject.Find($"Trigger_{normalized}");
+        if (trigger != null)
+        {
+          StartNavigation(trigger.transform.position, destinationName);
+          return;
+        }
+      }
+
+      if (target == null)
+      {
         string error = $"Destination '{destinationName}' not found in scene";
         Debug.LogError($"[NavigationManager] {error}");
         OnNavigationError?.Invoke(error);

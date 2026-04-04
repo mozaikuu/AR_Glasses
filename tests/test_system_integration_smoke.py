@@ -26,6 +26,7 @@ def test_system_smoke_cross_component_flow(client: TestClient) -> None:
     routed = voice.json()
     assert routed["action"] == "navigate"
     assert routed["intent"] == "navigation_start"
+    assert routed["destination"] == "ta_office_1"
 
     nav_start = client.post(
         "/navigation/start",
@@ -34,7 +35,7 @@ def test_system_smoke_cross_component_flow(client: TestClient) -> None:
     assert nav_start.status_code == 200
     nav_payload = nav_start.json()
     session_id = nav_payload["session_id"]
-    assert nav_payload["destination"] == "TA_Office"
+    assert nav_payload["destination"] == "ta_office_1"
     assert nav_payload["done"] is False
 
     nav_status = client.get("/navigation/status", params={"session_id": session_id})

@@ -64,6 +64,14 @@ def _pick_int(key: str, default: int) -> int:
     return int(raw)
 
 
+def _pick_float(key: str, default: float) -> float:
+    env_value = os.getenv(key)
+    if env_value is not None:
+        return float(env_value)
+    raw = _file_settings.get(key, default)
+    return float(raw)
+
+
 def _pick_csv(key: str, default: str) -> tuple[str, ...]:
     env_value = os.getenv(key)
     if env_value is not None:
@@ -115,6 +123,18 @@ class Settings:
     api_key: str = _pick("API_KEY", "")
     max_agent_loops: int = _pick_int("MAX_AGENT_LOOPS", 3)
     max_answer_sentences: int = _pick_int("MAX_ANSWER_SENTENCES", 3)
+
+    # Wakeword/STT tuning
+    wake_words: tuple[str, ...] = _pick_csv(
+        "WAKE_WORDS",
+        "computer, hey computer, ok computer, okay computer",
+    )
+    wake_word_aliases: tuple[str, ...] = _pick_csv("WAKE_WORD_ALIASES", "")
+    wake_context_chars: int = _pick_int("WAKE_CONTEXT_CHARS", 600)
+    wake_followup_window_seconds: float = _pick_float("WAKE_FOLLOWUP_WINDOW_SECONDS", 8.0)
+    wake_min_transcript_chars: int = _pick_int("WAKE_MIN_TRANSCRIPT_CHARS", 2)
+    stt_retry_attempts: int = _pick_int("STT_RETRY_ATTEMPTS", 2)
+    stt_retry_backoff_ms: int = _pick_int("STT_RETRY_BACKOFF_MS", 250)
 
     # Client/network settings
     cors_allow_origins: tuple[str, ...] = _pick_csv("CORS_ALLOW_ORIGINS", "*")

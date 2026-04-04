@@ -26,6 +26,12 @@ public class VoiceNavigationController : MonoBehaviour
   [SerializeField] private string llmMode = "quick";
   [SerializeField] private float requestTimeoutSeconds = 8f;
 
+  [Header("Camera Context")]
+  [SerializeField] private bool includeCameraFrameInServerRequest = true;
+  [SerializeField] private bool attachCameraOnlyForNonNavigation = true;
+  [SerializeField] [Range(128, 1024)] private int cameraCaptureWidth = 512;
+  [SerializeField] [Range(25, 95)] private int cameraJpegQuality = 55;
+
   [Header("Listening")]
   [SerializeField] private bool autoStartListening = true;
   [SerializeField] private bool restartAfterPhrase = true;
@@ -191,10 +197,32 @@ public class VoiceNavigationController : MonoBehaviour
 
     string resolvedBaseUrl = ApiEndpointResolver.Resolve(serverBaseUrl);
     string url = $"{resolvedBaseUrl}{commandRoutePath}";
+    string capturedImageBase64 = null;
+    bool shouldAttachFrame = includeCameraFrameInServerRequest &&
+                             (!attachCameraOnlyForNonNavigation || !LooksLikeNavigationCommand(rawText));
+    if (shouldAttachFrame)
+    {
+      if (QuestCameraFrameCapture.TryCaptureMainCameraBase64(
+            cameraCaptureWidth,
+            cameraJpegQuality,
+            out string frameBase64,
+            out string captureError))
+      {
+        capturedImageBase64 = frameBase64;
+        Log($"Attached camera frame ({capturedImageBase64.Length} b64 chars)");
+      }
+      else if (debugLogs)
+      {
+        Log($"Camera frame capture skipped: {captureError}");
+      }
+    }
+
     VoiceCommandRouterRequest payload = new VoiceCommandRouterRequest
     {
       command = rawText,
-      mode = llmMode
+      mode = llmMode,
+      client = "unity_quest",
+      image_base64 = capturedImageBase64
     };
     string json = JsonUtility.ToJson(payload);
 
@@ -275,6 +303,28 @@ public class VoiceNavigationController : MonoBehaviour
     }
 
     voiceGuide?.PlayMessage("I could not find that destination. Please try again.");
+  }
+
+  private bool LooksLikeNavigationCommand(string rawText)
+  {
+    string lowered = Normalize(rawText);
+    if (string.IsNullOrWhiteSpace(lowered))
+      return false;
+
+    if (lowered.Contains("stop navigation") || lowered.Contains("cancel navigation"))
+      return true;
+
+    if (lowered.StartsWith("where is ", StringComparison.Ordinal))
+      return true;
+
+    foreach (string prefix in commandPrefixes)
+    {
+      string normalizedPrefix = Normalize(prefix);
+      if (lowered.StartsWith(normalizedPrefix, StringComparison.Ordinal))
+        return true;
+    }
+
+    return false;
   }
 
   private string ExtractDestination(string rawText)
@@ -470,6 +520,8 @@ public class VoiceNavigationController : MonoBehaviour
   {
     public string command;
     public string mode;
+    public string client;
+    public string image_base64;
   }
 
   [Serializable]

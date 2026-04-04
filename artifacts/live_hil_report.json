@@ -1,7 +1,7 @@
 {
   "ok": true,
   "base_url": "http://127.0.0.1:8000",
-  "started_at": "2026-03-29T01:04:59.036694+00:00",
+  "started_at": "2026-04-03T07:14:56.234130+00:00",
   "checks": [
     {
       "name": "health",
@@ -47,7 +47,7 @@
       "name": "navigation_status",
       "ok": true,
       "status": 200,
-      "url": "http://127.0.0.1:8000/navigation/status?session_id=1c908a26-33a7-451e-a386-07e133c9b680",
+      "url": "http://127.0.0.1:8000/navigation/status?session_id=194f16a9-3a9c-4404-8929-2b7667da532e",
       "detail": "",
       "error": ""
     },
@@ -108,5 +108,5 @@
       "error": ""
     }
   ],
-  "finished_at": "2026-03-29T01:04:59.807901+00:00"
+  "finished_at": "2026-04-03T07:14:56.774933+00:00"
 }

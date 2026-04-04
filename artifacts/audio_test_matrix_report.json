@@ -1,0 +1,190 @@
+{
+  "ok": true,
+  "base_url": "http://127.0.0.1:8000",
+  "audio_dir": "Audio_Testing",
+  "started_at": "2026-04-03T10:00:22.846149+00:00",
+  "cases": [
+    {
+      "name": "gateway_health",
+      "system": "gateway",
+      "ok": true,
+      "status": 200,
+      "evidence": {
+        "body": {
+          "status": "ok",
+          "service": "smart-glasses-gateway",
+          "version": "0.1.0"
+        }
+      },
+      "error": ""
+    },
+    {
+      "name": "fibbonaci_companion",
+      "system": "companion",
+      "ok": true,
+      "status": 200,
+      "evidence": {
+        "transcript": "give me the first 13 Fibonacci numbers",
+        "text": "The first 13 Fibonacci numbers are: 0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144.",
+        "tool_calls": []
+      },
+      "error": ""
+    },
+    {
+      "name": "hey_computer_wakeword",
+      "system": "wakeword",
+      "ok": true,
+      "status": 200,
+      "evidence": {
+        "wakeword_triggered": true,
+        "wakeword": "Computer",
+        "response_text": "Wake word detected. Listening for your command.",
+        "transcript": ""
+      },
+      "error": ""
+    },
+    {
+      "name": "ta_office_navigation",
+      "system": "navigation",
+      "ok": true,
+      "status": 200,
+      "evidence": {
+        "transcript": "take me to the ta's office",
+        "unity_action": "navigate",
+        "unity_intent": "navigation_start",
+        "destination": "ta_office_1",
+        "navigation_start_ok": true
+      },
+      "error": ""
+    },
+    {
+      "name": "vision_esp32",
+      "system": "vision",
+      "ok": true,
+      "status": 200,
+      "evidence": {
+        "client": "esp32",
+        "transcript": "describe what I'm looking at in detail",
+        "tool_calls": [],
+        "text": "You are looking at a room with a large window on the north side, allowing sunlight to illuminate the space. The walls are painted a light beige color, and th...",
+        "transcript_looks_vision": true,
+        "has_vision_tool": false,
+        "has_usable_vision_response": true,
+        "attempts_used": 1
+      },
+      "error": ""
+    },
+    {
+      "name": "vision_unity_quest",
+      "system": "vision",
+      "ok": true,
+      "status": 200,
+      "evidence": {
+        "client": "unity_quest",
+        "transcript": "describe what I'm looking at in detail",
+        "tool_calls": [],
+        "text": "You're looking at a cluttered desk with a laptop open on the left, displaying a calendar view of April 2026. On the right, a stack of papers and a pen holder...",
+        "transcript_looks_vision": true,
+        "has_vision_tool": false,
+        "has_usable_vision_response": true,
+        "attempts_used": 1
+      },
+      "error": ""
+    },
+    {
+      "name": "vision_mobile_browser",
+      "system": "vision",
+      "ok": true,
+      "status": 200,
+      "evidence": {
+        "client": "mobile_browser",
+        "transcript": "describe what I'm looking at in detail",
+        "tool_calls": [],
+        "text": "You are looking at a room with a large window on the left, allowing sunlight to illuminate the space. The room appears to be a study or office, with a wooden...",
+        "transcript_looks_vision": true,
+        "has_vision_tool": false,
+        "has_usable_vision_response": true,
+        "attempts_used": 1
+      },
+      "error": ""
+    },
+    {
+      "name": "vision_pc_browser",
+      "system": "vision",
+      "ok": true,
+      "status": 200,
+      "evidence": {
+        "client": "pc_browser",
+        "transcript": "describe what I'm looking at in detail",
+        "tool_calls": [],
+        "text": "You are looking at a room with a large window on the left, allowing sunlight to illuminate the space. The room appears to be a study or office, with a wooden...",
+        "transcript_looks_vision": true,
+        "has_vision_tool": false,
+        "has_usable_vision_response": true,
+        "attempts_used": 1
+      },
+      "error": ""
+    },
+    {
+      "name": "vision_companion",
+      "system": "vision",
+      "ok": true,
+      "status": 200,
+      "evidence": {
+        "client": "companion",
+        "transcript": "describe what I'm looking at in detail",
+        "tool_calls": [],
+        "text": "You are looking at a cluttered desk with a few scattered papers, a laptop, and a partially eaten sandwich on a plate. The laptop screen displays a calendar o...",
+        "transcript_looks_vision": true,
+        "has_vision_tool": false,
+        "has_usable_vision_response": true,
+        "attempts_used": 1
+      },
+      "error": ""
+    },
+    {
+      "name": "vision_all_devices",
+      "system": "vision",
+      "ok": true,
+      "status": 200,
+      "evidence": {
+        "clients": [
+          "esp32",
+          "unity_quest",
+          "mobile_browser",
+          "pc_browser",
+          "companion"
+        ]
+      },
+      "error": ""
+    }
+  ],
+  "conversion": {
+    "fibbonaci": {
+      "input_path": "Audio_Testing\\Fibbonaci.m4a",
+      "input_bytes": 98650,
+      "wav_bytes": 122276,
+      "conversion": "converted_to_wav"
+    },
+    "hey_computer": {
+      "input_path": "Audio_Testing\\Hey Computer.m4a",
+      "input_bytes": 61168,
+      "wav_bytes": 75172,
+      "conversion": "converted_to_wav"
+    },
+    "ta_office": {
+      "input_path": "Audio_Testing\\Ta Office.m4a",
+      "input_bytes": 83171,
+      "wav_bytes": 102478,
+      "conversion": "converted_to_wav"
+    },
+    "vision": {
+      "input_path": "Audio_Testing\\Vision.m4a",
+      "input_bytes": 99100,
+      "wav_bytes": 122958,
+      "conversion": "converted_to_wav"
+    }
+  },
+  "ffmpeg_bin": "D:\\Program Files\\ffmpeg\\bin\\ffmpeg.EXE",
+  "finished_at": "2026-04-03T10:02:36.830283+00:00"
+}
