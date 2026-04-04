@@ -2,7 +2,7 @@
   "ok": true,
   "base_url": "http://127.0.0.1:8000",
   "audio_dir": "Audio_Testing",
-  "started_at": "2026-04-03T10:00:22.846149+00:00",
+  "started_at": "2026-04-04T10:11:52.636399+00:00",
   "cases": [
     {
       "name": "gateway_health",
@@ -38,7 +38,7 @@
       "evidence": {
         "wakeword_triggered": true,
         "wakeword": "Computer",
-        "response_text": "Wake word detected. Listening for your command.",
+        "response_text": "Listening...",
         "transcript": ""
       },
       "error": ""
@@ -66,7 +66,7 @@
         "client": "esp32",
         "transcript": "describe what I'm looking at in detail",
         "tool_calls": [],
-        "text": "You are looking at a room with a large window on the north side, allowing sunlight to illuminate the space. The walls are painted a light beige color, and th...",
+        "text": "You're looking at a room with a large window on the left, allowing sunlight to illuminate the space. The walls are painted a light beige color, and the floor...",
         "transcript_looks_vision": true,
         "has_vision_tool": false,
         "has_usable_vision_response": true,
@@ -83,7 +83,7 @@
         "client": "unity_quest",
         "transcript": "describe what I'm looking at in detail",
         "tool_calls": [],
-        "text": "You're looking at a cluttered desk with a laptop open on the left, displaying a calendar view of April 2026. On the right, a stack of papers and a pen holder...",
+        "text": "You are looking at a dimly lit, moderately sized room with a mix of wooden and concrete surfaces. The walls are adorned with a few pieces of artwork, and a l...",
         "transcript_looks_vision": true,
         "has_vision_tool": false,
         "has_usable_vision_response": true,
@@ -100,7 +100,7 @@
         "client": "mobile_browser",
         "transcript": "describe what I'm looking at in detail",
         "tool_calls": [],
-        "text": "You are looking at a room with a large window on the left, allowing sunlight to illuminate the space. The room appears to be a study or office, with a wooden...",
+        "text": "You are looking at a cluttered desk with various objects, including a laptop, a cup of coffee, a few scattered papers, and a small potted plant. The laptop s...",
         "transcript_looks_vision": true,
         "has_vision_tool": false,
         "has_usable_vision_response": true,
@@ -117,7 +117,7 @@
         "client": "pc_browser",
         "transcript": "describe what I'm looking at in detail",
         "tool_calls": [],
-        "text": "You are looking at a room with a large window on the left, allowing sunlight to illuminate the space. The room appears to be a study or office, with a wooden...",
+        "text": "You are looking at a cluttered desk with a few scattered papers, a partially filled cup of coffee, and a laptop screen displaying a calendar view of April 20...",
         "transcript_looks_vision": true,
         "has_vision_tool": false,
         "has_usable_vision_response": true,
@@ -134,7 +134,7 @@
         "client": "companion",
         "transcript": "describe what I'm looking at in detail",
         "tool_calls": [],
-        "text": "You are looking at a cluttered desk with a few scattered papers, a laptop, and a partially eaten sandwich on a plate. The laptop screen displays a calendar o...",
+        "text": "You are looking at a cluttered, dimly lit room with a mix of old and new furniture. The walls are painted a light beige color, and there are several pieces o...",
         "transcript_looks_vision": true,
         "has_vision_tool": false,
         "has_usable_vision_response": true,
@@ -186,5 +186,5 @@
     }
   },
   "ffmpeg_bin": "D:\\Program Files\\ffmpeg\\bin\\ffmpeg.EXE",
-  "finished_at": "2026-04-03T10:02:36.830283+00:00"
+  "finished_at": "2026-04-04T10:12:19.691725+00:00"
 }

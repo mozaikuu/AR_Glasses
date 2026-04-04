@@ -135,6 +135,7 @@ class Settings:
     wake_min_transcript_chars: int = _pick_int("WAKE_MIN_TRANSCRIPT_CHARS", 2)
     stt_retry_attempts: int = _pick_int("STT_RETRY_ATTEMPTS", 2)
     stt_retry_backoff_ms: int = _pick_int("STT_RETRY_BACKOFF_MS", 250)
+    wakeword_rollout_scope: str = _pick("WAKEWORD_ROLLOUT_SCOPE", "streamlit-only")
 
     # Client/network settings
     cors_allow_origins: tuple[str, ...] = _pick_csv("CORS_ALLOW_ORIGINS", "*")

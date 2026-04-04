@@ -2,9 +2,25 @@ from __future__ import annotations
 
 import subprocess
 import tempfile
+import wave
+from io import BytesIO
 from pathlib import Path
 
 from app.config.settings import settings
+
+
+def _fallback_wav() -> bytes:
+    # Return a short valid WAV clip so ESP clients can still fetch audio.
+    sample_rate = 16000
+    duration_seconds = 0.25
+    frame_count = int(sample_rate * duration_seconds)
+    buffer = BytesIO()
+    with wave.open(buffer, "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(sample_rate)
+        wav_file.writeframes(b"\x00\x00" * frame_count)
+    return buffer.getvalue()
 
 
 def synthesize_to_wav(text: str) -> bytes:
@@ -17,12 +33,12 @@ def synthesize_to_wav(text: str) -> bytes:
         if bundled.exists():
             piper_exe = bundled
         else:
-            return b"RIFF....WAVEfmt "
+            return _fallback_wav()
 
     model_path = Path(settings.piper_model_path).resolve()
     config_path = Path(settings.piper_config_path).resolve()
     if not model_path.exists():
-        return b"RIFF....WAVEfmt "
+        return _fallback_wav()
 
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
         wav_path = Path(tmp.name)
@@ -47,12 +63,12 @@ def synthesize_to_wav(text: str) -> bytes:
             timeout=25,
         )
         if proc.returncode != 0:
-            return b"RIFF....WAVEfmt "
+            return _fallback_wav()
         if not wav_path.exists() or wav_path.stat().st_size <= 44:
-            return b"RIFF....WAVEfmt "
+            return _fallback_wav()
         return wav_path.read_bytes()
     except Exception:
-        return b"RIFF....WAVEfmt "
+        return _fallback_wav()
     finally:
         try:
             wav_path.unlink(missing_ok=True)

@@ -6,6 +6,9 @@ from fastapi.testclient import TestClient
 from app.api import gateway
 
 
+_DUMMY_WAV = b"RIFF" + (b"\x00" * 96)
+
+
 @pytest.fixture(autouse=True)
 def isolate_shared_state(monkeypatch: pytest.MonkeyPatch):
     # Reset mutable singletons between tests to keep cases deterministic.
@@ -19,7 +22,7 @@ def isolate_shared_state(monkeypatch: pytest.MonkeyPatch):
         "compose_answer",
         lambda text, mode: ((text or "").strip() or "Ready."),
     )
-    monkeypatch.setattr(gateway, "synthesize_to_wav", lambda text: b"")
+    monkeypatch.setattr(gateway, "synthesize_to_wav", lambda text: _DUMMY_WAV)
 
     yield
 

@@ -4,6 +4,7 @@ import base64
 import hashlib
 import io
 import queue
+import time
 import wave
 from typing import Any
 
@@ -175,6 +176,8 @@ if "wakeword_required" not in st.session_state:
     st.session_state.wakeword_required = True
 if "wakeword_followup_armed" not in st.session_state:
     st.session_state.wakeword_followup_armed = False
+if "webrtc_last_heartbeat_at" not in st.session_state:
+    st.session_state.webrtc_last_heartbeat_at = 0.0
 
 with st.sidebar:
     st.subheader("Runtime")
@@ -283,7 +286,10 @@ with right:
                     "audio_base64": base64.b64encode(wav_bytes).decode("ascii"),
                     "mode": mode,
                     "client": "streamlit-main",
-                    "metadata": {"source": "streamlit_audio_input"},
+                    "metadata": {
+                        "source": "streamlit_audio_input",
+                        "always_listen": st.session_state.wakeword_required,
+                    },
                 },
             )
             _render_voice_result(data, code)
@@ -416,6 +422,12 @@ with right:
                             _render_voice_result(data, code)
                     else:
                         _render_voice_result(data, code)
+
+                # Keep the WebRTC listener processing continuously while active.
+                now = time.monotonic()
+                if now - float(st.session_state.webrtc_last_heartbeat_at) >= 0.35:
+                    st.session_state.webrtc_last_heartbeat_at = now
+                    st.rerun()
             else:
                 st.info("Press Start above to begin continuous listening.")
         else:

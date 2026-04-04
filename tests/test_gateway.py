@@ -2,12 +2,50 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
+from app.api import gateway
+
 
 def test_health(client: TestClient) -> None:
     response = client.get("/")
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "ok"
+
+
+def test_wakeword_scope_forces_streamlit_clients() -> None:
+    effective, reason = gateway._resolve_wakeword_always_listen(
+        "streamlit-only",
+        "streamlit-main",
+        {"source": "streamlit_webrtc"},
+        requested=True,
+    )
+
+    assert effective is True
+    assert reason == "streamlit_requested"
+
+
+def test_wakeword_scope_honors_streamlit_toggle_off() -> None:
+    effective, reason = gateway._resolve_wakeword_always_listen(
+        "streamlit-only",
+        "streamlit-main",
+        {"source": "streamlit_webrtc"},
+        requested=False,
+    )
+
+    assert effective is False
+    assert reason == "streamlit_disabled"
+
+
+def test_wakeword_scope_defers_non_streamlit_clients() -> None:
+    effective, reason = gateway._resolve_wakeword_always_listen(
+        "streamlit-only",
+        "unity_quest",
+        {"source": "unity_router"},
+        requested=True,
+    )
+
+    assert effective is False
+    assert reason == "outside_scope_deferred"
 
 
 def test_process_text(client: TestClient) -> None:
@@ -23,7 +61,14 @@ def test_process_text(client: TestClient) -> None:
 
 
 def test_navigation_start_next_cancel(client: TestClient) -> None:
-    start_resp = client.post("/navigation/start", json={"destination": "TA_Office"})
+    destination = "TA_Office"
+    if not gateway.navigation_service.is_authoritative_destination_id(destination):
+        locations = gateway.navigation_service.list_locations()
+        assert locations
+        first = locations[0]
+        destination = str(first.get("id") if isinstance(first, dict) else first)
+
+    start_resp = client.post("/navigation/start", json={"destination": destination})
     assert start_resp.status_code == 200
     session_id = start_resp.json()["session_id"]
 

@@ -122,6 +122,60 @@ def _consume_tts_clip(token: str) -> bytes | None:
     return item[0]
 
 
+def _is_streamlit_source(client: str | None, metadata: dict[str, object]) -> bool:
+    client_key = (client or "").strip().lower()
+    source = str(metadata.get("source") or "").strip().lower()
+    return client_key.startswith("streamlit") or source.startswith("streamlit")
+
+
+def _resolve_wakeword_always_listen(
+    scope: str,
+    client: str | None,
+    metadata: dict[str, object],
+    requested: bool,
+) -> tuple[bool, str]:
+    normalized_scope = (scope or "streamlit-only").strip().lower()
+    if normalized_scope in {"off", "disabled", "none"}:
+        return requested, "scope_off"
+
+    if normalized_scope in {"all", "global", "everywhere"}:
+        return True, "global_forced"
+
+    if normalized_scope in {"streamlit", "streamlit-only", "canary"}:
+        if _is_streamlit_source(client, metadata):
+            if requested:
+                return True, "streamlit_requested"
+            return False, "streamlit_disabled"
+        if requested:
+            return False, "outside_scope_deferred"
+        return False, "outside_scope_passthrough"
+
+    return requested, "unknown_scope_passthrough"
+
+
+def _apply_wakeword_rollout_scope(payload: ProcessRequest) -> tuple[ProcessRequest, bool, str]:
+    metadata = payload.metadata if isinstance(payload.metadata, dict) else {}
+    metadata = dict(metadata)
+
+    requested = bool(metadata.get("always_listen"))
+    if payload.audio_base64:
+        effective, scope_reason = _resolve_wakeword_always_listen(
+            settings.wakeword_rollout_scope,
+            payload.client,
+            metadata,
+            requested,
+        )
+        metadata["always_listen"] = effective
+    else:
+        effective = requested
+        scope_reason = "no_audio"
+
+    metadata["wakeword_rollout_scope"] = settings.wakeword_rollout_scope
+    metadata["wakeword_rollout_reason"] = scope_reason
+
+    return payload.model_copy(update={"metadata": metadata}), effective, scope_reason
+
+
 def _warmup_runtime() -> None:
     try:
         # Warm up the LLM adapter path so first user request has lower latency.
@@ -177,6 +231,7 @@ def debug_status() -> dict[str, object]:
         "flask_enabled": settings.enable_flask,
         "audio_sidecar_enabled": settings.enable_audio_sidecar,
         "mcp_enabled": settings.enable_mcp_server,
+        "wakeword_rollout_scope": settings.wakeword_rollout_scope,
         "preloaded": _runtime_status["preloaded"],
         "last_warmup_error": _runtime_status["last_warmup_error"],
     }
@@ -199,7 +254,15 @@ def network_info() -> dict[str, object]:
 
 @app.post("/process", response_model=ProcessResponse)
 def process(payload: ProcessRequest) -> ProcessResponse:
-    result = assistant_service.process(payload)
+    scoped_payload, always_listen_effective, rollout_reason = _apply_wakeword_rollout_scope(payload)
+    result = assistant_service.process(scoped_payload)
+
+    result_metadata = result.get("metadata") if isinstance(result.get("metadata"), dict) else {}
+    result_metadata["wakeword_rollout_scope"] = settings.wakeword_rollout_scope
+    result_metadata["wakeword_rollout_reason"] = rollout_reason
+    result_metadata["always_listen_effective"] = always_listen_effective
+    result["metadata"] = result_metadata
+
     if settings.enable_piper_tts:
         try:
             wav_bytes = synthesize_to_wav(str(result.get("text") or ""))
