@@ -49,11 +49,15 @@
 #define PROFILE_USE_CAMERA 0
 #define PROFILE_USE_TOUCH 1
 #else
-#define PROFILE_USE_SH1106 1
-#define PROFILE_USE_DAC_TTS 1
-#define PROFILE_USE_I2S_MIC 1
+// Camera-priority default profile:
+// WROVER camera pin map overlaps with SH1106 I2C (GPIO21/22) and DAC TTS (GPIO25/26).
+// Camera D0 also uses GPIO4, which conflicts with the I2S mic data pin.
+// Keep camera enabled and disable conflicting peripherals in the default profile.
+#define PROFILE_USE_SH1106 0
+#define PROFILE_USE_DAC_TTS 0
+#define PROFILE_USE_I2S_MIC 0
 #define PROFILE_USE_BLE 1
-#define PROFILE_USE_CAMERA 0
+#define PROFILE_USE_CAMERA 1
 #define PROFILE_USE_TOUCH 1
 #endif
 
