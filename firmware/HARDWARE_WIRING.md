@@ -18,8 +18,8 @@ ESP32 I2C bus:
   GND    -> SH1106 GND
 
 ESP32 Touch:
-  GPIO5  <- Touch1 OUT
-  GPIO18 <- Touch2 OUT (optional)
+  GPIO13 <- Touch1 OUT (camera-safe)
+  GPIO32 <- Touch2 OUT (optional, camera-safe)
   3.3V   -> Touch VCC
   GND    -> Touch GND
 
@@ -52,9 +52,11 @@ ESP32 Mic Input (INMP441 I2S):
 | --------- | --------- |
 | VCC       | 3.3V      |
 | GND       | GND       |
-| OUT       | GPIO5     |
+| OUT       | GPIO13    |
 
-Optional second touch OUT: `GPIO18`.
+Optional second touch OUT: `GPIO32`.
+
+Important with camera enabled: do not use touch OUT on `GPIO4`, `GPIO5`, `GPIO18`, `GPIO19`, `GPIO21`, `GPIO22`, `GPIO23`, `GPIO25`, `GPIO26`, `GPIO27`, `GPIO34`, `GPIO35`, `GPIO36`, or `GPIO39` because these are camera pins on this board profile.
 
 ### 3. Microphone
 

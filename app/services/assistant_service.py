@@ -204,7 +204,7 @@ class AssistantService:
         result = self._mcp_post_json(
             "/tools/vision/analyze-image-moondream",
             {"image_base64": image_base64, "prompt": prompt or "Read and describe this image."},
-            timeout_seconds=15.0,
+            timeout_seconds=45.0,
         )
         if not result:
             return None
@@ -412,6 +412,24 @@ class AssistantService:
                         "llm_provider": settings.model_provider,
                     },
                 }
+            return {
+                "text": "I couldn't analyze the image from the camera. Please try again with better lighting or hold the scene steady.",
+                "mode": request.mode,
+                "client": request.client,
+                "tool_calls": ["vision.analyze_image_moondream_failed"],
+                "metadata": {
+                    "inputs": source_signals,
+                    "raw_transcript": raw_transcript,
+                    "transcript": transcript_used,
+                    "wakeword_triggered": wakeword_triggered,
+                    "wakeword": "Computer" if wakeword_triggered else "",
+                    "wakeword_followup_armed": self._is_wake_followup_armed(client_key),
+                    "stt_provider": str(stt_debug.get("provider") or "google_speech_recognition") if request.audio_base64 else "",
+                    "stt_debug": stt_debug if request.audio_base64 else {},
+                    "llm_provider": settings.model_provider,
+                    "vision_error": "image_analysis_unavailable",
+                },
+            }
 
         if self._vision_intent(text):
             vision_answer = self._run_mcp_vision_from_camera(text)

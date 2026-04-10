@@ -148,6 +148,12 @@ const char *SERVER_URL = "http://192.168.100.2:8000/process";
 #define CAM_PIN_VSYNC 25
 #define CAM_PIN_HREF 23
 #define CAM_PIN_PCLK 22
+
+#if USE_TOUCH
+#if (TOUCH_PAD_PIN == CAM_PIN_XCLK) || (TOUCH_PAD_PIN == CAM_PIN_SIOD) || (TOUCH_PAD_PIN == CAM_PIN_SIOC) || (TOUCH_PAD_PIN == CAM_PIN_D7) || (TOUCH_PAD_PIN == CAM_PIN_D6) || (TOUCH_PAD_PIN == CAM_PIN_D5) || (TOUCH_PAD_PIN == CAM_PIN_D4) || (TOUCH_PAD_PIN == CAM_PIN_D3) || (TOUCH_PAD_PIN == CAM_PIN_D2) || (TOUCH_PAD_PIN == CAM_PIN_D1) || (TOUCH_PAD_PIN == CAM_PIN_D0) || (TOUCH_PAD_PIN == CAM_PIN_VSYNC) || (TOUCH_PAD_PIN == CAM_PIN_HREF) || (TOUCH_PAD_PIN == CAM_PIN_PCLK)
+#error "TOUCH_PAD_PIN conflicts with camera pins. Move touch OUT to a camera-safe GPIO (e.g. GPIO13)."
+#endif
+#endif
 #endif
 
 const uint16_t OLED_MAX_CHARS_PER_LINE = 21;
@@ -241,6 +247,7 @@ int32_t centerMicSamplesAndMeasurePeak(size_t sampleCount);
 bool appendBase64(String &out, const uint8_t *data, size_t len);
 bool captureAndAnalyzeCamera(const String &prompt, const String &source, String &responseTextOut);
 void handleCameraStatus();
+void handleCameraCaptureRoute();
 void handleCameraAnalyzeRoute();
 void toggleOperationMode();
 #if USE_DAC_TTS_MODULE
@@ -1536,6 +1543,8 @@ bool sendProcessPayload(const String &payload, String &response)
 
   HTTPClient http;
   http.begin(String(SERVER_URL));
+  http.setConnectTimeout(8000);
+  http.setTimeout(65000);
   http.addHeader("Content-Type", "application/json");
   int code = http.POST(payload);
   response = (code > 0) ? http.getString() : "{\"error\":\"HTTP_FAILED\"}";
@@ -1820,6 +1829,60 @@ void handleCameraStatus()
   server.send(200, "application/json", json);
 }
 
+void handleCameraCaptureRoute()
+{
+#if USE_CAMERA
+  if (!cameraReady)
+  {
+    String json = "{\"ok\":false,\"error\":\"camera_not_ready\",\"last_error\":\"" + escapeJson(cameraLastError) + "\"}";
+    server.send(503, "application/json", json);
+    return;
+  }
+
+  camera_fb_t *fb = nullptr;
+  for (int attempt = 0; attempt < 3; ++attempt)
+  {
+    fb = esp_camera_fb_get();
+    if (fb)
+    {
+      break;
+    }
+    delay(40);
+  }
+
+  if (!fb)
+  {
+    cameraLastError = "CAPTURE_FAIL";
+    server.send(500, "application/json", "{\"ok\":false,\"error\":\"capture_failed\"}");
+    return;
+  }
+
+  size_t b64Len = ((fb->len + 2) / 3) * 4;
+  String json;
+  if (!json.reserve(b64Len + 128))
+  {
+    esp_camera_fb_return(fb);
+    server.send(500, "application/json", "{\"ok\":false,\"error\":\"no_memory\"}");
+    return;
+  }
+
+  json = "{\"ok\":true,\"bytes\":" + String(fb->len) + ",\"image_base64\":\"";
+  if (!appendBase64(json, fb->buf, fb->len))
+  {
+    esp_camera_fb_return(fb);
+    server.send(500, "application/json", "{\"ok\":false,\"error\":\"base64_failed\"}");
+    return;
+  }
+
+  esp_camera_fb_return(fb);
+  cameraLastError = "";
+  json += "\"}";
+  server.send(200, "application/json", json);
+#else
+  server.send(400, "application/json", "{\"ok\":false,\"error\":\"camera_disabled\"}");
+#endif
+}
+
 void handleCameraAnalyzeRoute()
 {
   String prompt = "Describe what you see";
@@ -1946,6 +2009,7 @@ void setup()
   server.on("/process", HTTP_POST, handleProcess);
   server.on("/command", HTTP_POST, handleCommandRoute);
   server.on("/camera/status", HTTP_GET, handleCameraStatus);
+  server.on("/camera/capture", HTTP_GET, handleCameraCaptureRoute);
   server.on("/camera/analyze", HTTP_POST, handleCameraAnalyzeRoute);
   server.onNotFound(handleNotFound);
   server.begin();

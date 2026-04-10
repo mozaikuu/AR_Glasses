@@ -1,0 +1,1 @@
+#include "_tmp_camera_only_test_delete_after/esp32_camera_only_test/esp32_camera_only_test.ino"
