@@ -1,4 +1,4 @@
-27222569113062372
+27227896907496293
 Audio_Module
 Reverb_BTDR-1H
 Digital Reverberation Unit, http://www.belton.co.kr/inc/downfile.php?seq=17&file=pdf (footprint from http://www.uk-electronic.de/PDF/BTDR-1.pdf)
@@ -96347,6 +96347,27 @@ header 1x09 2.54
 0
 9
 9
+RebuildLib
+HW104_Module_9P_Picture
+HW-104 module footprint, 9-pin single row, 2.54mm pitch
+HW-104 module 1x09
+0
+9
+9
+RebuildLib
+INMP441_2x3_Picture
+INMP441 module footprint, 2x3 through-hole pattern
+INMP441 module 2x3
+0
+6
+6
+RebuildLib
+TP4056_2Hole_15mm
+TP4056 battery-side two-hole connection, 15.00mm pitch
+TP4056 battery 2pin 15mm
+0
+2
+2
 Relay_SMD
 Relay_2P2T_10x6mm_TE_IMxxG
 Signal Relay, 10x6mm, 2 Form C, Gull Wings, https://www.te.com/commerce/DocumentDelivery/DDEController?Action=showdoc&DocId=Data+Sheet%7F108-98001%7FZ.1%7Fpdf%7FEnglish%7FENG_DS_108-98001_Z.1.pdf
