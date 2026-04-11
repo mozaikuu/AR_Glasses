@@ -7,6 +7,10 @@
 		(legacy_teardrops no)
 	)
 	(paper "A4")
+	(title_block
+		(title "smart_glasses_rebuild_clean")
+		(date "2026-04-11")
+	)
 	(layers
 		(0 "F.Cu" signal)
 		(2 "B.Cu" signal)
@@ -78,5 +82,16 @@
 		)
 	)
 	(net 0 "")
+	(gr_rect
+		(start 66.85 31.1)
+		(end 216.85 81.1)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(fill no)
+		(layer "Edge.Cuts")
+		(uuid "38bb2689-226e-46bd-bd72-6713dd327342")
+	)
 	(embedded_fonts no)
 )
