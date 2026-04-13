@@ -1,14 +1,14 @@
 {
   "board": "d:\\0_code\\Smart_Glasses_Distilled\\Hardware\\KiCAD_Rebuild_2026_04_08\\smart_glasses_rebuild_clean.kicad_pcb",
-  "timestamp": "2026-04-11T21:50:00+0200",
-  "total_violations": 5,
+  "timestamp": "2026-04-13T17:43:53+0200",
+  "total_violations": 6,
   "violation_counts": {
     "silk_edge_clearance": 1,
-    "lib_footprint_mismatch": 4
+    "lib_footprint_mismatch": 5
   },
   "severity_counts": {
     "error": 0,
-    "warning": 5,
+    "warning": 6,
     "info": 0
   },
   "violations": [
@@ -59,6 +59,16 @@
       "location": {
         "x": 52.0,
         "y": 24.0,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "lib_footprint_mismatch",
+      "severity": "warning",
+      "message": "Footprint 'Power_Switch_Latching_SPST_2Pin' does not match copy in library 'RebuildLib'.",
+      "location": {
+        "x": 64.0,
+        "y": 70.0,
         "unit": "mm"
       }
     }

@@ -2702,6 +2702,108 @@
 			)
 		)
 	)
+	(footprint "RebuildLib:Power_Switch_Latching_SPST_2Pin"
+		(layer "F.Cu")
+		(uuid "f4f96f19-7ed4-4e35-8196-b49b68331626")
+		(at 64 70)
+		(descr "Latching SPST power switch, 2-pin THT")
+		(tags "switch latching power spst")
+		(property "Reference" "SW1"
+			(at 3 -3 0)
+			(layer "F.SilkS")
+			(uuid "8eecc14e-75b9-49a8-a90e-65ae9881545e")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Value" "PWR_SW_LATCH"
+			(at 3 3 0)
+			(layer "F.Fab")
+			(uuid "eff3cc61-e38f-4db0-bd5d-ad652b6e3aa4")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 0 0 0)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "3b4f3a45-0b0c-4094-b416-9576513c2a0d")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Description" "Latching on/off SPST power switch"
+			(at 0 0 0)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "fa7c0163-54ea-45b0-9a81-d809d61de7c7")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(path "/f1493eec-5415-4e1f-91ad-1eceb4c7ff02")
+		(sheetname "/")
+		(sheetfile "smart_glasses_rebuild_clean.kicad_sch")
+		(attr through_hole)
+		(fp_rect
+			(start -2.5 -2)
+			(end 8.5 2)
+			(stroke
+				(width 0.12)
+				(type default)
+			)
+			(fill no)
+			(layer "F.SilkS")
+			(uuid "571e9758-5cb9-410e-8a89-e979c77090d8")
+		)
+		(fp_rect
+			(start -3 -2.5)
+			(end 9 2.5)
+			(stroke
+				(width 0.05)
+				(type default)
+			)
+			(fill no)
+			(layer "F.CrtYd")
+			(uuid "a8852846-b25a-4677-8096-4876a54f285e")
+		)
+		(pad "1" thru_hole rect
+			(at 0 0)
+			(size 2.4 2.4)
+			(drill 1.2)
+			(layers "*.Cu" "*.Mask")
+			(remove_unused_layers no)
+			(net 0 "")
+			(pinfunction "1")
+			(pintype "passive")
+			(uuid "8c2b3e72-3689-4690-8649-0e5091c90b56")
+		)
+		(pad "2" thru_hole oval
+			(at 6 0)
+			(size 2.4 2.4)
+			(drill 1.2)
+			(layers "*.Cu" "*.Mask")
+			(remove_unused_layers no)
+			(net 0 "")
+			(pinfunction "2")
+			(pintype "passive")
+			(uuid "d15b87c5-72d9-4470-9ac4-8a97bc81c34b")
+		)
+		(embedded_fonts no)
+	)
 	(gr_rect
 		(start 40.32 22.54)
 		(end 190.32 72.54)
