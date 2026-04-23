@@ -1,0 +1,833 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Journal Paper Draft: Smart Glasses Distilled</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Libre+Baskerville:wght@400;700&display=swap"
+			rel="stylesheet"
+		/>
+		<style>
+			:root {
+				--bg-1: #f3f7fb;
+				--bg-2: #eaf1f8;
+				--ink: #1f2937;
+				--ink-soft: #4b5563;
+				--panel: #ffffff;
+				--line: #dce6f2;
+				--accent: #0f4c81;
+				--accent-soft: #e6f0fb;
+				--warn: #b45309;
+				--warn-bg: #fff7e8;
+				--ok: #047857;
+				--ok-bg: #ecfdf5;
+				--crit: #b91c1c;
+				--crit-bg: #fef2f2;
+			}
+
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
+
+			body {
+				background: radial-gradient(
+					circle at 20% 10%,
+					var(--bg-2),
+					var(--bg-1)
+				);
+				font-family: "IBM Plex Sans", sans-serif;
+				color: var(--ink);
+				line-height: 1.62;
+				padding: 30px 18px;
+			}
+
+			.paper-container {
+				max-width: 1180px;
+				margin: 0 auto;
+				background: var(--panel);
+				border: 1px solid var(--line);
+				border-radius: 22px;
+				box-shadow: 0 22px 45px -20px rgba(20, 35, 60, 0.3);
+				padding: 46px 50px;
+			}
+
+			h1 {
+				font-family: "Libre Baskerville", serif;
+				font-size: 2.2rem;
+				line-height: 1.32;
+				color: #10243a;
+				margin-bottom: 14px;
+				border-bottom: 2px solid var(--line);
+				padding-bottom: 18px;
+			}
+
+			h2 {
+				font-family: "Libre Baskerville", serif;
+				font-size: 1.65rem;
+				margin-top: 2.2rem;
+				margin-bottom: 1.1rem;
+				color: #15395a;
+				border-left: 6px solid var(--accent);
+				padding-left: 14px;
+			}
+
+			h3 {
+				font-size: 1.15rem;
+				font-weight: 600;
+				margin-top: 1.55rem;
+				margin-bottom: 0.7rem;
+				color: #234768;
+			}
+
+			p {
+				margin-bottom: 0.9rem;
+			}
+
+			.authors {
+				font-size: 1.05rem;
+				margin-bottom: 8px;
+				color: #1f2937;
+				font-weight: 500;
+			}
+
+			.corresponding,
+			.affiliation {
+				color: var(--ink-soft);
+				font-size: 0.93rem;
+			}
+
+			.affiliation {
+				margin-bottom: 20px;
+				font-style: italic;
+			}
+
+			.abstract {
+				background: #f8fbff;
+				border: 1px solid var(--line);
+				border-radius: 16px;
+				padding: 20px 22px;
+				margin-top: 24px;
+				margin-bottom: 16px;
+			}
+
+			.abstract h3 {
+				margin-top: 0;
+				color: #0f3b61;
+			}
+
+			.badge {
+				display: inline-block;
+				margin-left: 10px;
+				font-size: 0.68rem;
+				text-transform: uppercase;
+				letter-spacing: 0.04em;
+				border-radius: 18px;
+				padding: 4px 10px;
+				font-weight: 700;
+				vertical-align: middle;
+			}
+
+			.badge-needs-work {
+				background: var(--warn-bg);
+				color: var(--warn);
+				border: 1px solid #f4cc8f;
+			}
+			.badge-enhance {
+				background: var(--accent-soft);
+				color: var(--accent);
+				border: 1px solid #b7d2ee;
+			}
+			.badge-critical {
+				background: var(--crit-bg);
+				color: var(--crit);
+				border: 1px solid #f5b1b1;
+			}
+			.badge-ok {
+				background: var(--ok-bg);
+				color: var(--ok);
+				border: 1px solid #92ddc7;
+			}
+
+			.guideline-box {
+				background: #f3f8ff;
+				border-left: 5px solid var(--accent);
+				border-radius: 12px;
+				padding: 14px 16px;
+				margin: 16px 0 18px;
+				font-size: 0.95rem;
+			}
+
+			.highlight {
+				background: #fff8d8;
+				border: 1px dashed #e5bf5a;
+				border-radius: 10px;
+				padding: 2px 8px;
+				font-weight: 500;
+			}
+
+			table {
+				width: 100%;
+				border-collapse: collapse;
+				margin: 14px 0 24px;
+				font-size: 0.92rem;
+				border: 1px solid var(--line);
+				border-radius: 12px;
+				overflow: hidden;
+			}
+
+			th {
+				background: #163a5d;
+				color: #fff;
+				text-align: left;
+				padding: 11px 12px;
+				font-weight: 600;
+			}
+
+			td {
+				border-top: 1px solid #e2eaf4;
+				padding: 10px 12px;
+				background: #fff;
+				vertical-align: top;
+			}
+
+			.equation {
+				background: #edf5ff;
+				border: 1px solid #c9ddf5;
+				border-radius: 14px;
+				text-align: center;
+				font-family: "Courier New", monospace;
+				padding: 14px 16px;
+				margin: 15px 0 14px;
+				color: #143958;
+			}
+
+			.figure-placeholder {
+				background: #f8fafc;
+				border: 2px dashed #9eb5cf;
+				border-radius: 16px;
+				padding: 20px 16px;
+				text-align: center;
+				color: #2c4a67;
+				margin: 16px 0;
+				font-size: 0.95rem;
+			}
+
+			.checklist {
+				list-style: none;
+				padding-left: 0;
+			}
+
+			.checklist li {
+				padding: 5px 0;
+				font-size: 0.94rem;
+			}
+
+			.status-ok {
+				color: var(--ok);
+				font-weight: 600;
+			}
+			.status-warn {
+				color: var(--warn);
+				font-weight: 600;
+			}
+
+			.super {
+				font-size: 0.74rem;
+				vertical-align: super;
+			}
+
+			hr {
+				border: 0;
+				border-top: 1px solid var(--line);
+				margin: 24px 0;
+			}
+
+			footer {
+				margin-top: 26px;
+				border-top: 1px solid var(--line);
+				padding-top: 16px;
+				color: #5b6b7d;
+				font-size: 0.84rem;
+				text-align: right;
+			}
+
+			@media (max-width: 900px) {
+				.paper-container {
+					padding: 26px 20px;
+				}
+				h1 {
+					font-size: 1.7rem;
+				}
+				h2 {
+					font-size: 1.36rem;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div class="paper-container">
+			<h1>
+				Smart Glasses Distilled: A Multimodal Wearable Assistant for Indoor
+				Navigation and Cross-Device Interaction
+			</h1>
+
+			<div class="authors">
+				Ahmed Mohamed Moussa<span class="super">1</span>, Sandy Samy
+				Samir<span class="super">1</span>, Basma Ahmed Mahmoud<span
+					class="super"
+					>1</span
+				>, [Supervisor Name]<span class="super">2,*</span>
+			</div>
+			<div class="corresponding">
+				<span class="super">*</span> Corresponding author: [name] ([email])
+			</div>
+			<div class="affiliation">
+				<span class="super">1</span> Faculty of Computer Science and
+				Engineering, New Mansoura University, Egypt<br />
+				<span class="super">2</span> Department of Computer Science, New
+				Mansoura University (Supervision Team)
+			</div>
+
+			<div class="abstract">
+				<h3>Abstract</h3>
+				<p>
+					<strong>Background:</strong> Hands-free campus assistance is
+					difficult with phone-first systems because they divide user
+					attention and do not consistently integrate voice, navigation,
+					and wearable hardware. <strong>Objective:</strong> This paper
+					presents Smart Glasses Distilled, a modular wearable-assistant
+					platform that unifies multimodal processing and client
+					interoperability. <strong>Methods:</strong> The implementation
+					combines a FastAPI gateway, a cloud-first LLM adapter (Cerebras),
+					speech transcription using Google SpeechRecognition with retry
+					diagnostics, MCP-style vision tooling using Moondream,
+					Unity-based navigation intent routing, and ESP32-compatible
+					processing with optional WAV retrieval.
+					<strong>Results:</strong> Repository evidence shows 67/67
+					selected Python unit tests passing with 79% total coverage,
+					integration smoke tests passing (1/1), firmware native tests
+					passing (5/5), Unity EditMode test step passing, live HIL
+					endpoint checks passing (13/13), and cross-device audio matrix
+					checks passing (10/10). <strong>Conclusion:</strong> Smart
+					Glasses Distilled demonstrates a reproducible, testable
+					architecture for multimodal wearable assistance and provides a
+					strong engineering baseline for formal user studies and
+					quantitative latency benchmarking.
+				</p>
+			</div>
+
+			<h2>
+				1. Introduction
+				<span class="badge badge-needs-work"
+					>Polish narrative for final submission</span
+				>
+			</h2>
+			<p>
+				Wearable assistants are often fragmented: some products prioritize
+				voice interaction, others focus on visualization, and others provide
+				isolated indoor navigation features. In university and campus
+				settings, users need an integrated experience that can accept
+				speech, understand intent, trigger navigation, and return contextual
+				responses across multiple devices (headset, browser, mobile, and
+				embedded hardware).
+			</p>
+			<p>
+				Smart Glasses Distilled addresses this integration problem through a
+				gateway-centered architecture and contract-first API design. The
+				project is built as a graduation-ready engineering system, with
+				emphasis on reproducibility, validation artifacts, and practical
+				deployment workflows.
+			</p>
+
+			<div class="guideline-box">
+				<strong>Contributions statement (ready for submission):</strong
+				><br />
+				This work makes four contributions: (1) A unified multimodal backend
+				architecture that serves Unity, browser, mobile, and ESP32 pathways
+				through one FastAPI gateway; (2) A practical speech-vision-language
+				interaction pipeline with wakeword-aware control and MCP-style
+				vision tooling; (3) A navigation workflow that connects destination
+				normalization on the server with local Unity NavMesh execution; (4)
+				A layered validation protocol combining unit tests, integration
+				tests, firmware native tests, Unity EditMode checks, and live HIL
+				endpoint verification.
+			</div>
+
+			<h2>
+				2. Related Work
+				<span class="badge badge-enhance"
+					>Synthesize and cite prior systems</span
+				>
+			</h2>
+			<h3>2.1 Wearable Assistants and Mixed Reality Clients</h3>
+			<p>
+				Recent wearable systems provide partial solutions for capture,
+				display, or voice interaction, but often do not provide an
+				end-to-end multimodal orchestration architecture suitable for
+				student-scale replication. Smart Glasses Distilled positions itself
+				as an applied integration framework rather than a single-model
+				novelty.
+			</p>
+
+			<h3>2.2 Indoor Navigation in Smart Buildings</h3>
+			<p>
+				Many indoor systems rely on infrastructure-heavy localization setups
+				or mobile-only interaction. This project uses server-side
+				destination routing with Unity-side path execution, balancing
+				centralized intent logic with low-latency local movement behavior.
+			</p>
+
+			<h3>2.3 Multimodal AI and Tool-Oriented Reasoning</h3>
+			<p>
+				Tool-augmented assistants are increasingly adopted to improve
+				factual grounding and actionability. In this project, LLM generation
+				is combined with bounded response shaping, optional MCP tool
+				invocation for vision, and typed API contracts for deterministic
+				downstream actions.
+			</p>
+
+			<h2>
+				3. Methodology
+				<span class="badge badge-critical"
+					>Quantitative expansion planned</span
+				>
+			</h2>
+			<h3>3.1 System Architecture Overview</h3>
+			<p>
+				The runtime consists of a primary process (<code>start.py</code>
+				launching <code>app.api.gateway:app</code>) and an optional MCP
+				sidecar for vision tools. The gateway routes requests to assistant,
+				navigation, audio, and QR services. Clients include Unity MetaQuest,
+				browser/Streamlit, mobile bridge, and ESP32 firmware.
+			</p>
+
+			<h3>3.2 Software and Integration Stack</h3>
+			<table>
+				<tr>
+					<th>Layer</th>
+					<th>Technology</th>
+					<th>Role in System</th>
+				</tr>
+				<tr>
+					<td>Gateway API</td>
+					<td>FastAPI + Pydantic</td>
+					<td>Typed multimodal routing and endpoint contracts</td>
+				</tr>
+				<tr>
+					<td>LLM Inference</td>
+					<td>Cerebras Chat Completions (cloud-first)</td>
+					<td>Response composition and intent-level reasoning</td>
+				</tr>
+				<tr>
+					<td>Speech Processing</td>
+					<td>SpeechRecognition (Google backend)</td>
+					<td>Audio transcription with retry diagnostics</td>
+				</tr>
+				<tr>
+					<td>Vision Tooling</td>
+					<td>Moondream via MCP endpoints</td>
+					<td>Camera/image description path for contextual responses</td>
+				</tr>
+				<tr>
+					<td>Navigation State</td>
+					<td>JSON metadata + in-memory sessions</td>
+					<td>Destination resolution and stepwise guidance lifecycle</td>
+				</tr>
+				<tr>
+					<td>Embedded Path</td>
+					<td>ESP32 + optional WAV fetch</td>
+					<td>Device-side consumption of assistant responses and TTS</td>
+				</tr>
+				<tr>
+					<td>AR Client</td>
+					<td>Unity NavMesh stack</td>
+					<td>Local movement execution after server intent routing</td>
+				</tr>
+			</table>
+
+			<h3>3.3 Speech and Language Pipeline</h3>
+			<p>
+				Incoming audio is decoded from base64 payloads, normalized, and
+				transcribed. The service tracks diagnostics such as retry attempts,
+				sample format, and provider status. The resulting text is then
+				processed by the assistant service and sent to the LLM adapter for
+				concise answer generation.
+			</p>
+			<div class="equation">
+				T_total = T_stt + T_route + T_llm + T_tts(optional)
+			</div>
+			<p>
+				This decomposition is used as the latency model for upcoming
+				micro-benchmarks.
+			</p>
+
+			<h3>3.4 Vision Pathway</h3>
+			<p>
+				The gateway can call MCP vision tools in two modes: live camera
+				capture (<code>/tools/vision/capture-moondream</code>) and image
+				analysis (<code>/tools/vision/analyze-image-moondream</code>). If
+				image analysis fails, the assistant returns an explicit
+				degraded-response message to preserve usability.
+			</p>
+
+			<h3>3.5 Navigation and AR Execution</h3>
+			<p>
+				Navigation destinations are loaded from
+				<code>navigation.json</code> (12 curated location IDs in current
+				dataset). The server resolves destination aliases and creates
+				session-based instructions; Unity executes movement in-scene using
+				NavMesh.
+			</p>
+			<div class="equation">
+				Availability_live = Passed_checks / Total_checks = 13/13 = 1.00
+			</div>
+
+			<h3>3.6 Hardware and Device Integration</h3>
+			<p>
+				The project supports two ESP32 communication modes: phone relay over
+				BLE and direct Wi-Fi backend access. For voice responses, the ESP
+				endpoint can return both text and a temporary TTS URL for WAV
+				retrieval, preserving compatibility with existing firmware
+				expectations.
+			</p>
+
+			<h2>
+				4. Experimental Results
+				<span class="badge badge-ok"
+					>Repository-backed evidence included</span
+				>
+			</h2>
+			<p>
+				All values in this section are derived from project artifacts under
+				<code>artifacts/</code>, generated in April 2026 by the repository
+				test scripts.
+			</p>
+
+			<h3>4.1 Automated Validation Summary</h3>
+			<table>
+				<tr>
+					<th>Validation Stage</th>
+					<th>Result</th>
+					<th>Evidence</th>
+				</tr>
+				<tr>
+					<td>Python unit tests</td>
+					<td class="status-ok">67/67 selected tests passed</td>
+					<td>Pytest output in test_report.json</td>
+				</tr>
+				<tr>
+					<td>Total Python coverage</td>
+					<td>79%</td>
+					<td>Coverage summary in test_report.json</td>
+				</tr>
+				<tr>
+					<td>System integration smoke</td>
+					<td class="status-ok">1/1 passed</td>
+					<td>test_system_integration_smoke.py</td>
+				</tr>
+				<tr>
+					<td>Firmware native tests</td>
+					<td class="status-ok">5/5 passed</td>
+					<td>PlatformIO native environment</td>
+				</tr>
+				<tr>
+					<td>Unity EditMode test stage</td>
+					<td class="status-ok">Passed</td>
+					<td>unity_editmode_tests step marked ok</td>
+				</tr>
+			</table>
+
+			<h3>4.2 Live HIL Endpoint Reliability</h3>
+			<table>
+				<tr>
+					<th>Endpoint Group</th>
+					<th>Checks</th>
+					<th>Pass Rate</th>
+				</tr>
+				<tr>
+					<td>Health/Debug/Network</td>
+					<td>3</td>
+					<td class="status-ok">100%</td>
+				</tr>
+				<tr>
+					<td>Unity and navigation lifecycle</td>
+					<td>4</td>
+					<td class="status-ok">100%</td>
+				</tr>
+				<tr>
+					<td>QR visibility and telemetry</td>
+					<td>3</td>
+					<td class="status-ok">100%</td>
+				</tr>
+				<tr>
+					<td>ESP process and TTS fetch</td>
+					<td>2</td>
+					<td class="status-ok">100%</td>
+				</tr>
+				<tr>
+					<td>Navigation cancel</td>
+					<td>1</td>
+					<td class="status-ok">100%</td>
+				</tr>
+				<tr>
+					<td><strong>Total</strong></td>
+					<td><strong>13</strong></td>
+					<td class="status-ok"><strong>13/13</strong></td>
+				</tr>
+			</table>
+
+			<h3>4.3 Cross-Device Audio Matrix Results</h3>
+			<table>
+				<tr>
+					<th>Scenario</th>
+					<th>Device/Client</th>
+					<th>Outcome</th>
+				</tr>
+				<tr>
+					<td>Wakeword trigger</td>
+					<td>Wakeword path</td>
+					<td class="status-ok">
+						Wakeword detected, listening state returned
+					</td>
+				</tr>
+				<tr>
+					<td>Navigation command</td>
+					<td>Companion to Unity route</td>
+					<td class="status-ok">Action=navigate, destination resolved</td>
+				</tr>
+				<tr>
+					<td>Vision description</td>
+					<td>ESP32</td>
+					<td class="status-ok">Usable scene response returned</td>
+				</tr>
+				<tr>
+					<td>Vision description</td>
+					<td>Unity Quest</td>
+					<td class="status-ok">Usable scene response returned</td>
+				</tr>
+				<tr>
+					<td>Vision description</td>
+					<td>Mobile browser</td>
+					<td class="status-ok">Usable scene response returned</td>
+				</tr>
+				<tr>
+					<td>Vision description</td>
+					<td>PC browser</td>
+					<td class="status-ok">Usable scene response returned</td>
+				</tr>
+				<tr>
+					<td>Vision description</td>
+					<td>Companion</td>
+					<td class="status-ok">Usable scene response returned</td>
+				</tr>
+				<tr>
+					<td><strong>Total matrix cases</strong></td>
+					<td>10</td>
+					<td class="status-ok"><strong>10/10 passed</strong></td>
+				</tr>
+			</table>
+
+			<h3>4.4 Timing Snapshot (Current Artifacts)</h3>
+			<table>
+				<tr>
+					<th>Workflow</th>
+					<th>Observed Duration</th>
+					<th>Note</th>
+				</tr>
+				<tr>
+					<td>Unified automated test runner</td>
+					<td>26.571 s</td>
+					<td>Sum of stage durations in test_report.json</td>
+				</tr>
+				<tr>
+					<td>Live HIL endpoint sweep</td>
+					<td>0.541 s</td>
+					<td>Difference between started_at and finished_at</td>
+				</tr>
+				<tr>
+					<td>Audio matrix sweep</td>
+					<td>27.055 s</td>
+					<td>Difference between started_at and finished_at</td>
+				</tr>
+				<tr>
+					<td>Per-stage speech-to-action latency</td>
+					<td class="status-warn">Pending dedicated benchmark</td>
+					<td>Not directly logged per request in current artifacts</td>
+				</tr>
+			</table>
+
+			<div class="figure-placeholder">
+				Next experiment block for final thesis version: add per-command
+				latency histograms, navigation success over repeated routes, and
+				controlled user usability scores.
+			</div>
+
+			<h2>5. Discussion</h2>
+			<p>
+				The project demonstrates strong engineering reliability for a
+				graduation-scale multimodal assistant. The strongest evidence is the
+				consistency of cross-layer validation: software unit testing,
+				firmware tests, Unity checks, and live API sweeps all pass in the
+				latest artifact set.
+			</p>
+
+			<h3>5.1 Strengths</h3>
+			<ul class="checklist">
+				<li>
+					- One gateway contract serves multiple device types without major
+					API drift.
+				</li>
+				<li>
+					- Typed request models and compatibility responses reduce
+					integration failures.
+				</li>
+				<li>
+					- Validation artifacts are reproducible and auditable for defense
+					review.
+				</li>
+				<li>
+					- Navigation, QR telemetry, and ESP pathways are all covered by
+					live checks.
+				</li>
+			</ul>
+
+			<h3>5.2 Current Limitations</h3>
+			<ul class="checklist">
+				<li>
+					- Navigation sessions are in-memory only and not yet persistent.
+				</li>
+				<li>
+					- Formal route-accuracy and localization-error studies are not
+					yet completed.
+				</li>
+				<li>- Per-stage latency telemetry is limited in current logs.</li>
+				<li>
+					- Security controls are baseline and require hardening for public
+					deployment.
+				</li>
+			</ul>
+
+			<h3>5.3 Comparison Perspective</h3>
+			<table>
+				<tr>
+					<th>Feature</th>
+					<th>Commercial Voice Glasses</th>
+					<th>Smart Glasses Distilled</th>
+				</tr>
+				<tr>
+					<td>Unified backend orchestration</td>
+					<td>Usually closed/internal</td>
+					<td>Open modular FastAPI gateway</td>
+				</tr>
+				<tr>
+					<td>Cross-client contract transparency</td>
+					<td>Limited</td>
+					<td>Explicit endpoint and model definitions</td>
+				</tr>
+				<tr>
+					<td>Embedded compatibility behavior</td>
+					<td>Vendor-specific</td>
+					<td>ESP-friendly response and TTS retrieval flow</td>
+				</tr>
+				<tr>
+					<td>Evidence package for reproducibility</td>
+					<td>Rarely public</td>
+					<td>Artifact-backed test reports in repository</td>
+				</tr>
+			</table>
+
+			<h2>6. Conclusion</h2>
+			<p>
+				Smart Glasses Distilled provides a practical and reproducible
+				framework for multimodal wearable assistance in campus-like
+				environments. The implemented architecture is stable across software
+				and hardware pathways, and current validation artifacts show full
+				pass status across major functional checks. The next phase should
+				focus on formal user studies, route-level navigation metrics, and
+				finer-grained latency instrumentation to convert engineering
+				reliability into publication-grade empirical evaluation.
+			</p>
+
+			<h2>References</h2>
+			<p
+				style="
+					font-size: 0.92rem;
+					background: #f8fafd;
+					border: 1px solid var(--line);
+					border-radius: 12px;
+					padding: 14px;
+				"
+			>
+				[1] Smart Glasses Distilled repository documentation,
+				docs/01_overview/system_overview.md.<br />
+				[2] System architecture reference,
+				docs/02_architecture/architecture.md.<br />
+				[3] AI subsystem reference, docs/05_ai_system/ai_system.md.<br />
+				[4] Hardware integration notes,
+				docs/06_hardware/hardware_integration.md.<br />
+				[5] API reference, docs/07_api/api_reference.md.<br />
+				[6] Full project documentation,
+				docs/14_graduation/full_project_documentation.md.<br />
+				[7] Validation artifact, artifacts/test_report.json.<br />
+				[8] Validation artifact, artifacts/live_hil_report.json.<br />
+				[9] Validation artifact, artifacts/audio_test_matrix_report.json.
+			</p>
+
+			<hr />
+			<h2>Required Enhancements Before Final Submission</h2>
+			<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px">
+				<div
+					style="
+						background: #f9fafb;
+						border: 1px solid var(--line);
+						border-radius: 14px;
+						padding: 16px;
+					"
+				>
+					<h3 style="margin-top: 0">Keep and polish</h3>
+					<ul class="checklist">
+						<li>- Contributions paragraph and architecture figures.</li>
+						<li>- Artifact-backed validation tables.</li>
+						<li>
+							- Endpoint and subsystem descriptions linked to
+							implementation.
+						</li>
+						<li>- Explicit limitations and risk discussion.</li>
+					</ul>
+				</div>
+				<div
+					style="
+						background: #f4f8ff;
+						border: 1px solid #d7e4f5;
+						border-radius: 14px;
+						padding: 16px;
+					"
+				>
+					<h3 style="margin-top: 0">Add before submission</h3>
+					<ul class="checklist">
+						<li>
+							- Route-level navigation accuracy study (multi-trial).
+						</li>
+						<li>
+							- Per-stage latency benchmark with confidence intervals.
+						</li>
+						<li>- User study (SUS and accessibility feedback).</li>
+						<li>
+							- Security and load-test summary for deployment discussion.
+						</li>
+					</ul>
+				</div>
+			</div>
+
+			<footer>
+				Draft generated from repository evidence on April 16, 2026.<br />
+				File: docs/14_graduation/smart_glasses_university_paper_draft.html
+			</footer>
+		</div>
+	</body>
+</html>

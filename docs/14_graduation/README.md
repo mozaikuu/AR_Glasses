@@ -19,6 +19,9 @@ This folder contains a consolidated documentation set designed for final-year pr
 5. [Architecture and Dataflow Diagrams](architecture_and_dataflow_diagrams.md)
    - Mermaid diagrams for architecture, sequence flows, validation pipeline, and roadmap timeline.
 
+6. [University Paper HTML Draft](smart_glasses_university_paper_draft.html)
+   - Journal-style paper layout with repository-backed architecture and validation results.
+
 ## How To Use This Package In Graduation Materials
 
 1. Start with the full project document for your written report baseline.

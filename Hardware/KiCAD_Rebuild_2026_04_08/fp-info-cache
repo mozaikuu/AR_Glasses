@@ -1,4 +1,4 @@
-27227896922445140
+27229673017547678
 Audio_Module
 Reverb_BTDR-1H
 Digital Reverberation Unit, http://www.belton.co.kr/inc/downfile.php?seq=17&file=pdf (footprint from http://www.uk-electronic.de/PDF/BTDR-1.pdf)
@@ -96361,6 +96361,13 @@ INMP441 module 2x3
 0
 6
 6
+RebuildLib
+Power_Switch_Latching_SPST_2Pin
+Latching SPST power switch, 2-pin THT
+switch latching power spst
+0
+2
+2
 RebuildLib
 TP4056_2Hole_15mm
 TP4056 battery-side two-hole connection, 15.00mm pitch
