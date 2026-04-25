@@ -9,6 +9,9 @@ smart_home_app/node_modules
 Temp/RealTimeObjectDetection
 env.py
 Depricated
+frontend/node_modules
+frontend/.next
+img360
 
 
 AR_Cerebro/[Ll]ibrary/

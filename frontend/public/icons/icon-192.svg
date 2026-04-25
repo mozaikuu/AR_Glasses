@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="NMU Bus Icon 192">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b1b2f" />
+      <stop offset="100%" stop-color="#12404a" />
+    </linearGradient>
+    <linearGradient id="bus" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#6ee7c9" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="34" fill="url(#bg)" />
+  <path d="M38 62c0-10 8-18 18-18h80c10 0 18 8 18 18v55c0 6-4 10-10 10h-2v12h-10v-12H60v12H50v-12h-2c-6 0-10-4-10-10V62z" fill="url(#bus)" />
+  <rect x="54" y="58" width="84" height="22" rx="6" fill="#0b2135" opacity="0.9" />
+  <circle cx="66" cy="112" r="10" fill="#092033" />
+  <circle cx="126" cy="112" r="10" fill="#092033" />
+  <path d="M42 150h108" stroke="#6ee7c9" stroke-width="6" stroke-linecap="round" opacity="0.85" />
+</svg>

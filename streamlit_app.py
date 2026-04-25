@@ -4,6 +4,7 @@ import base64
 import hashlib
 import io
 import queue
+import time
 import wave
 from typing import Any
 
@@ -89,6 +90,33 @@ def _pcm16_mono_to_wav_bytes(pcm_bytes: bytes, sample_rate: int) -> bytes:
     return buffer.getvalue()
 
 
+def _frame_to_pcm16_mono_bytes(frame: Any) -> tuple[bytes, int]:
+    try:
+        arr = frame.to_ndarray(format="s16")
+    except TypeError:
+        arr = frame.to_ndarray()
+
+    if arr.ndim == 1:
+        mono = arr
+    elif arr.ndim == 2:
+        if arr.shape[0] <= 8 and arr.shape[1] > arr.shape[0]:
+            mono = arr.mean(axis=0)
+        elif arr.shape[1] <= 8 and arr.shape[0] > arr.shape[1]:
+            mono = arr.mean(axis=1)
+        else:
+            mono = arr.reshape(-1)
+    else:
+        mono = arr.reshape(-1)
+
+    if np.issubdtype(mono.dtype, np.floating):
+        mono = (mono * 32767.0).clip(-32768, 32767).astype(np.int16)
+    else:
+        mono = np.clip(mono, -32768, 32767).astype(np.int16, copy=False)
+
+    sample_rate = int(getattr(frame, "sample_rate", 0) or 16000)
+    return mono.tobytes(), sample_rate
+
+
 def _render_voice_result(data: dict[str, Any], code: int) -> None:
     if code != 200:
         st.error(f"Audio request failed ({code}): {data.get('error', data)}")
@@ -97,6 +125,7 @@ def _render_voice_result(data: dict[str, Any], code: int) -> None:
     answer = str(data.get("text") or "")
     metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
     ignored_audio = bool(metadata.get("ignored_audio"))
+    st.session_state.wakeword_followup_armed = bool(metadata.get("wakeword_followup_armed"))
 
     if not ignored_audio:
         st.session_state.messages.append({"role": "user", "text": "[Voice input]"})
@@ -104,8 +133,13 @@ def _render_voice_result(data: dict[str, Any], code: int) -> None:
 
     if metadata.get("wakeword_triggered"):
         st.success("Wake word triggered: Computer")
+        if st.session_state.wakeword_followup_armed:
+            st.info("Wake word accepted. Listening for your command...")
     elif ignored_audio:
         st.info("Listening... wake word not detected yet.")
+        ignored_reason = str(metadata.get("ignored_audio_reason") or "")
+        if ignored_reason:
+            st.caption(f"Ignored reason: {ignored_reason}")
 
     transcript = metadata.get("transcript")
     if isinstance(transcript, str) and transcript.strip():
@@ -140,6 +174,10 @@ if "webrtc_dropped_tasks" not in st.session_state:
     st.session_state.webrtc_dropped_tasks = 0
 if "wakeword_required" not in st.session_state:
     st.session_state.wakeword_required = True
+if "wakeword_followup_armed" not in st.session_state:
+    st.session_state.wakeword_followup_armed = False
+if "webrtc_last_heartbeat_at" not in st.session_state:
+    st.session_state.webrtc_last_heartbeat_at = 0.0
 
 with st.sidebar:
     st.subheader("Runtime")
@@ -162,6 +200,11 @@ with st.sidebar:
         value=st.session_state.wakeword_required,
         help="Disable for debugging so audio is sent directly to the assistant without wake-word gating.",
     )
+    if st.session_state.wakeword_required:
+        st.caption(
+            "Wake follow-up window: "
+            + ("armed" if st.session_state.wakeword_followup_armed else "idle")
+        )
     if new_mic_enabled != st.session_state.mic_enabled:
         st.session_state.mic_enabled = new_mic_enabled
         if new_mic_enabled:
@@ -243,7 +286,10 @@ with right:
                     "audio_base64": base64.b64encode(wav_bytes).decode("ascii"),
                     "mode": mode,
                     "client": "streamlit-main",
-                    "metadata": {"source": "streamlit_audio_input"},
+                    "metadata": {
+                        "source": "streamlit_audio_input",
+                        "always_listen": st.session_state.wakeword_required,
+                    },
                 },
             )
             _render_voice_result(data, code)
@@ -255,11 +301,19 @@ with right:
             webrtc_ctx = webrtc_streamer(
                 key="continuous-wakeword-listener",
                 mode=WebRtcMode.SENDONLY,
-                media_stream_constraints={"video": False, "audio": True},
+                media_stream_constraints={
+                    "video": False,
+                    "audio": {
+                        "echoCancellation": True,
+                        "noiseSuppression": True,
+                        "autoGainControl": True,
+                        "channelCount": 1,
+                    },
+                },
                 async_processing=True,
                 desired_playing_state=True,
                 # Larger receiver queue helps avoid overflow when network/API latency spikes.
-                audio_receiver_size=8192,
+                audio_receiver_size=16384,
             )
 
             if webrtc_ctx and webrtc_ctx.state.playing and webrtc_ctx.audio_receiver:
@@ -278,9 +332,9 @@ with right:
 
                     frames.extend(batch)
                     # Keep only the most recent frames if backlog spikes.
-                    if len(frames) > 200:
-                        dropped_frames += len(frames) - 120
-                        frames = frames[-120:]
+                    if len(frames) > 1200:
+                        dropped_frames += len(frames) - 900
+                        frames = frames[-900:]
 
                 if dropped_frames:
                     st.caption(f"Dropped stale frames: {dropped_frames}")
@@ -289,20 +343,10 @@ with right:
                     chunk_parts: list[bytes] = []
                     sample_rate = st.session_state.webrtc_sample_rate
                     for frame in frames:
-                        arr = frame.to_ndarray()
-                        if arr.ndim == 2:
-                            mono = arr.mean(axis=0)
-                        else:
-                            mono = arr
-
-                        if np.issubdtype(mono.dtype, np.floating):
-                            mono = (mono * 32767.0).clip(-32768, 32767).astype(np.int16)
-                        else:
-                            mono = mono.astype(np.int16, copy=False)
-
-                        chunk_parts.append(mono.tobytes())
-                        if frame.sample_rate:
-                            sample_rate = int(frame.sample_rate)
+                        frame_pcm_bytes, frame_sample_rate = _frame_to_pcm16_mono_bytes(frame)
+                        if frame_pcm_bytes:
+                            chunk_parts.append(frame_pcm_bytes)
+                        sample_rate = frame_sample_rate
 
                     st.session_state.webrtc_sample_rate = sample_rate
                     st.session_state.webrtc_pcm_buffer += b"".join(chunk_parts)
@@ -313,10 +357,18 @@ with right:
                     duration = len(pcm_buffer) / float(2 * sr)
                     st.caption(f"Continuous buffer: {duration:.1f}s")
 
+                    target_duration = 4.2 if st.session_state.wakeword_followup_armed else 3.2
+
                     # Use larger chunks to reduce API request rate and improve wake phrase detection.
-                    if duration >= 2.4:
+                    if duration >= target_duration:
                         wav_bytes = _pcm16_mono_to_wav_bytes(pcm_buffer, sr)
                         sig = _last_audio_signature(wav_bytes)
+
+                        # Keep a short overlap so command starts are not lost at chunk boundaries.
+                        overlap_seconds = 0.65 if st.session_state.wakeword_followup_armed else 0.40
+                        overlap_bytes = int(max(0.0, overlap_seconds) * sr * 2)
+                        next_pcm_buffer = pcm_buffer[-overlap_bytes:] if overlap_bytes > 0 else b""
+
                         if sig != st.session_state.last_audio_sig:
                             st.session_state.last_audio_sig = sig
 
@@ -334,11 +386,16 @@ with right:
                                     "metadata": {
                                         "source": "streamlit_webrtc",
                                         "always_listen": st.session_state.wakeword_required,
+                                        "followup_window_armed": st.session_state.wakeword_followup_armed,
+                                        "audio_format": "pcm16",
+                                        "sample_rate": sr,
+                                        "sample_width": 2,
+                                        "frontend_retry_count": 0,
                                     },
                                 }
                             )
 
-                        st.session_state.webrtc_pcm_buffer = b""
+                        st.session_state.webrtc_pcm_buffer = next_pcm_buffer
 
                 if st.session_state.webrtc_dropped_tasks:
                     st.caption(f"Dropped queued chunks: {st.session_state.webrtc_dropped_tasks}")
@@ -346,8 +403,31 @@ with right:
                 # Process only one queued chunk per rerun to keep frame intake responsive.
                 if st.session_state.webrtc_audio_tasks:
                     payload = st.session_state.webrtc_audio_tasks.pop(0)
-                    data, code = _api_post("/process", payload, timeout=4.0)
-                    _render_voice_result(data, code)
+                    payload_metadata = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
+                    followup_armed = bool(payload_metadata.get("followup_window_armed"))
+                    timeout_seconds = 18.0 if followup_armed else 10.0
+                    data, code = _api_post("/process", payload, timeout=timeout_seconds)
+
+                    # Retry once on transient network/timeout failures to avoid losing post-wake commands.
+                    if code == 0:
+                        retry_count = int(payload_metadata.get("frontend_retry_count") or 0)
+                        if retry_count < 1:
+                            retry_payload = dict(payload)
+                            retry_metadata = dict(payload_metadata)
+                            retry_metadata["frontend_retry_count"] = retry_count + 1
+                            retry_payload["metadata"] = retry_metadata
+                            st.session_state.webrtc_audio_tasks.insert(0, retry_payload)
+                            st.caption("Transient mic request timeout. Retrying chunk once...")
+                        else:
+                            _render_voice_result(data, code)
+                    else:
+                        _render_voice_result(data, code)
+
+                # Keep the WebRTC listener processing continuously while active.
+                now = time.monotonic()
+                if now - float(st.session_state.webrtc_last_heartbeat_at) >= 0.35:
+                    st.session_state.webrtc_last_heartbeat_at = now
+                    st.rerun()
             else:
                 st.info("Press Start above to begin continuous listening.")
         else:

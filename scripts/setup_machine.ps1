@@ -23,7 +23,7 @@ if ($OpenFirewall) {
 }
 
 Write-Host "Printing network info..."
-uv run python scripts/print_network_info.py
+uv run python -m scripts.print_network_info
 
 if ($StartGateway) {
   Write-Host "Starting gateway launcher..."

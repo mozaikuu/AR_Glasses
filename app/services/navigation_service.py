@@ -15,19 +15,30 @@ class NavigationService:
             "Lab_A",
             "Library",
         ]
+        self._authoritative_ids: list[str] = []
+        self._destination_index: dict[str, str] = {}
         self._location_meta: dict[str, dict[str, object]] = {}
         self._legacy_aliases = {
-            "ta_office": "TA_Office",
-            "ta office": "TA_Office",
-            "ta_office_1": "TA_Office",
-            "entrance": "Entrance",
-            "stairs_g": "Stairs_G",
-            "elevator": "Elevator",
-            "lab_a": "Lab_A",
-            "library": "Library",
+            "ta_office": "ta_office_1",
+            "ta_office_1": "ta_office_1",
+            "ta_s_office": "ta_office_1",
+            "tas_office": "ta_office_1",
+            "the_ta_office": "ta_office_1",
+            "the_ta_s_office": "ta_office_1",
+            "ta_office_1": "ta_office_1",
+            "cs_department_ta_office": "ta_office_1",
+            "math_ta_office": "ta_office_2",
+            "ta_office_2": "ta_office_2",
+            "entrance": "entrance",
+            "main_entrance": "entrance",
+            "stairs_g": "stairs_g",
+            "elevator": "elevator",
+            "lab_a": "lab1",
+            "library": "library",
         }
         self._sessions: dict[str, dict[str, object]] = {}
         self._load_navigation_json()
+        self._seed_fallback_ids()
 
     def _normalize_key(self, value: str) -> str:
         return value.strip().lower().replace("-", "_").replace(" ", "_")
@@ -49,46 +60,81 @@ class NavigationService:
         for entry in locations:
             if not isinstance(entry, dict):
                 continue
+            loc_id = str(entry.get("id") or "").strip()
             name = str(entry.get("name") or "").strip()
-            if not name:
+            if not loc_id or not name:
                 continue
-            if name not in self._locations:
-                self._locations.append(name)
+            if loc_id not in self._authoritative_ids:
+                self._authoritative_ids.append(loc_id)
+            self._destination_index[self._normalize_key(loc_id)] = loc_id
+            self._destination_index[self._normalize_key(name)] = loc_id
 
-            key = self._normalize_key(name)
-            self._location_meta[key] = {
+            meta = {
+                "id": loc_id,
                 "name": name,
                 "floor": entry.get("floor"),
                 "coordinates": entry.get("coordinates") if isinstance(entry.get("coordinates"), dict) else {},
                 "description": entry.get("description"),
             }
+            self._location_meta[self._normalize_key(loc_id)] = meta
+            self._location_meta[self._normalize_key(name)] = meta
 
-            loc_id = str(entry.get("id") or "").strip()
-            if loc_id:
-                self._location_meta[self._normalize_key(loc_id)] = self._location_meta[key]
+    def _seed_fallback_ids(self) -> None:
+        if self._authoritative_ids:
+            return
+
+        fallback_ids = ["entrance", "ta_office_1", "stairs_g", "elevator", "lab1", "library"]
+        self._authoritative_ids.extend(fallback_ids)
+        for loc_id in fallback_ids:
+            self._destination_index[self._normalize_key(loc_id)] = loc_id
 
     def list_locations(self) -> list[str]:
+        if self._authoritative_ids:
+            return self._authoritative_ids
         return self._locations
 
+    def is_authoritative_destination_id(self, destination_id: str) -> bool:
+        candidate = destination_id.strip()
+        return candidate in self._authoritative_ids
+
+    def resolve_authoritative_destination_id(self, value: str) -> str:
+        raw = value.strip()
+        if not raw:
+            return ""
+
+        normalized = self._normalize_key(raw)
+        direct = self._destination_index.get(normalized)
+        if direct:
+            return direct
+
+        alias_target = self._legacy_aliases.get(normalized)
+        if alias_target and self.is_authoritative_destination_id(alias_target):
+            return alias_target
+
+        lowered = raw.lower()
+        if "math" in lowered and "ta" in lowered and self.is_authoritative_destination_id("ta_office_2"):
+            return "ta_office_2"
+        if (
+            ("cs" in lowered or "computer science" in lowered)
+            and "ta" in lowered
+            and self.is_authoritative_destination_id("ta_office_1")
+        ):
+            return "ta_office_1"
+        if "ta" in lowered and "office" in lowered and self.is_authoritative_destination_id("ta_office_1"):
+            return "ta_office_1"
+
+        search_key = self._normalize_key(raw)
+        for key, destination_id in sorted(self._destination_index.items(), key=lambda kv: len(kv[0]), reverse=True):
+            if key and key in search_key:
+                return destination_id
+
+        return ""
+
     def normalize_destination(self, destination: str) -> str:
-        lowered_raw = destination.strip().lower()
-        if lowered_raw in self._legacy_aliases:
-            return self._legacy_aliases[lowered_raw]
-
-        compact = destination.strip().replace(" ", "_")
-        for location in self._locations:
-            if location.lower() == compact.lower() or location.lower() == destination.strip().lower():
-                return location
-
-        key = self._normalize_key(destination)
-        if key in self._legacy_aliases:
-            return self._legacy_aliases[key]
-        meta = self._location_meta.get(key)
-        if isinstance(meta, dict):
-            resolved_name = meta.get("name")
-            if isinstance(resolved_name, str) and resolved_name:
-                return resolved_name
-        return compact
+        resolved = self.resolve_authoritative_destination_id(destination)
+        if resolved:
+            return resolved
+        return self._normalize_key(destination)
 
     def start(self, destination: str, start: str | None = None) -> dict[str, object]:
         normalized = self.normalize_destination(destination)

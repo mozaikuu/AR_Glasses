@@ -28,6 +28,27 @@ def _load_model() -> tuple[Any, Any] | tuple[None, None]:
     try:
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer
+        from transformers import modeling_utils
+
+        # Compatibility shim: some remote model classes expose only _tied_weights_keys,
+        # while recent transformers expects all_tied_weights_keys during finalize load.
+        original_mark = getattr(modeling_utils.PreTrainedModel, "_moondream_mark_tied_weights_original", None)
+        if original_mark is None:
+            original_mark = modeling_utils.PreTrainedModel.mark_tied_weights_as_initialized
+
+            def _patched_mark_tied_weights_as_initialized(self: Any, loading_info: Any) -> None:
+                if not hasattr(self, "all_tied_weights_keys"):
+                    tied_keys = getattr(self, "_tied_weights_keys", None)
+                    if isinstance(tied_keys, dict):
+                        self.all_tied_weights_keys = tied_keys
+                    elif isinstance(tied_keys, (list, tuple, set)):
+                        self.all_tied_weights_keys = {str(key): key for key in tied_keys}
+                    else:
+                        self.all_tied_weights_keys = {}
+                original_mark(self, loading_info)
+
+            modeling_utils.PreTrainedModel._moondream_mark_tied_weights_original = original_mark
+            modeling_utils.PreTrainedModel.mark_tied_weights_as_initialized = _patched_mark_tied_weights_as_initialized
 
         model_name = os.getenv("MOONDREAM_MODEL_NAME", "vikhyatk/moondream2")
         model_revision = os.getenv("MOONDREAM_REVISION", "2025-01-09")

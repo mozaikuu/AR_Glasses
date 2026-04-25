@@ -12,6 +12,7 @@ public class NavigationManager : MonoBehaviour
 {
   [Header("Configuration")]
   [SerializeField] private string serverBaseUrl = "http://localhost:8000";
+  [SerializeField] private string unityApiKey = "";
   [SerializeField] private float serverTimeout = 10f;
   [SerializeField] private bool warpGuideAgentToLocalizedStart = true;
   [SerializeField] private float localizedStartSampleDistance = 2.0f;
@@ -104,6 +105,19 @@ public class NavigationManager : MonoBehaviour
     {
       // Try with underscores replaced
       target = GameObject.Find(destinationName.Replace(" ", "_"));
+
+      if (target == null)
+      {
+        // Authoritative IDs from navigation.json often map to trigger objects.
+        string raw = destinationName.Trim();
+        string normalized = raw.Replace(" ", "_");
+        GameObject trigger = GameObject.Find($"Trigger_{raw}") ?? GameObject.Find($"Trigger_{normalized}");
+        if (trigger != null)
+        {
+          StartNavigation(trigger.transform.position, destinationName);
+          return;
+        }
+      }
 
       if (target == null)
       {
@@ -236,6 +250,11 @@ public class NavigationManager : MonoBehaviour
       request.downloadHandler = new DownloadHandlerBuffer();
       request.timeout = Mathf.CeilToInt(serverTimeout);
       request.SetRequestHeader("Content-Type", "application/json");
+      string resolvedApiKey = ApiEndpointResolver.ResolveApiKey(unityApiKey);
+      if (!string.IsNullOrWhiteSpace(resolvedApiKey))
+      {
+        request.SetRequestHeader("X-Unity-Api-Key", resolvedApiKey);
+      }
 
       yield return request.SendWebRequest();
 
