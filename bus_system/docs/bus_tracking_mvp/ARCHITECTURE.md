@@ -12,7 +12,7 @@
 
 ## 2. Modules
 
-### backend/
+### bus_system/backend/
 
 - `app/main.py`: API app, lifespan startup, websocket stream
 - `app/db/`: SQLAlchemy models and SQLite session
@@ -20,14 +20,14 @@
 - `app/services/`: Wallet logic, incident impact logic, ETA helpers
 - `app/core/`: Settings, i18n response envelope, websocket manager
 
-### simulation/
+### bus_system/simulation/
 
 - `route_data.py`: NMU Route #1 geometry and schedule
 - `engine.py`: Continuous movement + events generator
 - `historical_data.py`: 3-month synthetic training data
 - `predictor.py`: ETA and demand regressors (scikit-learn)
 
-### frontend/
+### bus_system/frontend/
 
 - App Router pages:
    - `/` live map
@@ -37,7 +37,7 @@
 - `components/live-map.tsx`: Leaflet map + websocket/polling sync
 - `components/pwa-notifier.tsx`: install + local notification simulation
 
-### agent_tools/
+### bus_system/agent_tools/
 
 - `cerebro_tools.py`: AI-friendly function wrappers over API
    - `get_bus_location()`

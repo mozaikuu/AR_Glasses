@@ -4,11 +4,11 @@ Prototype demo system for New Mansoura University (NMU) bus tracking integrated 
 
 ## Monorepo Structure
 
-- `backend/` FastAPI API + SQLite + simulation runtime startup
-- `frontend/` Next.js + Tailwind + Leaflet + PWA dashboard
-- `simulation/` Route movement and AI prediction generators
-- `agent_tools/` Python functions for Cerebro AI assistant usage
-- `docs/bus_tracking_mvp/` setup, API, architecture docs
+- `bus_system/backend/` FastAPI API + SQLite + simulation runtime startup
+- `bus_system/frontend/` Next.js + Tailwind + Leaflet + PWA dashboard
+- `bus_system/simulation/` Route movement and AI prediction generators
+- `bus_system/agent_tools/` Python functions for Cerebro AI assistant usage
+- `bus_system/docs/bus_tracking_mvp/` setup, API, architecture docs
 
 ## Core MVP Features
 
@@ -26,7 +26,7 @@ Prototype demo system for New Mansoura University (NMU) bus tracking integrated 
 1. Start backend
 
 ```bash
-cd backend
+cd bus_system/backend
 python -m pip install -r requirements.txt
 python run.py
 ```
@@ -34,7 +34,7 @@ python run.py
 2. Start frontend in a second terminal
 
 ```bash
-cd frontend
+cd bus_system/frontend
 npm install
 cp .env.example .env.local
 npm run dev
@@ -48,10 +48,10 @@ npm run dev
 4. Optional: test Cerebro tools
 
 ```bash
-python -c "from agent_tools.cerebro_tools import get_bus_location; print(get_bus_location())"
+python -c "from bus_system.agent_tools.cerebro_tools import get_bus_location; print(get_bus_location())"
 ```
 
 ## Free Deployment Targets
 
-- Frontend: Vercel (`frontend/vercel.json`)
-- Backend: Render (`backend/render.yaml`) or Railway (`backend/railway.toml`)
+- Frontend: Vercel (`bus_system/frontend/vercel.json`)
+- Backend: Render (`bus_system/backend/render.yaml`) or Railway (`bus_system/backend/railway.toml`)

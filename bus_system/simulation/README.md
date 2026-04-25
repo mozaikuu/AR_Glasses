@@ -18,4 +18,4 @@ This package powers the prototype realism layer.
 
 ## Runtime Integration
 
-`backend/app/main.py` starts `BusSimulationEngine` automatically in FastAPI lifespan.
+`bus_system/backend/app/main.py` starts `BusSimulationEngine` automatically in FastAPI lifespan.

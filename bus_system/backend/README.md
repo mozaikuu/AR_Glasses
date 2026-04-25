@@ -15,7 +15,7 @@ NMU Smart Bus Tracking API for simulation, wallet, incidents, and AI prediction.
 ## Local Run
 
 ```bash
-cd backend
+cd bus_system/backend
 python -m pip install -r requirements.txt
 python run.py
 ```

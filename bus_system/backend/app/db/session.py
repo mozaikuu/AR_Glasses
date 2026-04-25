@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from app.core.config import settings
 
 
-os.makedirs("backend/data", exist_ok=True)
+os.makedirs("data", exist_ok=True)
 
 connect_args: dict[str, bool] = {}
 if settings.database_url.startswith("sqlite"):

@@ -20,7 +20,7 @@ Modern mobile-friendly dashboard for NMU bus tracking prototype.
 ## Local Run
 
 ```bash
-cd frontend
+cd bus_system/frontend
 npm install
 cp .env.example .env.local
 npm run dev

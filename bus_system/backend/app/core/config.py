@@ -9,7 +9,7 @@ class Settings(BaseSettings):
         "Prototype MVP backend for Smart University Bus Tracking integrated with Cerebro."
     )
     database_url: str = Field(
-        default="sqlite:///./backend/data/bus_tracking.db",
+        default="sqlite:///./data/bus_tracking.db",
         description="SQLAlchemy database URL. Replace with PostgreSQL URL in production.",
     )
     cors_origins: list[str] = [
