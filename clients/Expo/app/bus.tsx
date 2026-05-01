@@ -27,9 +27,8 @@ type Position = {
 type TrackingStatus = "idle" | "tracking" | "stopped";
 
 export default function Bus() {
-	// Path setup state
-	const [startPos, setStartPos] = useState<Position | null>(null);
-	const [endPos, setEndPos] = useState<Position | null>(null);
+	// Path setup state - multiple waypoints
+	const [waypoints, setWaypoints] = useState<Position[]>([]);
 	const [isEditingPath, setIsEditingPath] = useState(true);
 	const [mapClickPos, setMapClickPos] = useState<Position | null>(null);
 
@@ -59,7 +58,6 @@ export default function Bus() {
 	const trackingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
 		null,
 	);
-	const mapInitialized = useRef(false);
 
 	// Generate a simple route between two points (interpolated line with some curve)
 	const generateRoute = (start: Position, end: Position): Position[] => {
@@ -116,30 +114,30 @@ export default function Bus() {
 		[isEditingPath],
 	);
 
-	// Process map click to set start/end positions
+	// Process map click to add waypoints
 	useEffect(() => {
 		if (mapClickPos && isEditingPath && trackingStatus !== "tracking") {
-			if (!startPos) {
-				setStartPos(mapClickPos);
-				setStatusMessage("Now select the end position");
-			} else if (!endPos) {
-				setEndPos(mapClickPos);
-				setStatusMessage("Route set! Press 'Start Tracking' to begin");
-				// Generate the route
-				const route = generateRoute(startPos, mapClickPos);
-				setGeneratedRoute(route);
-			} else {
-				// Reset and start over
-				setStartPos(mapClickPos);
-				setEndPos(null);
-				setGeneratedRoute([]);
-				setStatusMessage(
-					"Start position updated. Now select the end position",
-				);
-			}
+			setWaypoints((prev) => {
+				const newWaypoints = [...prev, mapClickPos];
+				const count = newWaypoints.length;
+
+				if (count === 1) {
+					setStatusMessage(
+						"1 point set. Tap to add more or start tracking",
+					);
+				} else if (count === 2) {
+					setStatusMessage("2 points set. Add more or start tracking");
+				} else {
+					setStatusMessage(
+						`${count} points set. Add more or start tracking`,
+					);
+				}
+
+				return newWaypoints;
+			});
 			setMapClickPos(null);
 		}
-	}, [mapClickPos, isEditingPath, trackingStatus, startPos, endPos]);
+	}, [mapClickPos, isEditingPath, trackingStatus]);
 
 	// Send commands to WebView
 	const sendToWebView = useCallback((data: any) => {
@@ -150,39 +148,43 @@ export default function Bus() {
 
 	// Update map markers and route
 	useEffect(() => {
-		if (mapInitialized.current) {
-			sendToWebView({
-				type: "updateMap",
-				startPos,
-				endPos,
-				currentPos,
-				route: generatedRoute,
-				center: startPos || endPos || INITIAL_CENTER,
-			});
-		}
-	}, [startPos, endPos, currentPos, generatedRoute, sendToWebView]);
+		sendToWebView({
+			type: "updateMap",
+			waypoints: waypoints,
+			startPos: waypoints.length > 0 ? waypoints[0] : null,
+			endPos: waypoints.length > 0 ? waypoints[waypoints.length - 1] : null,
+			currentPos,
+			route: generatedRoute,
+			center: waypoints.length > 0 ? waypoints[0] : INITIAL_CENTER,
+		});
+	}, [waypoints, currentPos, generatedRoute, sendToWebView]);
 
 	// Start tracking
 	const startTracking = () => {
-		if (!startPos || !endPos || generatedRoute.length === 0) {
-			Alert.alert("Error", "Please set both start and end positions first");
+		if (waypoints.length < 2) {
+			Alert.alert("Error", "Please set at least 2 points on the map");
 			return;
 		}
+
+		// Generate route from waypoints
+		let fullRoute: Position[] = [];
+		for (let i = 0; i < waypoints.length - 1; i++) {
+			const segment = generateRoute(waypoints[i], waypoints[i + 1]);
+			fullRoute = fullRoute.concat(segment);
+		}
+		setGeneratedRoute(fullRoute);
 
 		setIsEditingPath(false);
 		setTrackingStatus("tracking");
 		setProgress(0);
-		setCurrentPos(startPos);
+		setCurrentPos(waypoints[0]);
 		setIsStopped(false);
 		setStopReason("");
 
 		// Calculate total distance
 		let totalDistance = 0;
-		for (let i = 1; i < generatedRoute.length; i++) {
-			totalDistance += calculateDistance(
-				generatedRoute[i - 1],
-				generatedRoute[i],
-			);
+		for (let i = 1; i < fullRoute.length; i++) {
+			totalDistance += calculateDistance(fullRoute[i - 1], fullRoute[i]);
 		}
 		setDistanceRemaining(totalDistance);
 
@@ -224,10 +226,8 @@ export default function Bus() {
 				}
 
 				// Update current position
-				const routeIndex = Math.floor(
-					newProgress * (generatedRoute.length - 1),
-				);
-				const currentRoutePos = generatedRoute[routeIndex];
+				const routeIndex = Math.floor(newProgress * (fullRoute.length - 1));
+				const currentRoutePos = fullRoute[routeIndex];
 				setCurrentPos(currentRoutePos);
 
 				// Update speed with some variation
@@ -236,11 +236,8 @@ export default function Bus() {
 
 				// Update distance remaining
 				let remaining = 0;
-				for (let i = routeIndex; i < generatedRoute.length - 1; i++) {
-					remaining += calculateDistance(
-						generatedRoute[i],
-						generatedRoute[i + 1],
-					);
+				for (let i = routeIndex; i < fullRoute.length - 1; i++) {
+					remaining += calculateDistance(fullRoute[i], fullRoute[i + 1]);
 				}
 				setDistanceRemaining(Math.round(remaining * 100) / 100);
 
@@ -291,12 +288,11 @@ export default function Bus() {
 	const editPath = () => {
 		stopTracking();
 		setIsEditingPath(true);
-		setStartPos(null);
-		setEndPos(null);
+		setWaypoints([]);
 		setGeneratedRoute([]);
 		setProgress(0);
 		setCurrentPos(null);
-		setStatusMessage("Tap map to set start position");
+		setStatusMessage("Tap map to add waypoints");
 		setIsStopped(false);
 		setStopReason("");
 	};
@@ -317,58 +313,38 @@ export default function Bus() {
 		}
 	}, [trackingStatus, isStopped, speed]);
 
-	// HTML for the map with Leaflet and OpenStreetMap
-	const mapHtml = `
+	// Alternative HTML using OpenStreetMap with Leaflet (fallback)
+	const osmMapHtml = `
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { overflow: hidden; }
         #map { width: 100%; height: 100vh; position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
+        .waypoint-marker { font-weight: bold; font-size: 12px; }
     </style>
 </head>
 <body>
     <div id="map"></div>
     <script>
-        let map = null;
-        let markers = {};
-        let polyline = null;
+        var map = L.map('map', {
+            zoomControl: true,
+            attributionControl: false
+        }).setView([30.0444, 31.2357], 13);
 
-        // Initialize map immediately
-        function initMap(center) {
-            if (map) return;
-            
-            map = L.map('map', {
-                zoomControl: true,
-                attributionControl: false
-            }).setView([center.latitude, center.longitude], center.zoom || 13);
-            
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19
-            }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            crossOrigin: true
+        }).addTo(map);
 
-            map.on('click', function(e) {
-                if (window.ReactNativeWebView) {
-                    window.ReactNativeWebView.postMessage(JSON.stringify({
-                        type: 'mapClick',
-                        position: { 
-                            latitude: e.latlng.lat, 
-                            longitude: e.latlng.lng 
-                        }
-                    }));
-                }
-            });
-
-            // Notify that map is ready
-            if (window.ReactNativeWebView) {
-                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'mapReady' }));
-            }
-        }
+        var markers = {};
+        var polyline = null;
+        var waypointMarkers = [];
 
         // Create custom marker icon
         function createMarkerIcon(color, label) {
@@ -380,80 +356,122 @@ export default function Bus() {
             });
         }
 
-        // Update map with new data
-        function updateMap(data) {
-            if (!map) {
-                initMap(data.center || { latitude: 30.0444, longitude: 31.2357, zoom: 13 });
-            }
-
-            // Clear existing markers
-            Object.keys(markers).forEach(key => {
-                if (markers[key]) {
-                    map.removeLayer(markers[key]);
-                }
+        // Create numbered waypoint marker
+        function createWaypointMarker(index) {
+            return L.divIcon({
+                html: '<div style="background:#FF6B35;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:11px;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);">' + (index + 1) + '</div>',
+                className: 'waypoint-marker',
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
             });
-            markers = {};
-
-            // Clear existing polyline
-            if (polyline) {
-                map.removeLayer(polyline);
-                polyline = null;
-            }
-
-            // Add start marker
-            if (data.startPos) {
-                markers.start = L.marker([data.startPos.latitude, data.startPos.longitude], {
-                    icon: createMarkerIcon('#34C759', 'S')
-                }).addTo(map);
-            }
-
-            // Add end marker
-            if (data.endPos) {
-                markers.end = L.marker([data.endPos.latitude, data.endPos.longitude], {
-                    icon: createMarkerIcon('#FF3B30', 'E')
-                }).addTo(map);
-            }
-
-            // Add current position marker (bus)
-            if (data.currentPos) {
-                markers.current = L.marker([data.currentPos.latitude, data.currentPos.longitude], {
-                    icon: createMarkerIcon('#007AFF', '🚌')
-                }).addTo(map);
-            }
-
-            // Add route polyline
-            if (data.route && data.route.length > 0) {
-                const routePoints = data.route.map(p => [p.latitude, p.longitude]);
-                polyline = L.polyline(routePoints, { 
-                    color: '#007AFF', 
-                    weight: 4,
-                    opacity: 0.8
-                }).addTo(map);
-            }
-
-            // Pan to show all markers
-            if (data.startPos && data.endPos) {
-                const bounds = L.latLngBounds([
-                    [data.startPos.latitude, data.startPos.longitude],
-                    [data.endPos.latitude, data.endPos.longitude]
-                ]);
-                map.fitBounds(bounds, { padding: [50, 50] });
-            } else {
-                map.setView([data.center.latitude, data.center.longitude], data.center.zoom || 13);
-            }
         }
 
-        // Listen for messages from React Native
+        // Handle map clicks
+        map.on('click', function(e) {
+            if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                    type: 'mapClick',
+                    position: { 
+                        latitude: e.latlng.lat, 
+                        longitude: e.latlng.lng 
+                    }
+                }));
+            }
+        });
+
+        // Handle messages from React Native
         document.addEventListener('message', function(e) {
             try {
-                const data = JSON.parse(e.data);
+                var data = JSON.parse(e.data);
                 if (data.type === 'updateMap') {
-                    updateMap(data);
+                    // Clear existing markers
+                    Object.keys(markers).forEach(function(key) {
+                        if (markers[key]) {
+                            map.removeLayer(markers[key]);
+                        }
+                    });
+                    markers = {};
+
+                    // Clear waypoint markers
+                    waypointMarkers.forEach(function(m) {
+                        map.removeLayer(m);
+                    });
+                    waypointMarkers = [];
+
+                    // Clear existing polyline
+                    if (polyline) {
+                        map.removeLayer(polyline);
+                        polyline = null;
+                    }
+
+                    // Add waypoints (numbered markers)
+                    if (data.waypoints && data.waypoints.length > 0) {
+                        data.waypoints.forEach(function(wp, index) {
+                            var label = index === 0 ? 'S' : (index === data.waypoints.length - 1 ? 'E' : '');
+                            var marker;
+                            if (label) {
+                                marker = L.marker([wp.latitude, wp.longitude], {
+                                    icon: createMarkerIcon(index === 0 ? '#34C759' : '#FF3B30', label)
+                                }).addTo(map);
+                            } else {
+                                marker = L.marker([wp.latitude, wp.longitude], {
+                                    icon: createWaypointMarker(index)
+                                }).addTo(map);
+                            }
+                            waypointMarkers.push(marker);
+                        });
+
+                        // Draw polyline connecting waypoints
+                        if (data.waypoints.length > 1) {
+                            var wpLinePoints = data.waypoints.map(function(p) { return [p.latitude, p.longitude]; });
+                            L.polyline(wpLinePoints, {
+                                color: '#FF6B35',
+                                weight: 3,
+                                opacity: 0.6,
+                                dashArray: '5, 10'
+                            }).addTo(map);
+                        }
+                    }
+
+                    // Add current position marker (bus)
+                    if (data.currentPos) {
+                        markers.current = L.marker([data.currentPos.latitude, data.currentPos.longitude], {
+                            icon: createMarkerIcon('#007AFF', '🚌')
+                        }).addTo(map);
+                    }
+
+                    // Add route polyline (generated route)
+                    if (data.route && data.route.length > 0) {
+                        var routePoints = data.route.map(function(p) { return [p.latitude, p.longitude]; });
+                        polyline = L.polyline(routePoints, { 
+                            color: '#007AFF', 
+                            weight: 4,
+                            opacity: 0.8
+                        }).addTo(map);
+                    }
+
+                    // Pan to show all markers
+                    if (data.waypoints && data.waypoints.length > 0) {
+                        var first = data.waypoints[0];
+                        var last = data.waypoints[data.waypoints.length - 1];
+                        var bounds = L.latLngBounds([
+                            [first.latitude, first.longitude],
+                            [last.latitude, last.longitude]
+                        ]);
+                        map.fitBounds(bounds, { padding: [50, 50] });
+                    } else if (data.center) {
+                        map.setView([data.center.latitude, data.center.longitude], data.center.zoom || 13);
+                    }
                 }
             } catch (err) {
                 console.error('Error parsing message:', err);
             }
         });
+
+        // Notify that map is ready
+        if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'mapReady' }));
+        }
     </script>
 </body>
 </html>
@@ -471,19 +489,22 @@ export default function Bus() {
 				)}
 			</View>
 
-			{/* Map (WebView with Leaflet) */}
+			{/* Map (WebView with OpenStreetMap/Leaflet) */}
 			<View style={styles.mapContainer}>
 				<WebView
 					ref={webViewRef}
 					originWhitelist={["*"]}
-					source={{ html: mapHtml }}
+					source={{ html: osmMapHtml }}
 					style={styles.map}
 					onMessage={handleWebViewMessage}
 					javaScriptEnabled={true}
 					domStorageEnabled={true}
-					onLoad={() => {
-						mapInitialized.current = true;
-					}}
+					startInLoadingState={true}
+					renderLoading={() => (
+						<View style={styles.mapLoading}>
+							<Text>Loading map...</Text>
+						</View>
+					)}
 				/>
 			</View>
 
@@ -510,6 +531,7 @@ export default function Bus() {
 								onChangeText={setStartTime}
 								placeholder="HH:MM"
 								placeholderTextColor="#999"
+								keyboardType="numeric"
 							/>
 							<Text style={styles.timeLabel}>End:</Text>
 							<TextInput
@@ -518,6 +540,7 @@ export default function Bus() {
 								onChangeText={setEndTime}
 								placeholder="HH:MM"
 								placeholderTextColor="#999"
+								keyboardType="numeric"
 							/>
 						</View>
 					</View>
@@ -555,10 +578,10 @@ export default function Bus() {
 						<TouchableOpacity
 							style={[
 								styles.actionButton,
-								(!startPos || !endPos) && styles.actionButtonDisabled,
+								waypoints.length < 2 && styles.actionButtonDisabled,
 							]}
 							onPress={startTracking}
-							disabled={!startPos || !endPos}
+							disabled={waypoints.length < 2}
 						>
 							<Text style={styles.actionButtonText}>Start Tracking</Text>
 						</TouchableOpacity>
@@ -582,14 +605,15 @@ export default function Bus() {
 				</View>
 
 				{/* Instructions */}
-				{isEditingPath && !startPos && (
+				{isEditingPath && waypoints.length === 0 && (
 					<Text style={styles.instructions}>
-						Tap on the map to set the starting position
+						Tap on the map to add waypoints along the road
 					</Text>
 				)}
-				{isEditingPath && startPos && !endPos && (
+				{isEditingPath && waypoints.length > 0 && (
 					<Text style={styles.instructions}>
-						Tap on the map to set the destination
+						{waypoints.length} point(s) set. Tap to add more or press
+						"Start Tracking"
 					</Text>
 				)}
 			</View>
@@ -634,6 +658,11 @@ const styles = StyleSheet.create({
 	map: {
 		width: "100%",
 		height: "100%",
+	},
+	mapLoading: {
+		flex: 1,
+		justifyContent: "center",
+		alignItems: "center",
 	},
 	bottomPanel: {
 		backgroundColor: "#fff",
