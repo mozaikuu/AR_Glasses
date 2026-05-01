@@ -59,25 +59,20 @@ export default function Bus() {
 		null,
 	);
 
-	// Generate a simple route between two points (interpolated line with some curve)
+	// Generate a straight route between two points (no curve)
 	const generateRoute = (start: Position, end: Position): Position[] => {
 		const points: Position[] = [];
 		const steps = 50; // Number of points in the route
 
-		// Add some randomness to make it look like a real road
-		const randomOffset = (Math.random() - 0.5) * 0.01;
-
 		for (let i = 0; i <= steps; i++) {
 			const t = i / steps;
-			// Simple interpolation with a slight curve
+			// Simple linear interpolation (straight line)
 			const lat = start.latitude + (end.latitude - start.latitude) * t;
 			const lng = start.longitude + (end.longitude - start.longitude) * t;
 
-			// Add curve effect in the middle
-			const curveFactor = Math.sin(t * Math.PI) * randomOffset;
 			points.push({
-				latitude: lat + curveFactor,
-				longitude: lng + curveFactor,
+				latitude: lat,
+				longitude: lng,
 			});
 		}
 
