@@ -1,0 +1,4 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "RebuildLib")(type "KiCad")(uri "d:/0_code/Smart_Glasses_Distilled/Hardware/KiCAD_Rebuild_2026_04_08/RebuildLib.pretty")(options "")(descr ""))
+)

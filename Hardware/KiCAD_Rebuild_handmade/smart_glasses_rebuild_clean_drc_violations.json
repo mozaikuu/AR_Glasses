@@ -1,0 +1,76 @@
+{
+  "board": "d:\\0_code\\Smart_Glasses_Distilled\\Hardware\\KiCAD_Rebuild_2026_04_08\\smart_glasses_rebuild_clean.kicad_pcb",
+  "timestamp": "2026-04-13T17:43:53+0200",
+  "total_violations": 6,
+  "violation_counts": {
+    "silk_edge_clearance": 1,
+    "lib_footprint_mismatch": 5
+  },
+  "severity_counts": {
+    "error": 0,
+    "warning": 6,
+    "info": 0
+  },
+  "violations": [
+    {
+      "type": "silk_edge_clearance",
+      "severity": "warning",
+      "message": "Silkscreen clipped by board edge",
+      "location": {
+        "x": 40.32,
+        "y": 22.54,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "lib_footprint_mismatch",
+      "severity": "warning",
+      "message": "Footprint 'PinHeader_1x06_P2.54mm_Vertical' does not match copy in library 'Connector_PinHeader_2.54mm'.",
+      "location": {
+        "x": 52.0,
+        "y": 70.0,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "lib_footprint_mismatch",
+      "severity": "warning",
+      "message": "Footprint 'PinHeader_1x06_P2.54mm_Vertical' does not match copy in library 'Connector_PinHeader_2.54mm'.",
+      "location": {
+        "x": 176.0,
+        "y": 54.0,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "lib_footprint_mismatch",
+      "severity": "warning",
+      "message": "Footprint 'PinHeader_1x02_P2.54mm_Vertical' does not match copy in library 'Connector_PinHeader_2.54mm'.",
+      "location": {
+        "x": 84.0,
+        "y": 33.0,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "lib_footprint_mismatch",
+      "severity": "warning",
+      "message": "Footprint 'PinHeader_1x09_P2.54mm_Vertical' does not match copy in library 'Connector_PinHeader_2.54mm'.",
+      "location": {
+        "x": 52.0,
+        "y": 24.0,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "lib_footprint_mismatch",
+      "severity": "warning",
+      "message": "Footprint 'Power_Switch_Latching_SPST_2Pin' does not match copy in library 'RebuildLib'.",
+      "location": {
+        "x": 64.0,
+        "y": 70.0,
+        "unit": "mm"
+      }
+    }
+  ]
+}

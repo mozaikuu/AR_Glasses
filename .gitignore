@@ -14,6 +14,9 @@ bus_system/frontend/.next
 img360
 ARCNCopy
 
+clients/mobile/node_modules
+clients/Expo/node_modules
+
 AR_Cerebro/[Ll]ibrary/
 AR_Cerebro/[Tt]emp/
 AR_Cerebro/[Oo]bj/
@@ -42,3 +45,16 @@ hololens2-campus-nav/[MemoryCaptures]/
 hololens2-campus-nav/*.7z
 hololens2-campus-nav/*.zip
 hololens2-campus-nav/Assets/MultiSet.7z
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# VSCode Local History
+.history/
+
+# KiCad backups
+*-backup/
+*.kicad_prl
+*.autosave
