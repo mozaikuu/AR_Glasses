@@ -7,6 +7,8 @@ import {
 	Dimensions,
 	Alert,
 	TextInput,
+	ScrollView,
+	Modal,
 } from "react-native";
 import { WebView } from "react-native-webview";
 
@@ -25,6 +27,15 @@ type Position = {
 };
 
 type TrackingStatus = "idle" | "tracking" | "stopped";
+
+type SavedTrack = {
+	id: string;
+	name: string;
+	waypoints: Position[];
+	startTime: string;
+	endTime: string;
+	createdAt: string;
+};
 
 export default function Bus() {
 	// Path setup state - multiple waypoints
@@ -53,11 +64,24 @@ export default function Bus() {
 	const [stopReason, setStopReason] = useState("");
 	const [stopTimer, setStopTimer] = useState(0);
 
+	// Saved tracks state
+	const [savedTracks, setSavedTracks] = useState<SavedTrack[]>([]);
+	const [showSaveModal, setShowSaveModal] = useState(false);
+	const [trackName, setTrackName] = useState("");
+	const [showSavedTracks, setShowSavedTracks] = useState(false);
+
 	// Refs
 	const webViewRef = useRef<WebView>(null);
 	const trackingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
 		null,
 	);
+
+	// Load saved tracks on mount
+	useEffect(() => {
+		// Load from AsyncStorage or use defaults
+		const defaultTracks: SavedTrack[] = [];
+		setSavedTracks(defaultTracks);
+	}, []);
 
 	// Generate a straight route between two points (no curve)
 	const generateRoute = (start: Position, end: Position): Position[] => {
@@ -153,6 +177,61 @@ export default function Bus() {
 			center: waypoints.length > 0 ? waypoints[0] : INITIAL_CENTER,
 		});
 	}, [waypoints, currentPos, generatedRoute, sendToWebView]);
+
+	// Save current track
+	const saveTrack = () => {
+		if (waypoints.length < 2) {
+			Alert.alert("Error", "Please set at least 2 points first");
+			return;
+		}
+		if (!trackName.trim()) {
+			Alert.alert("Error", "Please enter a track name");
+			return;
+		}
+
+		const newTrack: SavedTrack = {
+			id: Date.now().toString(),
+			name: trackName.trim(),
+			waypoints: [...waypoints],
+			startTime,
+			endTime,
+			createdAt: new Date().toISOString(),
+		};
+
+		setSavedTracks((prev) => [...prev, newTrack]);
+		setTrackName("");
+		setShowSaveModal(false);
+		Alert.alert("Success", `Track "${newTrack.name}" saved!`);
+	};
+
+	// Load a saved track
+	const loadTrack = (track: SavedTrack) => {
+		setWaypoints(track.waypoints);
+		setStartTime(track.startTime);
+		setEndTime(track.endTime);
+		setShowSavedTracks(false);
+		setStatusMessage(`Loaded "${track.name}" - press Start Tracking`);
+	};
+
+	// Delete a saved track
+	const deleteTrack = (trackId: string) => {
+		Alert.alert(
+			"Delete Track",
+			"Are you sure you want to delete this track?",
+			[
+				{ text: "Cancel", style: "cancel" },
+				{
+					text: "Delete",
+					style: "destructive",
+					onPress: () => {
+						setSavedTracks((prev) =>
+							prev.filter((t) => t.id !== trackId),
+						);
+					},
+				},
+			],
+		);
+	};
 
 	// Start tracking
 	const startTracking = () => {
@@ -477,12 +556,65 @@ export default function Bus() {
 			{/* Header */}
 			<View style={styles.header}>
 				<Text style={styles.headerTitle}>Bus Tracking</Text>
-				{!isEditingPath && (
-					<TouchableOpacity style={styles.editButton} onPress={editPath}>
-						<Text style={styles.editButtonText}>Edit Path</Text>
+				<View style={styles.headerButtons}>
+					{!isEditingPath && (
+						<TouchableOpacity
+							style={styles.editButton}
+							onPress={editPath}
+						>
+							<Text style={styles.editButtonText}>Edit Path</Text>
+						</TouchableOpacity>
+					)}
+					<TouchableOpacity
+						style={styles.savedButton}
+						onPress={() => setShowSavedTracks(!showSavedTracks)}
+					>
+						<Text style={styles.savedButtonText}>
+							{showSavedTracks ? "Hide" : "Saved"}
+						</Text>
 					</TouchableOpacity>
-				)}
+				</View>
 			</View>
+
+			{/* Saved Tracks Panel */}
+			{showSavedTracks && (
+				<View style={styles.savedTracksPanel}>
+					<Text style={styles.savedTracksTitle}>Saved Tracks</Text>
+					{savedTracks.length === 0 ? (
+						<Text style={styles.noTracksText}>No saved tracks yet</Text>
+					) : (
+						<ScrollView style={styles.savedTracksList}>
+							{savedTracks.map((track) => (
+								<View key={track.id} style={styles.trackItem}>
+									<View style={styles.trackInfo}>
+										<Text style={styles.trackName}>{track.name}</Text>
+										<Text style={styles.trackDetails}>
+											{track.waypoints.length} points |{" "}
+											{track.startTime} - {track.endTime}
+										</Text>
+									</View>
+									<View style={styles.trackButtons}>
+										<TouchableOpacity
+											style={styles.loadButton}
+											onPress={() => loadTrack(track)}
+										>
+											<Text style={styles.loadButtonText}>Load</Text>
+										</TouchableOpacity>
+										<TouchableOpacity
+											style={styles.deleteButton}
+											onPress={() => deleteTrack(track.id)}
+										>
+											<Text style={styles.deleteButtonText}>
+												Delete
+											</Text>
+										</TouchableOpacity>
+									</View>
+								</View>
+							))}
+						</ScrollView>
+					)}
+				</View>
+			)}
 
 			{/* Map (WebView with OpenStreetMap/Leaflet) */}
 			<View style={styles.mapContainer}>
@@ -570,16 +702,30 @@ export default function Bus() {
 				{/* Action Buttons */}
 				<View style={styles.buttonContainer}>
 					{isEditingPath ? (
-						<TouchableOpacity
-							style={[
-								styles.actionButton,
-								waypoints.length < 2 && styles.actionButtonDisabled,
-							]}
-							onPress={startTracking}
-							disabled={waypoints.length < 2}
-						>
-							<Text style={styles.actionButtonText}>Start Tracking</Text>
-						</TouchableOpacity>
+						<>
+							<TouchableOpacity
+								style={[
+									styles.actionButton,
+									waypoints.length < 2 && styles.actionButtonDisabled,
+								]}
+								onPress={startTracking}
+								disabled={waypoints.length < 2}
+							>
+								<Text style={styles.actionButtonText}>
+									Start Tracking
+								</Text>
+							</TouchableOpacity>
+							{waypoints.length >= 2 && (
+								<TouchableOpacity
+									style={[styles.actionButton, styles.saveButton]}
+									onPress={() => setShowSaveModal(true)}
+								>
+									<Text style={styles.actionButtonText}>
+										Save Track
+									</Text>
+								</TouchableOpacity>
+							)}
+						</>
 					) : trackingStatus === "tracking" ? (
 						<TouchableOpacity
 							style={[styles.actionButton, styles.stopButton]}
@@ -612,6 +758,40 @@ export default function Bus() {
 					</Text>
 				)}
 			</View>
+
+			{/* Save Track Modal */}
+			<Modal
+				visible={showSaveModal}
+				transparent={true}
+				animationType="slide"
+				onRequestClose={() => setShowSaveModal(false)}
+			>
+				<View style={styles.modalOverlay}>
+					<View style={styles.modalContent}>
+						<Text style={styles.modalTitle}>Save Track</Text>
+						<TextInput
+							style={styles.modalInput}
+							placeholder="Track name (e.g., Campus Route)"
+							value={trackName}
+							onChangeText={setTrackName}
+						/>
+						<View style={styles.modalButtons}>
+							<TouchableOpacity
+								style={styles.modalCancelButton}
+								onPress={() => setShowSaveModal(false)}
+							>
+								<Text style={styles.modalButtonText}>Cancel</Text>
+							</TouchableOpacity>
+							<TouchableOpacity
+								style={styles.modalSaveButton}
+								onPress={saveTrack}
+							>
+								<Text style={styles.modalButtonText}>Save</Text>
+							</TouchableOpacity>
+						</View>
+					</View>
+				</View>
+			</Modal>
 		</View>
 	);
 }
@@ -631,6 +811,10 @@ const styles = StyleSheet.create({
 		borderBottomWidth: 1,
 		borderBottomColor: "#e0e0e0",
 	},
+	headerButtons: {
+		flexDirection: "row",
+		gap: 8,
+	},
 	headerTitle: {
 		fontSize: 20,
 		fontWeight: "bold",
@@ -646,6 +830,87 @@ const styles = StyleSheet.create({
 		color: "#fff",
 		fontWeight: "600",
 		fontSize: 14,
+	},
+	savedButton: {
+		paddingHorizontal: 16,
+		paddingVertical: 8,
+		backgroundColor: "#34C759",
+		borderRadius: 8,
+	},
+	savedButtonText: {
+		color: "#fff",
+		fontWeight: "600",
+		fontSize: 14,
+	},
+	savedTracksPanel: {
+		maxHeight: 150,
+		backgroundColor: "#f8f9fa",
+		padding: 12,
+		borderBottomWidth: 1,
+		borderBottomColor: "#e0e0e0",
+	},
+	savedTracksTitle: {
+		fontSize: 16,
+		fontWeight: "bold",
+		color: "#333",
+		marginBottom: 8,
+	},
+	noTracksText: {
+		fontSize: 14,
+		color: "#999",
+		textAlign: "center",
+		padding: 8,
+	},
+	savedTracksList: {
+		maxHeight: 100,
+	},
+	trackItem: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+		padding: 8,
+		backgroundColor: "#fff",
+		borderRadius: 8,
+		marginBottom: 4,
+	},
+	trackInfo: {
+		flex: 1,
+	},
+	trackName: {
+		fontSize: 14,
+		fontWeight: "600",
+		color: "#333",
+	},
+	trackDetails: {
+		fontSize: 12,
+		color: "#666",
+		marginTop: 2,
+	},
+	trackButtons: {
+		flexDirection: "row",
+		gap: 8,
+	},
+	loadButton: {
+		paddingHorizontal: 12,
+		paddingVertical: 6,
+		backgroundColor: "#007AFF",
+		borderRadius: 6,
+	},
+	loadButtonText: {
+		color: "#fff",
+		fontSize: 12,
+		fontWeight: "600",
+	},
+	deleteButton: {
+		paddingHorizontal: 12,
+		paddingVertical: 6,
+		backgroundColor: "#FF3B30",
+		borderRadius: 6,
+	},
+	deleteButtonText: {
+		color: "#fff",
+		fontSize: 12,
+		fontWeight: "600",
 	},
 	mapContainer: {
 		flex: 1,
@@ -735,6 +1000,10 @@ const styles = StyleSheet.create({
 		backgroundColor: "#007AFF",
 		borderRadius: 12,
 		alignItems: "center",
+		marginBottom: 8,
+	},
+	saveButton: {
+		backgroundColor: "#34C759",
 	},
 	actionButtonDisabled: {
 		backgroundColor: "#ccc",
@@ -752,5 +1021,56 @@ const styles = StyleSheet.create({
 		color: "#999",
 		textAlign: "center",
 		fontStyle: "italic",
+	},
+	modalOverlay: {
+		flex: 1,
+		backgroundColor: "rgba(0,0,0,0.5)",
+		justifyContent: "center",
+		alignItems: "center",
+	},
+	modalContent: {
+		width: "85%",
+		backgroundColor: "#fff",
+		borderRadius: 16,
+		padding: 24,
+	},
+	modalTitle: {
+		fontSize: 18,
+		fontWeight: "bold",
+		color: "#333",
+		marginBottom: 16,
+		textAlign: "center",
+	},
+	modalInput: {
+		width: "100%",
+		paddingHorizontal: 16,
+		paddingVertical: 12,
+		backgroundColor: "#f0f0f0",
+		borderRadius: 8,
+		fontSize: 16,
+		marginBottom: 16,
+	},
+	modalButtons: {
+		flexDirection: "row",
+		gap: 12,
+	},
+	modalCancelButton: {
+		flex: 1,
+		padding: 14,
+		backgroundColor: "#e0e0e0",
+		borderRadius: 8,
+		alignItems: "center",
+	},
+	modalSaveButton: {
+		flex: 1,
+		padding: 14,
+		backgroundColor: "#34C759",
+		borderRadius: 8,
+		alignItems: "center",
+	},
+	modalButtonText: {
+		color: "#fff",
+		fontSize: 16,
+		fontWeight: "600",
 	},
 });
