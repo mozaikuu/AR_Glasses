@@ -762,8 +762,8 @@ export default function Bus() {
 				)}
 				{isEditingPath && waypoints.length > 0 && (
 					<Text style={styles.instructions}>
-						{waypoints.length} point(s) set. Tap to add more or press
-						"Start Tracking"
+						{waypoints.length} point(s) set. Tap to add more or press Start
+						Tracking
 					</Text>
 				)}
 			</View>

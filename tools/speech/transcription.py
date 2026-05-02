@@ -74,6 +74,7 @@ def transcribe_audio_detailed(
     raw_pcm = b""
     sample_rate = 16000
     sample_width = 2
+    decoded = False
 
     try:
         with wave.open(io.BytesIO(audio_bytes), "rb") as wav_reader:
@@ -82,8 +83,26 @@ def transcribe_audio_detailed(
             raw_pcm = wav_reader.readframes(wav_reader.getnframes())
             stt_debug["audio_container"] = "wav"
             stt_debug["audio_format"] = "wav_pcm"
+            decoded = True
     except Exception:
-        # Fallback: raw PCM16 mono at configured/default sample rate.
+        pass
+
+    if not decoded:
+        try:
+            from pydub import AudioSegment
+
+            seg = AudioSegment.from_file(io.BytesIO(audio_bytes))
+            raw_pcm = seg.raw_data
+            sample_rate = max(8000, int(seg.frame_rate))
+            sample_width = max(1, min(4, int(seg.sample_width)))
+            stt_debug["audio_container"] = "compressed"
+            stt_debug["audio_format"] = "pydub_decoded"
+            decoded = bool(raw_pcm)
+        except Exception as exc:
+            stt_debug["pydub_error"] = str(exc)
+
+    if not decoded:
+        # Fallback: raw PCM16 mono at configured/default sample rate (Expo / legacy clients).
         raw_pcm = audio_bytes
         raw_meta = metadata if isinstance(metadata, Mapping) else {}
         sample_rate = max(8000, _as_int(raw_meta.get("sample_rate"), 16000))

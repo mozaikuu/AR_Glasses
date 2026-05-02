@@ -140,7 +140,7 @@ const AssistantScreen = () => {
 			</View>
 
 			{isProcessing && (
-				<View style={styles.processing}
+				<View style={styles.processing}>
 					<ActivityIndicator size="large" color="#2e7dff" />
 					<Text style={styles.processingText}>Processing...</Text>
 				</View>
