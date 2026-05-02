@@ -1,5 +1,12 @@
 {
   "dependencies": {
+    "com.meta.xr.simulator": {
+      "version": "77.0.0",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://packages.unity.com"
+    },
     "com.microsoft.mrtk.graphicstools.unity": {
       "version": "file:MixedReality/com.microsoft.mrtk.graphicstools.unity-0.5.12.tgz",
       "depth": 0,

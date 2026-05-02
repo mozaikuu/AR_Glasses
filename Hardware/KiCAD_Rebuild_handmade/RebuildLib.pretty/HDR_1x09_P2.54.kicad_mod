@@ -1,0 +1,106 @@
+(footprint "HDR_1x09_P2.54"
+  (version 20241229)
+  (generator "kicad-mcp")
+  (generator_version "9.0")
+  (layer "F.Cu")
+  (descr "Custom 1x09 2.54mm through-hole header")
+  (tags "header 1x09 2.54")
+
+  (property "Reference" "REF**" (at 0 -1.27 0)
+    (layer "F.SilkS")
+    (uuid "be4e2503-f1b5-4299-b087-651cd7e62a90")
+    (effects (font (size 1 1) (thickness 0.15)))
+  )
+  (property "Value" "HDR_1x09_P2.54" (at 0 1.27 0)
+    (layer "F.Fab")
+    (uuid "bc414ec2-eb5a-4420-bb20-62dbd2a000a3")
+    (effects (font (size 1 1) (thickness 0.15)))
+  )
+  (property "Datasheet" "" (at 0 0 0)
+    (layer "F.Fab")
+    (uuid "7bc57951-b99a-450e-9824-08cd829d448d")
+    (effects (font (size 1 1) (thickness 0.15)))
+  )
+
+  (fp_rect
+    (start -1.8 -1.8)
+    (end 1.8 22.12)
+    (stroke (width 0.05) (type default))
+    (fill none)
+    (layer "F.CrtYd")
+    (uuid "26854ffa-955e-4531-b309-3246d6357d61")
+  )
+
+  (pad "1" thru_hole oval
+    (at 0 0)
+    (size 1.8 1.8)
+    (drill 1)
+    (layers "*.Cu" "*.Mask")
+    (uuid "e4574419-5b2a-4473-aa4b-e582a8e82330")
+  )
+
+  (pad "2" thru_hole oval
+    (at 0 2.54)
+    (size 1.8 1.8)
+    (drill 1)
+    (layers "*.Cu" "*.Mask")
+    (uuid "7975fe26-82b7-42aa-8f09-b31249d884c2")
+  )
+
+  (pad "3" thru_hole oval
+    (at 0 5.08)
+    (size 1.8 1.8)
+    (drill 1)
+    (layers "*.Cu" "*.Mask")
+    (uuid "c39ecaef-68a2-433a-83ae-da506da04f1d")
+  )
+
+  (pad "4" thru_hole oval
+    (at 0 7.62)
+    (size 1.8 1.8)
+    (drill 1)
+    (layers "*.Cu" "*.Mask")
+    (uuid "72a12e14-7fbd-4847-8b4f-16256d007841")
+  )
+
+  (pad "5" thru_hole oval
+    (at 0 10.16)
+    (size 1.8 1.8)
+    (drill 1)
+    (layers "*.Cu" "*.Mask")
+    (uuid "79a56c3b-0c63-4a78-baaf-1d29ff866001")
+  )
+
+  (pad "6" thru_hole oval
+    (at 0 12.7)
+    (size 1.8 1.8)
+    (drill 1)
+    (layers "*.Cu" "*.Mask")
+    (uuid "3d704733-a770-47ab-9512-23103504af41")
+  )
+
+  (pad "7" thru_hole oval
+    (at 0 15.24)
+    (size 1.8 1.8)
+    (drill 1)
+    (layers "*.Cu" "*.Mask")
+    (uuid "d2a3cc06-31eb-4c48-9283-6b09d84fd1ab")
+  )
+
+  (pad "8" thru_hole oval
+    (at 0 17.78)
+    (size 1.8 1.8)
+    (drill 1)
+    (layers "*.Cu" "*.Mask")
+    (uuid "816839ff-bd86-469b-bcfc-90987a026f13")
+  )
+
+  (pad "9" thru_hole oval
+    (at 0 20.32)
+    (size 1.8 1.8)
+    (drill 1)
+    (layers "*.Cu" "*.Mask")
+    (uuid "17c4fb26-28d9-4e91-ad56-46a061591631")
+  )
+
+)

@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.meta.xr.simulator": "77.0.0",
     "com.microsoft.mrtk.graphicstools.unity": "file:MixedReality/com.microsoft.mrtk.graphicstools.unity-0.5.12.tgz",
     "com.multiset.sdk": "https://github.com/MultiSet-AI/multiset-unity-sdk.git",
     "com.unity.2d.sprite": "1.0.0",

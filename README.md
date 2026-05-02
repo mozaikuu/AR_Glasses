@@ -14,6 +14,7 @@ This workspace was reorganized into a clean, role-based layout focused on a sing
 │   ├── models/         # Request/response and domain models
 │   ├── config/         # Settings and environment config
 │   └── shared/         # Shared helpers
+├── bus_system/         # Isolated Smart Bus Tracking MVP workspace
 ├── clients/            # External client adapters/projects
 │   ├── unity/          # Unity/HoloLens integration assets
 │   ├── esp32/          # ESP firmware integration notes/assets
@@ -31,6 +32,16 @@ This workspace was reorganized into a clean, role-based layout focused on a sing
 - Keep one launcher at project root: `start.py`.
 - Core runtime code should live under `app/`.
 - Clients should consume APIs only (no direct imports from internal modules).
+
+## Bus System Workspace
+
+All Smart Bus Tracking MVP modules are grouped under `bus_system/` for easier access:
+
+- `bus_system/backend/` API and simulation runtime integration
+- `bus_system/frontend/` Next.js dashboard and PWA
+- `bus_system/simulation/` route and prediction modules
+- `bus_system/agent_tools/` Cerebro tool wrappers
+- `bus_system/docs/bus_tracking_mvp/` MVP docs
 
 ## Next Move
 

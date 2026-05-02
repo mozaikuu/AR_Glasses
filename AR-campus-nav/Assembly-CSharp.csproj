@@ -43,7 +43,7 @@
     <UnityVersion>6000.4.0b11</UnityVersion>
   </PropertyGroup>
   <ItemGroup>
-    <Analyzer Include="C:\Users\Moussa\.vscode\extensions\visualstudiotoolsforunity.vstuc-1.2.1\Analyzers\Microsoft.Unity.Analyzers.dll" />
+    <Analyzer Include="C:\Users\Moussa\.vscode\extensions\visualstudiotoolsforunity.vstuc-1.2.2\Analyzers\Microsoft.Unity.Analyzers.dll" />
     <Analyzer Include="G:\Unity Hub\Editor\6000.4.0b11\Editor\Data\Tools\BuildPipeline\Unity.SourceGenerators\Unity.SourceGenerators.dll" />
     <Analyzer Include="G:\Unity Hub\Editor\6000.4.0b11\Editor\Data\Tools\BuildPipeline\Unity.SourceGenerators\Unity.Properties.SourceGenerator.dll" />
     <Analyzer Include="G:\Unity Hub\Editor\6000.4.0b11\Editor\Data\Tools\BuildPipeline\Unity.SourceGenerators\Unity.UIToolkit.SourceGenerator.dll" />
@@ -55,6 +55,7 @@
     <Compile Include="Assets\Scripts\LocationInfo\LocationTrigger.cs" />
     <Compile Include="Assets\Scripts\Navigation\LocalizationWrapper.cs" />
     <Compile Include="Assets\Scripts\LocationInfo\LocationInfoSetup.cs" />
+    <Compile Include="Assets\Scripts\Navigation\QuestCameraFrameCapture.cs" />
     <Compile Include="Assets\Scripts\LocationInfo\LocationInfoPopup.cs" />
     <Compile Include="Assets\Scripts\LocationInfo\LocationDataManager.cs" />
     <Compile Include="Assets\Scripts\LocationInfo\LocationDataModels.cs" />
