@@ -16,8 +16,8 @@ const { width, height } = Dimensions.get("window");
 
 // Default region (Cairo, Egypt)
 const INITIAL_CENTER = {
-	latitude: 30.0444,
-	longitude: 31.2357,
+	latitude: 31.04,
+	longitude: 31.38,
 	zoom: 13,
 };
 
@@ -524,15 +524,24 @@ export default function Bus() {
                         }).addTo(map);
                     }
 
-                    // Pan to show all markers
+                    // Only pan/zoom on initial load or when waypoints change significantly
                     if (data.waypoints && data.waypoints.length > 0) {
-                        var first = data.waypoints[0];
-                        var last = data.waypoints[data.waypoints.length - 1];
-                        var bounds = L.latLngBounds([
-                            [first.latitude, first.longitude],
-                            [last.latitude, last.longitude]
-                        ]);
-                        map.fitBounds(bounds, { padding: [50, 50] });
+                        // Only fit bounds if this is the first time showing waypoints or if route changed
+                        if (!window.mapBoundsSet || data.forceFit) {
+                            var first = data.waypoints[0];
+                            var last = data.waypoints[data.waypoints.length - 1];
+                            var bounds = L.latLngBounds([
+                                [first.latitude, first.longitude],
+                                [last.latitude, last.longitude]
+                            ]);
+                            map.fitBounds(bounds, { padding: [50, 50] });
+                            window.mapBoundsSet = true;
+                        }
+                        
+                        // Update center for bus tracking without zooming
+                        if (data.currentPos && window.mapBoundsSet) {
+                            map.panTo([data.currentPos.latitude, data.currentPos.longitude], { animate: true });
+                        }
                     } else if (data.center) {
                         map.setView([data.center.latitude, data.center.longitude], data.center.zoom || 13);
                     }
