@@ -7,19 +7,19 @@
     "icon": "./assets/images/icon.png",
     "scheme": "expo",
     "userInterfaceStyle": "automatic",
-		"ios": {
-			"supportsTablet": true,
-			"infoPlist": {
-				"NSCameraUsageDescription": "The companion uses the camera to understand vague or visual questions (e.g. what is this, read a sign).",
-				"NSMicrophoneUsageDescription": "The companion needs the microphone for hold-to-talk and wake-word mode while the app is open."
-			}
-		},
-		"android": {
-			"permissions": [
-				"android.permission.CAMERA",
-				"android.permission.RECORD_AUDIO"
-			],
-			"adaptiveIcon": {
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "The companion uses the camera to understand vague or visual questions (e.g. what is this, read a sign).",
+        "NSMicrophoneUsageDescription": "The companion needs the microphone for hold-to-talk and wake-word mode while the app is open."
+      }
+    },
+    "android": {
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
@@ -54,7 +54,8 @@
           }
         }
       ],
-      "expo-audio"
+      "expo-audio",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,

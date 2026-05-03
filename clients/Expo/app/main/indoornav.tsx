@@ -771,31 +771,6 @@ export default function IndoorNavScreen() {
 								</Text>
 							)}
 
-							<Text style={styles.section}>Destination</Text>
-							<TextInput
-								value={search}
-								onChangeText={setSearch}
-								placeholder="Search rooms…"
-								style={styles.input}
-							/>
-							<FlatList
-								data={filteredDestinations}
-								keyExtractor={(item) => item.id}
-								scrollEnabled={false}
-								renderItem={({ item }) => (
-									<Pressable
-										style={[styles.destRow, destinationId === item.id && styles.destRowOn]}
-										onPress={() => setDestinationId(item.id)}
-									>
-										<Text style={styles.destName}>{item.name}</Text>
-										<Text style={styles.destMeta}>
-											Floor {item.floor}
-											{item.roomCode ? ` · ${item.roomCode}` : ""}
-										</Text>
-									</Pressable>
-								)}
-							/>
-
 							<Text style={styles.section}>Guide</Text>
 							{instructions.length === 0 ? (
 								<Text style={styles.muted}>Select a destination to see step-by-step guidance.</Text>
@@ -823,6 +798,31 @@ export default function IndoorNavScreen() {
 									</View>
 								</View>
 							)}
+
+							<Text style={styles.section}>Destination</Text>
+							<TextInput
+								value={search}
+								onChangeText={setSearch}
+								placeholder="Search rooms…"
+								style={styles.input}
+							/>
+							<FlatList
+								data={filteredDestinations}
+								keyExtractor={(item) => item.id}
+								scrollEnabled={false}
+								renderItem={({ item }) => (
+									<Pressable
+										style={[styles.destRow, destinationId === item.id && styles.destRowOn]}
+										onPress={() => setDestinationId(item.id)}
+									>
+										<Text style={styles.destName}>{item.name}</Text>
+										<Text style={styles.destMeta}>
+											Floor {item.floor}
+											{item.roomCode ? ` · ${item.roomCode}` : ""}
+										</Text>
+									</Pressable>
+								)}
+							/>
 						</>
 					) : (
 						<EditorPanel
