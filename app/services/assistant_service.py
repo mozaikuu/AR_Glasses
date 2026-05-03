@@ -173,11 +173,26 @@ class AssistantService:
         try:
             with urlopen(req, timeout=timeout_seconds) as response:
                 if response.status != 200:
+                    logger.debug("mcp POST %s HTTP %s", path, response.status)
                     return None
                 parsed = json.loads(response.read().decode("utf-8"))
                 return parsed if isinstance(parsed, dict) else None
-        except Exception:
+        except Exception as exc:
+            logger.debug("mcp POST %s failed: %s", path, exc)
             return None
+
+    @staticmethod
+    def _vision_answer_usable(text: str | None) -> bool:
+        if not text:
+            return False
+        stripped = text.strip()
+        unusable_prefixes = (
+            "Moondream unavailable",
+            "Vision processing failed",
+            "No image provided",
+            "Invalid base64 image payload",
+        )
+        return not any(stripped.startswith(p) for p in unusable_prefixes)
 
     def _vision_intent(self, text: str) -> bool:
         lowered = (text or "").strip().lower()
@@ -197,6 +212,9 @@ class AssistantService:
             "describe what i'm looking at",
             "look at this",
             "identify this",
+            "what's this",
+            "what is this",
+            "tell me what this is",
         )
         return any(cue in lowered for cue in cues)
 
@@ -209,7 +227,30 @@ class AssistantService:
         if not result:
             return None
         text = str(result.get("text") or "").strip()
-        return text or None
+        if not text:
+            return None
+        return text if self._vision_answer_usable(text) else None
+
+    def _run_local_moondream_image(self, image_base64: str, prompt: str) -> str | None:
+        try:
+            from tools.vision.moondream import analyze_image
+
+            text = analyze_image(
+                image_base64=image_base64,
+                prompt=prompt or "Read and describe this image.",
+            )
+            text = (text or "").strip()
+            return text if self._vision_answer_usable(text) else None
+        except Exception as exc:
+            logger.debug("local Moondream image analysis failed: %s", exc)
+            return None
+
+    def _run_vision_from_image_with_fallback(self, image_base64: str, prompt: str) -> str | None:
+        if settings.enable_mcp_server:
+            mcp_text = self._run_mcp_vision_from_image(image_base64, prompt)
+            if mcp_text:
+                return mcp_text
+        return self._run_local_moondream_image(image_base64, prompt)
 
     def _run_mcp_vision_from_camera(self, prompt: str) -> str | None:
         result = self._mcp_post_json(
@@ -225,7 +266,32 @@ class AssistantService:
         if not result:
             return None
         text = str(result.get("text") or result.get("answer") or "").strip()
-        return text or None
+        if not text:
+            return None
+        return text if self._vision_answer_usable(text) else None
+
+    def _run_local_moondream_camera(self, prompt: str) -> str | None:
+        try:
+            from tools.vision.moondream import analyze_live_camera
+
+            result = analyze_live_camera(
+                prompt=prompt or "Describe what you see.",
+                camera_candidates=[0, 1, 2],
+            )
+            if not result.get("ok"):
+                return None
+            text = str(result.get("text") or "").strip()
+            return text if self._vision_answer_usable(text) else None
+        except Exception as exc:
+            logger.debug("local Moondream camera capture failed: %s", exc)
+            return None
+
+    def _run_vision_from_camera_with_fallback(self, prompt: str) -> str | None:
+        if settings.enable_mcp_server:
+            mcp_text = self._run_mcp_vision_from_camera(prompt)
+            if mcp_text:
+                return mcp_text
+        return self._run_local_moondream_camera(prompt)
 
     def process(self, request: ProcessRequest) -> dict[str, object]:
         source_signals: list[str] = []
@@ -344,33 +410,37 @@ class AssistantService:
                         },
                     }
 
-                return {
-                    "text": "I could not transcribe the audio clearly.",
-                    "mode": request.mode,
-                    "client": request.client,
-                    "tool_calls": [],
-                    "metadata": {
-                        "inputs": source_signals,
-                        "raw_transcript": "",
-                        "transcript": "",
-                        "wakeword_triggered": False,
-                        "wakeword": "",
-                        "wakeword_followup_armed": self._is_wake_followup_armed(client_key),
-                        "ignored_audio_reason": "stt_failed",
-                        "wakeword_candidates": list(self._wake_words),
-                        "stt_provider": str(stt_debug.get("provider") or "google_speech_recognition"),
-                        "stt_debug": stt_debug,
-                        "llm_provider": "",
-                        "ignored_audio": True,
-                    },
-                }
+                if request.image_base64:
+                    text = ""
+                    transcript_used = ""
+                else:
+                    return {
+                        "text": "I could not transcribe the audio clearly.",
+                        "mode": request.mode,
+                        "client": request.client,
+                        "tool_calls": [],
+                        "metadata": {
+                            "inputs": source_signals,
+                            "raw_transcript": "",
+                            "transcript": "",
+                            "wakeword_triggered": False,
+                            "wakeword": "",
+                            "wakeword_followup_armed": self._is_wake_followup_armed(client_key),
+                            "ignored_audio_reason": "stt_failed",
+                            "wakeword_candidates": list(self._wake_words),
+                            "stt_provider": str(stt_debug.get("provider") or "google_speech_recognition"),
+                            "stt_debug": stt_debug,
+                            "llm_provider": "",
+                            "ignored_audio": True,
+                        },
+                    }
         else:
             if text:
                 self._clear_wake_context(client_key)
                 self._clear_wake_followup(client_key)
             transcript_used = text
 
-        if not (text or "").strip():
+        if not (text or "").strip() and not request.image_base64:
             return {
                 "text": "Listening...",
                 "mode": request.mode,
@@ -393,7 +463,7 @@ class AssistantService:
             }
 
         if request.image_base64:
-            vision_answer = self._run_mcp_vision_from_image(request.image_base64, text)
+            vision_answer = self._run_vision_from_image_with_fallback(request.image_base64, text)
             if vision_answer:
                 return {
                     "text": vision_answer,
@@ -432,7 +502,7 @@ class AssistantService:
             }
 
         if self._vision_intent(text):
-            vision_answer = self._run_mcp_vision_from_camera(text)
+            vision_answer = self._run_vision_from_camera_with_fallback(text)
             if vision_answer:
                 return {
                     "text": vision_answer,
