@@ -1,5 +1,5 @@
 import "@/global.css";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { GlbViewer } from "@/lib/building-viewers";
@@ -9,30 +9,30 @@ export default function LidarTabScreen() {
 	const insets = useSafeAreaInsets();
 
 	return (
-		<View style={[styles.screen, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 12 }]}>
-			<ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+		<View style={[styles.screen, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 8 }]}>
+			<View style={styles.header}>
 				<Text style={styles.title}>LiDAR scan test</Text>
 				<Text style={styles.sub}>
-					Experimental textured mesh for New Mansoura University (Egypt). This tab is for LiDAR / scan QA only — indoor
-					navigation still uses its own 2D map data.
+					Walk inside the textured mesh (first-person). The camera auto-places in the scan bounds; use Recenter if you
+					drift. Indoor navigation still uses its own 2D map data.
 				</Text>
-				<View style={styles.viewer}>
-					<GlbViewer assetModule={UNI_MODEL} autoRotateYPerFrame={0.006} />
-				</View>
-				<Text style={styles.note}>
-					Tip: GLView + large GLBs are best verified on a physical phone. Simulators and web builds may be slow or fail to
-					render.
-				</Text>
-			</ScrollView>
+			</View>
+			<View style={styles.viewer}>
+				<GlbViewer assetModule={UNI_MODEL} interactionMode="walk" autoRotateYPerFrame={0} />
+			</View>
+			<Text style={styles.note}>
+				Drag the upper area to look; D-pad moves on the ground plane. Full SLAM localization is not wired here — this is a
+				standalone scan viewer. Best on a physical device.
+			</Text>
 		</View>
 	);
 }
 
 const styles = StyleSheet.create({
 	screen: { flex: 1, backgroundColor: "#f8fafc" },
-	scroll: { paddingHorizontal: 16, paddingBottom: 24, gap: 12 },
+	header: { paddingHorizontal: 16, gap: 8, paddingBottom: 8 },
 	title: { fontSize: 22, fontWeight: "700", color: "#0f172a" },
 	sub: { fontSize: 14, lineHeight: 20, color: "#334155" },
-	viewer: { height: 360 },
-	note: { fontSize: 13, lineHeight: 18, color: "#64748b" },
+	viewer: { flex: 1, minHeight: 320, marginHorizontal: 12, borderRadius: 12, overflow: "hidden" },
+	note: { fontSize: 12, lineHeight: 17, color: "#64748b", paddingHorizontal: 16, paddingTop: 8 },
 });
