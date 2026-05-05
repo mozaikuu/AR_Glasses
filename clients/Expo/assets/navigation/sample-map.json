@@ -1,0 +1,55 @@
+{
+	"schemaVersion": 1,
+	"name": "Sample Campus Wing",
+	"scale": 1,
+	"walls": [
+		{ "id": "w_outer_1", "points": [{ "x": 40, "y": 40 }, { "x": 520, "y": 40 }] },
+		{ "id": "w_outer_2", "points": [{ "x": 520, "y": 40 }, { "x": 520, "y": 420 }] },
+		{ "id": "w_outer_3", "points": [{ "x": 520, "y": 420 }, { "x": 40, "y": 420 }] },
+		{ "id": "w_outer_4", "points": [{ "x": 40, "y": 420 }, { "x": 40, "y": 40 }] },
+		{ "id": "w_split_v", "points": [{ "x": 280, "y": 40 }, { "x": 280, "y": 420 }] }
+	],
+	"rooms": [
+		{
+			"id": "room_west",
+			"name": "West wing",
+			"polygon": [
+				{ "x": 48, "y": 48 },
+				{ "x": 272, "y": 48 },
+				{ "x": 272, "y": 412 },
+				{ "x": 48, "y": 412 }
+			]
+		},
+		{
+			"id": "room_east",
+			"name": "East wing",
+			"polygon": [
+				{ "x": 288, "y": 48 },
+				{ "x": 512, "y": 48 },
+				{ "x": 512, "y": 412 },
+				{ "x": 288, "y": 412 }
+			]
+		}
+	],
+	"labels": [
+		{ "id": "lbl_a101", "text": "Room A101", "x": 120, "y": 160 },
+		{ "id": "lbl_lab", "text": "Lab B", "x": 380, "y": 200 }
+	],
+	"pois": [
+		{ "id": "poi_entrance", "type": "entrance", "x": 60, "y": 60 },
+		{ "id": "poi_elev", "type": "elevator", "x": 300, "y": 80 }
+	],
+	"nodes": [
+		{ "id": "n_entrance", "x": 60, "y": 120, "label": "Entrance" },
+		{ "id": "n_corridor_w", "x": 160, "y": 230 },
+		{ "id": "n_corridor_mid", "x": 280, "y": 230 },
+		{ "id": "n_corridor_e", "x": 400, "y": 230 },
+		{ "id": "n_lab", "x": 400, "y": 320, "label": "Lab" }
+	],
+	"edges": [
+		{ "id": "e1", "from": "n_entrance", "to": "n_corridor_w" },
+		{ "id": "e2", "from": "n_corridor_w", "to": "n_corridor_mid" },
+		{ "id": "e3", "from": "n_corridor_mid", "to": "n_corridor_e" },
+		{ "id": "e4", "from": "n_corridor_e", "to": "n_lab" }
+	]
+}

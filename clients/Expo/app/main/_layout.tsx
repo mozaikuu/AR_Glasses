@@ -39,29 +39,11 @@ export default function MainTabsLayout() {
 				}}
 			/>
 			<Tabs.Screen
-				name="lidar"
+				name="navigation"
 				options={{
-					title: "LiDAR",
+					title: "Navigation",
 					tabBarIcon: ({ color, size }) => (
-						<Ionicons name="scan" size={size} color={color} />
-					),
-				}}
-			/>
-			<Tabs.Screen
-				name="three-d"
-				options={{
-					title: "3D",
-					tabBarIcon: ({ color, size }) => (
-						<Ionicons name="cube" size={size} color={color} />
-					),
-				}}
-			/>
-			<Tabs.Screen
-				name="panorama"
-				options={{
-					title: "Panorama",
-					tabBarIcon: ({ color, size }) => (
-						<Ionicons name="images" size={size} color={color} />
+						<Ionicons name="map" size={size} color={color} />
 					),
 				}}
 			/>

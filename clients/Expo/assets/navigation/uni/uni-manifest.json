@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "name": "Uni_textured",
+  "floors": [
+    {
+      "index": 0,
+      "level": "Ground",
+      "verticalRange": [
+        -2.7457635384574424,
+        4.054236461542561
+      ],
+      "mapPath": "uni-floor-0.json"
+    }
+  ],
+  "stairs": []
+}

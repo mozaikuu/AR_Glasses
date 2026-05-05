@@ -1,3 +1,7 @@
+/**
+ * Archived panorama tab (not wired to Expo Router).
+ * Restore: copy to `app/main/panorama.tsx` and register in `app/main/_layout.tsx`.
+ */
 import "@/global.css";
 import { useCallback, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -6,10 +10,6 @@ import * as DocumentPicker from "expo-document-picker";
 
 import { EquirectangularPanorama } from "@/lib/building-viewers";
 
-/**
- * Panorama experiments use equirectangular images. Add files under the repo `img360/` folder on disk,
- * then copy a supported image into `clients/Expo/assets/panorama/` and `require` it here as the default.
- */
 export default function PanoramaTabScreen() {
 	const insets = useSafeAreaInsets();
 	const [imageUri, setImageUri] = useState<string | null>(null);

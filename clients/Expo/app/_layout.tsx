@@ -14,6 +14,7 @@ export default function RootLayout() {
 			<Stack.Screen name="onboarding" />
 			<Stack.Screen name="login" />
 			<Stack.Screen name="main" />
+			<Stack.Screen name="map-editor" />
 		</Stack>
 	);
 }

@@ -1,0 +1,8 @@
+# LiDAR / mesh → floorplan JSON (MVP pipeline + scripts/floorplan_from_scan.py)
+trimesh>=4.0.0
+opencv-python-headless>=4.9.0
+numpy>=1.26.0
+# Optional: Open3D if you prefer it on platforms where wheels exist.
+# open3d>=0.18.0
+# Optional: PNG previews (`python scripts/floorplan_from_scan.py --preview`)
+# matplotlib>=3.8.0

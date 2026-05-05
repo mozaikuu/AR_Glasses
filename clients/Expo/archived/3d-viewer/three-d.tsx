@@ -1,3 +1,7 @@
+/**
+ * Archived 3D GLB tab (not wired to Expo Router).
+ * Restore: copy to `app/main/three-d.tsx` and register in `app/main/_layout.tsx`.
+ */
 import "@/global.css";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
