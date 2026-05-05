@@ -1,52 +1,19 @@
-import { Tabs } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { Stack } from "expo-router";
 
 import "@/global.css";
 
 export default function RootLayout() {
 	return (
-		<Tabs
+		<Stack
 			screenOptions={{
 				headerShown: false,
-				tabBarActiveTintColor: "#007AFF",
+				animation: "fade",
 			}}
 		>
-			<Tabs.Screen
-				name="index"
-				options={{
-					title: "Home",
-					tabBarIcon: ({ color, size }) => (
-						<Ionicons name="home" size={size} color={color} />
-					),
-				}}
-			/>
-			<Tabs.Screen
-				name="bus"
-				options={{
-					title: "Bus",
-					tabBarIcon: ({ color, size }) => (
-						<Ionicons name="bus" size={size} color={color} />
-					),
-				}}
-			/>
-			<Tabs.Screen
-				name="indoornav"
-				options={{
-					title: "Indoor Nav",
-					tabBarIcon: ({ color, size }) => (
-						<Ionicons name="navigate" size={size} color={color} />
-					),
-				}}
-			/>
-			<Tabs.Screen
-				name="companion"
-				options={{
-					title: "Companion",
-					tabBarIcon: ({ color, size }) => (
-						<Ionicons name="person" size={size} color={color} />
-					),
-				}}
-			/>
-		</Tabs>
+			<Stack.Screen name="index" />
+			<Stack.Screen name="onboarding" />
+			<Stack.Screen name="login" />
+			<Stack.Screen name="main" />
+		</Stack>
 	);
 }

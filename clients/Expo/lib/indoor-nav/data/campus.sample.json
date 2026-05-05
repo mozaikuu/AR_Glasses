@@ -1,0 +1,64 @@
+{
+	"schemaVersion": 1,
+	"name": "Sample University Campus",
+	"bounds": { "width": 55, "height": 40 },
+	"nodes": [
+		{
+			"id": "c_gate",
+			"position": { "x": 5, "y": 35 },
+			"label": "Main Gate",
+			"kind": "path",
+			"qrPayload": "nav:campus:c_gate"
+		},
+		{
+			"id": "c_path_mid",
+			"position": { "x": 18, "y": 28 },
+			"label": "Central Walkway",
+			"kind": "path"
+		},
+		{
+			"id": "c_main_ent",
+			"position": { "x": 28, "y": 22 },
+			"label": "Smart Building Entrance",
+			"kind": "entrance",
+			"buildingId": "smart_building",
+			"qrPayload": "nav:campus:c_main_ent"
+		},
+		{
+			"id": "c_quad",
+			"position": { "x": 38, "y": 30 },
+			"label": "Quad",
+			"kind": "landmark"
+		},
+		{
+			"id": "c_eng_ent",
+			"position": { "x": 46, "y": 18 },
+			"label": "Engineering Annex Entrance",
+			"kind": "entrance",
+			"buildingId": "engineering_annex",
+			"qrPayload": "nav:campus:c_eng_ent"
+		}
+	],
+	"edges": [
+		{ "id": "ce0", "from": "c_gate", "to": "c_path_mid", "bidirectional": true },
+		{ "id": "ce1", "from": "c_path_mid", "to": "c_main_ent", "bidirectional": true },
+		{ "id": "ce2", "from": "c_path_mid", "to": "c_quad", "bidirectional": true },
+		{ "id": "ce3", "from": "c_quad", "to": "c_eng_ent", "bidirectional": true }
+	],
+	"buildings": [
+		{
+			"id": "smart_building",
+			"name": "Smart Building (Academic)",
+			"entranceNodeId": "c_main_ent",
+			"indoorBundleId": "default",
+			"indoorStartNodeId": "b2_f1_h20"
+		},
+		{
+			"id": "engineering_annex",
+			"name": "Engineering Annex",
+			"entranceNodeId": "c_eng_ent",
+			"indoorBundleId": "default",
+			"indoorStartNodeId": "b2_f1_h65"
+		}
+	]
+}

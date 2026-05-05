@@ -47,7 +47,43 @@ def test_postprocess_answer_strips_preambles_and_caps_sentences(service: Assista
 
 def test_vision_intent_detection(service: AssistantService) -> None:
     assert service._vision_intent("Describe what you see") is True
+    assert service._vision_intent("what's this") is True
     assert service._vision_intent("Tell me a joke") is False
+
+
+def test_process_image_only_without_transcript_runs_vision(monkeypatch, service: AssistantService) -> None:
+    monkeypatch.setattr(service, "_run_vision_from_image_with_fallback", lambda image, prompt: "white square")
+
+    result = service.process(
+        ProcessRequest(
+            image_base64="ZmFrZQ==",
+            client="vision-test",
+            mode="quick",
+        )
+    )
+
+    assert result["text"] == "white square"
+    assert result["tool_calls"] == ["vision.analyze_image_moondream"]
+
+
+def test_process_empty_audio_transcript_with_image_still_runs_vision(monkeypatch, service: AssistantService) -> None:
+    monkeypatch.setattr(
+        "app.services.assistant_service.transcribe_audio_detailed",
+        lambda *_args, **_kwargs: ("", {"provider": "stub"}),
+    )
+    monkeypatch.setattr(service, "_run_vision_from_image_with_fallback", lambda image, prompt: "desk")
+
+    result = service.process(
+        ProcessRequest(
+            audio_base64="abc",
+            image_base64="img",
+            client="vision-test",
+            mode="quick",
+        )
+    )
+
+    assert result["text"] == "desk"
+    assert "image" in result["metadata"]["inputs"]
 
 
 def test_process_always_listen_without_wakeword(monkeypatch, service: AssistantService) -> None:
@@ -91,7 +127,7 @@ def test_process_always_listen_wakeword_without_command(monkeypatch, service: As
 
 
 def test_process_prefers_image_vision_result(monkeypatch, service: AssistantService) -> None:
-    monkeypatch.setattr(service, "_run_mcp_vision_from_image", lambda image, prompt: "Detected a laptop on a desk.")
+    monkeypatch.setattr(service, "_run_vision_from_image_with_fallback", lambda image, prompt: "Detected a laptop on a desk.")
 
     result = service.process(
         ProcessRequest(
@@ -107,7 +143,7 @@ def test_process_prefers_image_vision_result(monkeypatch, service: AssistantServ
 
 
 def test_process_vision_intent_uses_camera_path(monkeypatch, service: AssistantService) -> None:
-    monkeypatch.setattr(service, "_run_mcp_vision_from_camera", lambda prompt: "There is a corridor ahead.")
+    monkeypatch.setattr(service, "_run_vision_from_camera_with_fallback", lambda prompt: "There is a corridor ahead.")
 
     result = service.process(
         ProcessRequest(
