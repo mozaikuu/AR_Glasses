@@ -48,6 +48,24 @@ export default function MainTabsLayout() {
 				}}
 			/>
 			<Tabs.Screen
+				name="pathverse"
+				options={{
+					title: "Pathverse",
+					tabBarIcon: ({ color, size }) => (
+						<Ionicons name="glasses" size={size} color={color} />
+					),
+				}}
+			/>
+			<Tabs.Screen
+				name="classfinder"
+				options={{
+					title: "Campus",
+					tabBarIcon: ({ color, size }) => (
+						<Ionicons name="school" size={size} color={color} />
+					),
+				}}
+			/>
+			<Tabs.Screen
 				name="companion"
 				options={{
 					title: "Companion",

@@ -13,9 +13,11 @@ import {
 	routeLegsTotalLength,
 	routeMultiFloor,
 } from "@/lib/navigation-mvp";
-import type { NavigationMvpBundleV1, NavigationMvpMapV1, RouteLeg, Vec2 } from "@/lib/navigation-mvp";
-import { useMemo, useState } from "react";
+import type { MvpLabel, NavigationMvpBundleV1, NavigationMvpMapV1, RouteLeg, Vec2 } from "@/lib/navigation-mvp";
+import { Ionicons } from "@expo/vector-icons";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+	Modal,
 	Pressable,
 	ScrollView,
 	StyleSheet,
@@ -32,6 +34,10 @@ type DestKey = string;
 type DestItem = { key: DestKey; title: string; subtitle: string };
 
 const bundleParsed = parseBuildingBundle(buildingBundleJson);
+
+function cloneBundle(b: NavigationMvpBundleV1): NavigationMvpBundleV1 {
+	return JSON.parse(JSON.stringify(b)) as NavigationMvpBundleV1;
+}
 
 function makeDestKey(floor: number, kind: "label" | "poi" | "node", id: string): DestKey {
 	return `${floor}|${kind}:${id}`;
@@ -153,16 +159,79 @@ function filterDest(items: DestItem[], q: string): DestItem[] {
 	return items.filter((d) => d.title.toLowerCase().includes(s) || d.subtitle.toLowerCase().includes(s));
 }
 
+function LabelEditRow({
+	label,
+	floorIndex,
+	onCommit,
+}: {
+	label: MvpLabel;
+	floorIndex: number;
+	onCommit: (floor: number, id: string, patch: { text?: string; x?: number; y?: number }) => void;
+}) {
+	const [text, setText] = useState(label.text);
+	const [sx, setSx] = useState(String(label.x));
+	const [sy, setSy] = useState(String(label.y));
+
+	useEffect(() => {
+		setText(label.text);
+		setSx(String(label.x));
+		setSy(String(label.y));
+	}, [label.id, label.text, label.x, label.y]);
+
+	const flush = () => {
+		const x = Number.parseFloat(sx);
+		const y = Number.parseFloat(sy);
+		onCommit(floorIndex, label.id, {
+			text,
+			...(Number.isFinite(x) ? { x } : {}),
+			...(Number.isFinite(y) ? { y } : {}),
+		});
+	};
+
+	return (
+		<View style={styles.labelEditCard}>
+			<Text style={styles.labelEditId}>{label.id}</Text>
+			<Text style={styles.labelEditFieldLbl}>Name</Text>
+			<TextInput
+				value={text}
+				onChangeText={setText}
+				onBlur={flush}
+				style={styles.labelEditInput}
+				placeholder="Label text"
+				placeholderTextColor="#94a3b8"
+			/>
+			<Text style={styles.labelEditFieldLbl}>Position (map units)</Text>
+			<View style={styles.labelEditXYRow}>
+				<TextInput
+					value={sx}
+					onChangeText={setSx}
+					onBlur={flush}
+					style={[styles.labelEditInput, styles.labelEditHalf]}
+					keyboardType="numbers-and-punctuation"
+					placeholder="x"
+					placeholderTextColor="#94a3b8"
+				/>
+				<TextInput
+					value={sy}
+					onChangeText={setSy}
+					onBlur={flush}
+					style={[styles.labelEditInput, styles.labelEditHalf]}
+					keyboardType="numbers-and-punctuation"
+					placeholder="y"
+					placeholderTextColor="#94a3b8"
+				/>
+			</View>
+		</View>
+	);
+}
+
 export default function NavigationMvpTab() {
 	const insets = useSafeAreaInsets();
 	const { width: winW, height: winH } = useWindowDimensions();
 
-	const bundle = useMemo(() => {
-		if (!bundleParsed.ok) {
-			return null;
-		}
-		return bundleParsed.data;
-	}, []);
+	const [bundle, setBundle] = useState<NavigationMvpBundleV1 | null>(() =>
+		bundleParsed.ok ? cloneBundle(bundleParsed.data) : null,
+	);
 
 	const multiFloor = (bundle?.floors.length ?? 0) > 1;
 
@@ -198,7 +267,45 @@ export default function NavigationMvpTab() {
 	const [routeLegs, setRouteLegs] = useState<RouteLeg[] | null>(null);
 	const [routeErr, setRouteErr] = useState<string | null>(null);
 
+	const [menuOpen, setMenuOpen] = useState(false);
+	const [labelEditOpen, setLabelEditOpen] = useState(false);
+	const [editLabelsFloorIndex, setEditLabelsFloorIndex] = useState(0);
+
+	const openLabelEditor = useCallback(() => {
+		setMenuOpen(false);
+		setEditLabelsFloorIndex(activeFloorIndex);
+		setLabelEditOpen(true);
+	}, [activeFloorIndex]);
+
 	const mapsMap = useMemo(() => (bundle ? mapsByFloorIndex(bundle) : new Map()), [bundle]);
+
+	const updateLabel = useCallback(
+		(floorIndex: number, labelId: string, patch: { text?: string; x?: number; y?: number }) => {
+			setBundle((prev) => {
+				if (!prev) {
+					return prev;
+				}
+				const next = cloneBundle(prev);
+				const fl = next.floors.find((f) => f.index === floorIndex);
+				if (!fl) {
+					return prev;
+				}
+				const idx = fl.map.labels.findIndex((l) => l.id === labelId);
+				if (idx < 0) {
+					return prev;
+				}
+				const cur = fl.map.labels[idx]!;
+				fl.map.labels[idx] = {
+					...cur,
+					...(patch.text !== undefined ? { text: patch.text } : {}),
+					...(patch.x !== undefined && Number.isFinite(patch.x) ? { x: patch.x } : {}),
+					...(patch.y !== undefined && Number.isFinite(patch.y) ? { y: patch.y } : {}),
+				};
+				return next;
+			});
+		},
+		[],
+	);
 
 	const routePolyline = useMemo(() => {
 		if (!bundle || !map || !routeLegs) {
@@ -291,162 +398,238 @@ export default function NavigationMvpTab() {
 	const crossHint =
 		routeLegs && routeLegs.length > 1 ? ` ${routeLegs.length} legs — use floor tabs to view each segment.` : "";
 
-	if (phase === "map") {
-		return (
-			<View style={styles.screen}>
-				<View style={styles.headerRow}>
-					<Pressable onPress={resetFlow} style={styles.backBtn}>
-						<Text style={styles.backBtnTxt}>← Back</Text>
-					</Pressable>
-				</View>
-				{bundle.floors.length > 1 ? (
-					<ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.floorTabs}>
-						{bundle.floors.map((fl) => (
-							<Pressable
-								key={fl.index}
-								onPress={() => setActiveFloorIndex(fl.index)}
-								style={[styles.floorPill, activeFloorIndex === fl.index && styles.floorPillOn]}
-							>
-								<Text style={[styles.floorPillTxt, activeFloorIndex === fl.index && styles.floorPillTxtOn]}>
-									{fl.level}
-								</Text>
-							</Pressable>
-						))}
-					</ScrollView>
-				) : null}
-				<View style={styles.mapWrap}>
-					<Svg width={mapW} height={mapH} style={styles.svgCard}>
-						<Rect x={0} y={0} width={mapW} height={mapH} fill="#f4f6fb" rx={12} />
-						{map.rooms.map((r) => {
-							const pts = r.polygon.map(toS).map((p) => `${p.x},${p.y}`).join(" ");
-							return <Polygon key={r.id} points={pts} fill="#e2e8f0" stroke="#94a3b8" strokeWidth={1} />;
-						})}
-						{map.walls.flatMap((w) => {
-							if (w.points.length < 2) {
-								return [];
-							}
-							return w.points.slice(0, -1).map((p, i) => {
-								const q = w.points[i + 1]!;
-								const a = toS(p);
-								const b = toS(q);
-								return (
-									<Line
-										key={`${w.id}-${i}`}
-										x1={a.x}
-										y1={a.y}
-										x2={b.x}
-										y2={b.y}
-										stroke="#1e293b"
-										strokeWidth={3}
-										strokeLinecap="square"
-									/>
-								);
-							});
-						})}
-						{routePts.length > 0 && (
-							<Polyline
-								points={routePts}
-								fill="none"
-								stroke="#2563eb"
-								strokeWidth={6}
-								strokeLinejoin="round"
-								strokeLinecap="round"
-							/>
-						)}
-						{map.labels.map((l) => {
-							const p = toS({ x: l.x, y: l.y });
-							return (
-								<G key={l.id}>
-									<Circle cx={p.x} cy={p.y} r={5} fill="#0f172a" />
-									<SvgText x={p.x + 8} y={p.y + 4} fill="#0f172a" fontSize={11} fontWeight="600">
-										{l.text.length > 22 ? `${l.text.slice(0, 20)}…` : l.text}
-									</SvgText>
-								</G>
-							);
-						})}
-						{map.pois.map((poi) => {
-							const p = toS({ x: poi.x, y: poi.y });
-							return (
-								<Circle key={poi.id} cx={p.x} cy={p.y} r={7} fill="#c026d3" stroke="#fff" strokeWidth={2} />
-							);
-						})}
-					</Svg>
-				</View>
-				<View style={[styles.bottomCard, { paddingBottom: 12 + insets.bottom }]}>
-					<Text style={styles.cardTitle}>Destination</Text>
-					<Text style={styles.cardDest}>{destName || "—"}</Text>
-					{endParsed && multiFloor ? (
-						<Text style={styles.cardMeta}>
-							Start floor {parseDestKey(startKey!)?.floor ?? "?"} → Dest floor {endParsed.floor}
-						</Text>
-					) : null}
-					<Text style={styles.cardDist}>
-						{routeLegs && routeLegs.length > 0
-							? `Distance (graph): ${Math.round(routeDist)}.${crossHint}`
-							: "Route hidden. Use Clear route after a preview, or go back to change start and destination."}
-					</Text>
-					<View style={styles.cardActions}>
-						<Pressable onPress={clearRoute} style={styles.secondaryBtn}>
-							<Text style={styles.secondaryBtnTxt}>Clear route</Text>
-						</Pressable>
-						<Pressable onPress={resetFlow} style={styles.secondaryBtn}>
-							<Text style={styles.secondaryBtnTxt}>Change places</Text>
+	const floorForLabelEdit = bundle.floors.find((f) => f.index === editLabelsFloorIndex) ?? bundle.floors[0]!;
+	const labelsBeingEdited = floorForLabelEdit.map.labels;
+
+	const navModals = (
+		<>
+			<Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
+				<View style={styles.menuOverlay}>
+					<Pressable style={StyleSheet.absoluteFillObject} onPress={() => setMenuOpen(false)} />
+					<View style={[styles.menuSheet, { top: insets.top + 44 }]}>
+						<Pressable onPress={openLabelEditor} style={styles.menuItem}>
+							<Ionicons name="create-outline" size={20} color="#334155" />
+							<Text style={styles.menuItemTxt}>Edit labels</Text>
 						</Pressable>
 					</View>
 				</View>
-			</View>
+			</Modal>
+			<Modal visible={labelEditOpen} animationType="slide" onRequestClose={() => setLabelEditOpen(false)}>
+				<View style={[styles.labelModalRoot, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16 }]}>
+					<View style={styles.labelModalHeader}>
+						<Text style={styles.labelModalTitle}>Edit labels</Text>
+						<Pressable onPress={() => setLabelEditOpen(false)} hitSlop={12}>
+							<Text style={styles.labelModalDone}>Done</Text>
+						</Pressable>
+					</View>
+					{multiFloor ? (
+						<ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.labelModalTabs}>
+							{bundle.floors.map((fl) => (
+								<Pressable
+									key={fl.index}
+									onPress={() => setEditLabelsFloorIndex(fl.index)}
+									style={[
+										styles.floorPill,
+										editLabelsFloorIndex === fl.index && styles.floorPillOn,
+										styles.labelModalTabPill,
+									]}
+								>
+									<Text style={[styles.floorPillTxt, editLabelsFloorIndex === fl.index && styles.floorPillTxtOn]}>
+										{fl.level}
+									</Text>
+								</Pressable>
+							))}
+						</ScrollView>
+					) : null}
+					<ScrollView style={styles.labelModalScroll} keyboardShouldPersistTaps="handled">
+						{labelsBeingEdited.length === 0 ? (
+							<Text style={styles.muted}>No labels on this floor.</Text>
+						) : (
+							labelsBeingEdited.map((l) => (
+								<LabelEditRow key={l.id} label={l} floorIndex={floorForLabelEdit.index} onCommit={updateLabel} />
+							))
+						)}
+					</ScrollView>
+				</View>
+			</Modal>
+		</>
+	);
+
+	if (phase === "map") {
+		return (
+			<>
+				<View style={styles.screen}>
+					<View style={styles.headerRow}>
+						<Pressable onPress={resetFlow} style={styles.backBtn}>
+							<Text style={styles.backBtnTxt}>← Back</Text>
+						</Pressable>
+						<View style={styles.headerSpacer} />
+						<Pressable onPress={() => setMenuOpen(true)} style={styles.menuBtn} hitSlop={10}>
+							<Ionicons name="ellipsis-vertical" size={22} color="#334155" />
+						</Pressable>
+					</View>
+					{bundle.floors.length > 1 ? (
+						<ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.floorTabs}>
+							{bundle.floors.map((fl) => (
+								<Pressable
+									key={fl.index}
+									onPress={() => setActiveFloorIndex(fl.index)}
+									style={[styles.floorPill, activeFloorIndex === fl.index && styles.floorPillOn]}
+								>
+									<Text style={[styles.floorPillTxt, activeFloorIndex === fl.index && styles.floorPillTxtOn]}>
+										{fl.level}
+									</Text>
+								</Pressable>
+							))}
+						</ScrollView>
+					) : null}
+					<View style={styles.mapWrap}>
+						<Svg width={mapW} height={mapH} style={styles.svgCard}>
+							<Rect x={0} y={0} width={mapW} height={mapH} fill="#f4f6fb" rx={12} />
+							{map.rooms.map((r) => {
+								const pts = r.polygon.map(toS).map((p) => `${p.x},${p.y}`).join(" ");
+								return <Polygon key={r.id} points={pts} fill="#e2e8f0" stroke="#94a3b8" strokeWidth={1} />;
+							})}
+							{map.walls.flatMap((w) => {
+								if (w.points.length < 2) {
+									return [];
+								}
+								return w.points.slice(0, -1).map((p, i) => {
+									const q = w.points[i + 1]!;
+									const a = toS(p);
+									const b = toS(q);
+									return (
+										<Line
+											key={`${w.id}-${i}`}
+											x1={a.x}
+											y1={a.y}
+											x2={b.x}
+											y2={b.y}
+											stroke="#1e293b"
+											strokeWidth={3}
+											strokeLinecap="square"
+										/>
+									);
+								});
+							})}
+							{routePts.length > 0 && (
+								<Polyline
+									points={routePts}
+									fill="none"
+									stroke="#2563eb"
+									strokeWidth={6}
+									strokeLinejoin="round"
+									strokeLinecap="round"
+								/>
+							)}
+							{map.labels.map((l) => {
+								const p = toS({ x: l.x, y: l.y });
+								return (
+									<G key={l.id}>
+										<Circle cx={p.x} cy={p.y} r={5} fill="#0f172a" />
+										<SvgText x={p.x + 8} y={p.y + 4} fill="#0f172a" fontSize={11} fontWeight="600">
+											{l.text.length > 22 ? `${l.text.slice(0, 20)}…` : l.text}
+										</SvgText>
+									</G>
+								);
+							})}
+							{map.pois.map((poi) => {
+								const p = toS({ x: poi.x, y: poi.y });
+								return (
+									<Circle key={poi.id} cx={p.x} cy={p.y} r={7} fill="#c026d3" stroke="#fff" strokeWidth={2} />
+								);
+							})}
+						</Svg>
+					</View>
+					<View style={[styles.bottomCard, { paddingBottom: 12 + insets.bottom }]}>
+						<Text style={styles.cardTitle}>Destination</Text>
+						<Text style={styles.cardDest}>{destName || "—"}</Text>
+						{endParsed && multiFloor ? (
+							<Text style={styles.cardMeta}>
+								Start floor {parseDestKey(startKey!)?.floor ?? "?"} → Dest floor {endParsed.floor}
+							</Text>
+						) : null}
+						<Text style={styles.cardDist}>
+							{routeLegs && routeLegs.length > 0
+								? `Distance (graph): ${Math.round(routeDist)}.${crossHint}`
+								: "Route hidden. Use Clear route after a preview, or go back to change start and destination."}
+						</Text>
+						<View style={styles.cardActions}>
+							<Pressable onPress={clearRoute} style={styles.secondaryBtn}>
+								<Text style={styles.secondaryBtnTxt}>Clear route</Text>
+							</Pressable>
+							<Pressable onPress={resetFlow} style={styles.secondaryBtn}>
+								<Text style={styles.secondaryBtnTxt}>Change places</Text>
+							</Pressable>
+						</View>
+					</View>
+				</View>
+				{navModals}
+			</>
 		);
 	}
 
 	return (
-		<View style={styles.screen}>
-			<Text style={styles.heroTitle}>Where do you want to go?</Text>
-			<Text style={styles.sub}>Search, then choose start and destination (labels, POIs, or path nodes).</Text>
-			{bundle.floors.length > 1 ? (
-				<Text style={styles.hintSmall}>Multi-floor building: picks can be on different levels if stair links exist.</Text>
-			) : null}
-			<TextInput
-				value={search}
-				onChangeText={setSearch}
-				placeholder="Search rooms and places"
-				placeholderTextColor="#94a3b8"
-				style={styles.search}
-				autoCapitalize="none"
-				autoCorrect={false}
-			/>
-			{routeErr ? <Text style={styles.err}>{routeErr}</Text> : null}
-			<ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-				<Text style={styles.section}>Start</Text>
-				{filtered.map((d) => (
-					<Pressable
-						key={`s-${d.key}`}
-						onPress={() => setStartKey(d.key)}
-						style={[styles.row, startKey === d.key && styles.rowOn]}
-					>
-						<Text style={styles.rowTitle}>{d.title}</Text>
-						<Text style={styles.rowSub}>{d.subtitle}</Text>
+		<>
+			<View style={styles.screen}>
+				<View style={styles.titleRow}>
+					<View style={styles.titleRowTextWrap}>
+						<Text style={styles.heroTitle}>Where do you want to go?</Text>
+					</View>
+					<Pressable onPress={() => setMenuOpen(true)} style={styles.menuBtn} hitSlop={10}>
+						<Ionicons name="ellipsis-vertical" size={22} color="#334155" />
 					</Pressable>
-				))}
-				<Text style={styles.section}>Destination</Text>
-				{filtered.map((d) => (
-					<Pressable
-						key={`e-${d.key}`}
-						onPress={() => setEndKey(d.key)}
-						style={[styles.row, endKey === d.key && styles.rowOn]}
-					>
-						<Text style={styles.rowTitle}>{d.title}</Text>
-						<Text style={styles.rowSub}>{d.subtitle}</Text>
-					</Pressable>
-				))}
-			</ScrollView>
-			<Pressable
-				onPress={computeRoute}
-				style={[styles.primary, (!startKey || !endKey || startKey === endKey) && styles.primaryOff]}
-				disabled={!startKey || !endKey || startKey === endKey}
-			>
-				<Text style={styles.primaryTxt}>Preview route</Text>
-			</Pressable>
-		</View>
+				</View>
+				<Text style={styles.sub}>Search, then choose start and destination (labels, POIs, or path nodes).</Text>
+				{bundle.floors.length > 1 ? (
+					<Text style={styles.hintSmall}>
+						Multi-floor building: picks can be on different levels if stair links exist.
+					</Text>
+				) : null}
+				<TextInput
+					value={search}
+					onChangeText={setSearch}
+					placeholder="Search rooms and places"
+					placeholderTextColor="#94a3b8"
+					style={styles.search}
+					autoCapitalize="none"
+					autoCorrect={false}
+				/>
+				{routeErr ? <Text style={styles.err}>{routeErr}</Text> : null}
+				<ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+					<Text style={styles.section}>Start</Text>
+					{filtered.map((d) => (
+						<Pressable
+							key={`s-${d.key}`}
+							onPress={() => setStartKey(d.key)}
+							style={[styles.row, startKey === d.key && styles.rowOn]}
+						>
+							<Text style={styles.rowTitle}>{d.title}</Text>
+							<Text style={styles.rowSub}>{d.subtitle}</Text>
+						</Pressable>
+					))}
+					<Text style={styles.section}>Destination</Text>
+					{filtered.map((d) => (
+						<Pressable
+							key={`e-${d.key}`}
+							onPress={() => setEndKey(d.key)}
+							style={[styles.row, endKey === d.key && styles.rowOn]}
+						>
+							<Text style={styles.rowTitle}>{d.title}</Text>
+							<Text style={styles.rowSub}>{d.subtitle}</Text>
+						</Pressable>
+					))}
+				</ScrollView>
+				<Pressable
+					onPress={computeRoute}
+					style={[styles.primary, (!startKey || !endKey || startKey === endKey) && styles.primaryOff]}
+					disabled={!startKey || !endKey || startKey === endKey}
+				>
+					<Text style={styles.primaryTxt}>Preview route</Text>
+				</Pressable>
+			</View>
+			{navModals}
+		</>
 	);
 }
 
@@ -535,4 +718,72 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 	},
 	secondaryBtnTxt: { fontWeight: "700", color: "#334155", fontSize: 14 },
+	titleRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		gap: 8,
+	},
+	titleRowTextWrap: { flex: 1, minWidth: 0, paddingRight: 4 },
+	menuBtn: { padding: 6 },
+	headerSpacer: { flex: 1 },
+	menuOverlay: { flex: 1, backgroundColor: "rgba(15, 23, 42, 0.35)" },
+	menuSheet: {
+		position: "absolute",
+		right: 12,
+		backgroundColor: "#fff",
+		borderRadius: 12,
+		minWidth: 200,
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.12,
+		shadowRadius: 8,
+		elevation: 6,
+		borderWidth: 1,
+		borderColor: "#e2e8f0",
+		overflow: "hidden",
+	},
+	menuItem: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 10,
+		paddingVertical: 14,
+		paddingHorizontal: 16,
+	},
+	menuItemTxt: { fontSize: 16, fontWeight: "600", color: "#0f172a" },
+	labelModalRoot: { flex: 1, backgroundColor: "#fff", paddingHorizontal: 16 },
+	labelModalHeader: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		marginBottom: 8,
+	},
+	labelModalTitle: { fontSize: 20, fontWeight: "800", color: "#0f172a" },
+	labelModalDone: { fontSize: 16, fontWeight: "700", color: "#2563eb" },
+	labelModalTabs: { maxHeight: 48, marginBottom: 4 },
+	labelModalTabPill: { marginRight: 8 },
+	labelModalScroll: { flex: 1 },
+	labelEditCard: {
+		padding: 14,
+		borderRadius: 12,
+		backgroundColor: "#f8fafc",
+		borderWidth: 1,
+		borderColor: "#e2e8f0",
+		marginBottom: 12,
+	},
+	labelEditId: { fontSize: 11, color: "#94a3b8", fontFamily: "monospace", marginBottom: 8 },
+	labelEditFieldLbl: { fontSize: 12, fontWeight: "700", color: "#64748b", marginBottom: 4 },
+	labelEditInput: {
+		borderWidth: 1,
+		borderColor: "#cbd5e1",
+		borderRadius: 10,
+		paddingHorizontal: 12,
+		paddingVertical: 10,
+		fontSize: 16,
+		color: "#0f172a",
+		backgroundColor: "#fff",
+		marginBottom: 10,
+	},
+	labelEditXYRow: { flexDirection: "row", gap: 10, marginBottom: 4 },
+	labelEditHalf: { flex: 1, marginBottom: 0 },
 });

@@ -16,7 +16,7 @@ export type {
 export { NAVIGATION_MVP_SCHEMA_VERSION } from "./types";
 export { parseNavigationMvpMap, parseBuildingBundle } from "./validate";
 export { mapBounds, toIndoorGraph } from "./mapAdapters";
-export { ensureAutoEdges } from "./edges";
+export { ensureAutoEdges, prepareRoutingMap, filterEdgesCrossingWalls, computeMaxAutoEdgeDistance } from "./edges";
 export type { RouteLeg } from "./route";
 export {
 	nearestNodeId,

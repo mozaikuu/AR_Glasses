@@ -10,9 +10,10 @@ This folder contains all technical and product documentation for the project.
 4. [14_graduation/design_decisions_and_tradeoffs.md](14_graduation/design_decisions_and_tradeoffs.md)
 5. [14_graduation/future_roadmap_and_research.md](14_graduation/future_roadmap_and_research.md)
 6. [15_presentations/README.md](15_presentations/README.md)
-7. [02_architecture/architecture.md](02_architecture/architecture.md)
-8. [07_api/api_reference.md](07_api/api_reference.md)
-9. [10_operations/operations_runbook.md](10_operations/operations_runbook.md)
+7. [16_submission_package/README.md](16_submission_package/README.md) — graduation manual / paper / slides (Pandoc + `python-docx` + **LibreOffice PDF**; faculty `.docx` as `--reference-doc`)
+8. [02_architecture/architecture.md](02_architecture/architecture.md)
+9. [07_api/api_reference.md](07_api/api_reference.md)
+10. [10_operations/operations_runbook.md](10_operations/operations_runbook.md)
 
 ## Complete Documentation Tree
 
@@ -31,6 +32,7 @@ This folder contains all technical and product documentation for the project.
 13.   Historical planning: [13_old_plan/PROJECT_INDEX.md](13_old_plan/PROJECT_INDEX.md)
 14.   Graduation package: [14_graduation/README.md](14_graduation/README.md)
 15.   Presentation drafts: [15_presentations/README.md](15_presentations/README.md)
+16.   Submission export package: [16_submission_package/README.md](16_submission_package/README.md)
 
 ## Validation Evidence Files
 

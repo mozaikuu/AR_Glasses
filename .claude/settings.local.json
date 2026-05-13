@@ -23,7 +23,9 @@
       "Bash(.venvScriptsactivate)",
       "Bash(pip install matplotlib networkx mediapipe)",
       "Bash(.venvScriptspython.exe -c \"\nimport sys\nsys.path.insert\\(0, ''.''\\)\nfrom tools.navigation.navigation import navigate, load_graph\nprint\\(''Navigation imports work!''\\)\nresult = navigate\\(''Entrance'', ''Dean Office''\\)\nprint\\(f''NavigateIndoor result: success={result.get\\(\"\"success\"\"\\)}, steps={len\\(result.get\\(\"\"steps\"\", []\\)\\)}''\\)\n\")",
-      "Bash(python -c \"\nimport sys\nsys.path.insert\\(0, ''.''\\)\nfrom tools.navigation.navigation import navigate, load_graph\nprint\\(''Navigation imports work!''\\)\nresult = navigate\\(''Entrance'', ''Dean Office''\\)\nprint\\(f''Result: success={result.get\\(\"\"success\"\"\\)}''\\)\nif result.get\\(''success''\\):\n    print\\(f''Steps: {len\\(result.get\\(\"\"steps\"\", []\\)\\)}''\\)\n    for step in result.get\\(''steps'', []\\)[:3]:\n        print\\(f''  Step {step.get\\(\"\"step\"\"\\)}: {step.get\\(\"\"instruction\"\"\\)}''\\)\n\")"
+      "Bash(python -c \"\nimport sys\nsys.path.insert\\(0, ''.''\\)\nfrom tools.navigation.navigation import navigate, load_graph\nprint\\(''Navigation imports work!''\\)\nresult = navigate\\(''Entrance'', ''Dean Office''\\)\nprint\\(f''Result: success={result.get\\(\"\"success\"\"\\)}''\\)\nif result.get\\(''success''\\):\n    print\\(f''Steps: {len\\(result.get\\(\"\"steps\"\", []\\)\\)}''\\)\n    for step in result.get\\(''steps'', []\\)[:3]:\n        print\\(f''  Step {step.get\\(\"\"step\"\"\\)}: {step.get\\(\"\"instruction\"\"\\)}''\\)\n\")",
+      "Bash(pip install *)",
+      "Bash(python *)"
     ]
   }
 }

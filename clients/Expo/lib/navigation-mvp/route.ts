@@ -2,7 +2,7 @@ import { astar } from "@/lib/indoor-nav/graph";
 import type { Vec2 } from "@/lib/indoor-nav/types";
 
 import type { MvpStairLink, NavigationMvpMapV1 } from "./types";
-import { ensureAutoEdges } from "./edges";
+import { prepareRoutingMap } from "./edges";
 import { toIndoorGraph } from "./mapAdapters";
 
 export type RouteLeg = { floorIndex: number; nodeIds: string[] };
@@ -28,9 +28,15 @@ export function routeBetweenNodeIds(
 	startId: string,
 	goalId: string,
 ): string[] | null {
-	const withEdges = ensureAutoEdges(map);
-	const { nodes, edges } = toIndoorGraph(withEdges);
-	return astar(startId, goalId, nodes, edges);
+	const prepared = prepareRoutingMap(map);
+	const { nodes, edges } = toIndoorGraph(prepared);
+	let path = astar(startId, goalId, nodes, edges);
+	if (!path && map.edges.length > 0) {
+		const autoOnly = prepareRoutingMap({ ...map, edges: [] });
+		const g = toIndoorGraph(autoOnly);
+		path = astar(startId, goalId, g.nodes, g.edges);
+	}
+	return path;
 }
 
 export function nodeIdsToPolyline(map: NavigationMvpMapV1, nodeIds: string[]): Vec2[] {
