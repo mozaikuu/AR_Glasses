@@ -13,7 +13,7 @@ This folder contains all technical and product documentation for the project.
 7. [16_submission_package/README.md](16_submission_package/README.md) — graduation manual / paper / slides (Pandoc + `python-docx` + **LibreOffice PDF**; faculty `.docx` as `--reference-doc`)
 8. [02_architecture/architecture.md](02_architecture/architecture.md)
 9. [07_api/api_reference.md](07_api/api_reference.md)
-10. [10_operations/operations_runbook.md](10_operations/operations_runbook.md)
+10.   [10_operations/operations_runbook.md](10_operations/operations_runbook.md)
 
 ## Complete Documentation Tree
 
@@ -38,3 +38,13 @@ This folder contains all technical and product documentation for the project.
 
 1. Full stack report: [../artifacts/test_report.json](../artifacts/test_report.json)
 2. Live HIL report: [../artifacts/live_hil_report.json](../artifacts/live_hil_report.json)
+
+---
+
+Copyright © 2026 Ahmed Moussa
+
+This software is provided to New Mansoura University solely for academic evaluation purposes.
+
+No license, ownership rights, distribution rights, modification rights, or commercial rights are granted.
+
+All intellectual property rights remain with the author.

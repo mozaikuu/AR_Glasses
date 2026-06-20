@@ -19,3 +19,13 @@ This package powers the prototype realism layer.
 ## Runtime Integration
 
 `bus_system/backend/app/main.py` starts `BusSimulationEngine` automatically in FastAPI lifespan.
+
+---
+
+Copyright © 2026 Ahmed Moussa
+
+This software is provided to New Mansoura University solely for academic evaluation purposes.
+
+No license, ownership rights, distribution rights, modification rights, or commercial rights are granted.
+
+All intellectual property rights remain with the author.

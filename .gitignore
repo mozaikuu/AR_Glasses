@@ -46,6 +46,8 @@ hololens2-campus-nav/*.7z
 hololens2-campus-nav/*.zip
 hololens2-campus-nav/Assets/MultiSet.7z
 
+/#GRADUATION_FINAL
+
 docs/00_Materials/Ignore
 
 # Python
@@ -60,3 +62,4 @@ __pycache__/
 *-backup/
 *.kicad_prl
 *.autosave
+SmartGlasses_Defense.pdf_20_6_2026.pptx

@@ -47,4 +47,14 @@ To learn more about developing your project with Expo, look at the following res
 Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+  -- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+---
+
+Copyright © 2026 Ahmed Moussa
+
+This software is provided to New Mansoura University solely for academic evaluation purposes.
+
+No license, ownership rights, distribution rights, modification rights, or commercial rights are granted.
+
+All intellectual property rights remain with the author.

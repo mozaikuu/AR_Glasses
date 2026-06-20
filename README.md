@@ -46,3 +46,13 @@ All Smart Bus Tracking MVP modules are grouped under `bus_system/` for easier ac
 ## Next Move
 
 Place your current backend files under `app/` by responsibility (api/agent/tools/services/etc.), then update imports to use package paths from `app`.
+
+---
+
+Copyright © 2026 Ahmed Moussa
+
+This software is provided to New Mansoura University solely for academic evaluation purposes.
+
+No license, ownership rights, distribution rights, modification rights, or commercial rights are granted.
+
+All intellectual property rights remain with the author.

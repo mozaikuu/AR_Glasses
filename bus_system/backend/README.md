@@ -24,7 +24,17 @@ Open:
 
 - API base: `http://127.0.0.1:8000`
 - Swagger docs: `http://127.0.0.1:8000/docs`
-- WebSocket: `ws://127.0.0.1:8000/ws/bus`
+  -- WebSocket: `ws://127.0.0.1:8000/ws/bus`
+
+---
+
+Copyright © 2026 Ahmed Moussa
+
+This software is provided to New Mansoura University solely for academic evaluation purposes.
+
+No license, ownership rights, distribution rights, modification rights, or commercial rights are granted.
+
+All intellectual property rights remain with the author.
 
 ## Main Endpoints
 

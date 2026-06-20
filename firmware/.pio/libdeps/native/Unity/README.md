@@ -199,6 +199,16 @@ Compare two strings.
 Fail if any character is different, stop comparing after len characters.
 Output a custom message on failure.
 
+---
+
+Copyright © 2026 Ahmed Moussa
+
+This software is provided to New Mansoura University solely for academic evaluation purposes.
+
+No license, ownership rights, distribution rights, modification rights, or commercial rights are granted.
+
+All intellectual property rights remain with the author.
+
 ### Pointer Assertions
 
 Most pointer operations can be performed by simply using the integer comparisons above.

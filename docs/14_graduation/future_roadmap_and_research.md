@@ -149,6 +149,59 @@ Mitigations:
 3. Live HIL scenario updated if behavior crosses device boundaries.
 4. Operational and rollback notes documented.
 
-## 9. Closing Note
+## 9. Time Plan for Documentation
+
+This time plan is written as a full graduation-project schedule from September 1 to June 1 and can be inserted directly into the report or defense materials.
+
+```mermaid
+gantt
+	title Graduation Project Full Timeline
+	dateFormat  YYYY-MM-DD
+	axisFormat  %d %b
+
+	section Planning and Requirements
+	Project scope, requirements, and success criteria :a1, 2025-09-01, 30d
+
+	section Architecture and Core Build
+	Backend foundation, service structure, and API contracts :a2, after a1, 60d
+
+	section Assistant and Navigation
+	Assistant routing, navigation logic, and voice-command flow :a3, after a2, 75d
+
+	section Device and Firmware Integration
+	ESP32 communication, TTS handling, and client integration :a4, after a3, 60d
+
+	section Testing and Stabilization
+	Unit tests, integration checks, Unity validation, and bug fixing :a5, after a4, 60d
+
+	section Documentation and Final Delivery
+	Report writing, diagrams, demo preparation, and final submission :a6, 2026-05-01, 2026-06-01
+```
+
+Milestone summary:
+
+1. End of September: Scope, requirements, and deliverables confirmed.
+2. End of November: Core backend architecture and API structure completed.
+3. End of February: Assistant, navigation, and client flows integrated.
+4. End of April: Device communication, testing, and stabilization completed.
+5. End of June: Documentation, presentation, and final submission completed.
+
+## 10. Work Split for Three Students
+
+This split is organized so each student owns a clear part of the system while still contributing to the final integration and presentation.
+
+| Student   | Main Responsibility                                                                          | What to Present                                                      |
+| --------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Student 1 | Backend, FastAPI gateway, assistant service, LLM integration, and API contracts              | Show the system architecture, request flow, and AI response pipeline |
+| Student 2 | Navigation logic, Unity or mobile client flow, QR handling, and user interaction design      | Show the navigation demo, command flow, and client-side experience   |
+| Student 3 | ESP32 or device integration, audio/TTS handling, testing, validation, and deployment support | Show hardware communication, test results, and system reliability    |
+
+Shared final tasks:
+
+1. Integrate all modules into one working demo.
+2. Review and finalize the report, diagrams, and slides.
+3. Rehearse the presentation together so each student can explain their part clearly.
+
+## 11. Closing Note
 
 The project is already at a strong prototype maturity stage. The roadmap above converts that momentum into a clear progression from academic demonstration to engineering-grade product quality.

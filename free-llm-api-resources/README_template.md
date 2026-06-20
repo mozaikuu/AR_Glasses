@@ -17,3 +17,13 @@ This lists various services that provide free access or credits towards API-base
 ## Providers with trial credits
 
 {{TRIAL_LIST_MARKDOWN}}
+
+---
+
+Copyright © 2026 Ahmed Moussa
+
+This software is provided to New Mansoura University solely for academic evaluation purposes.
+
+No license, ownership rights, distribution rights, modification rights, or commercial rights are granted.
+
+All intellectual property rights remain with the author.

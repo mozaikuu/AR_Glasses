@@ -15,3 +15,13 @@ This folder is an isolated Unity spike for HoloLens 2 without changing your exis
 - For lowest risk, run this spike on `2022.3.62f1` (or `6000.0.49f1` if you validate your stack).
 
 See `Docs/STEP_BY_STEP.md` first.
+
+---
+
+Copyright © 2026 Ahmed Moussa
+
+This software is provided to New Mansoura University solely for academic evaluation purposes.
+
+No license, ownership rights, distribution rights, modification rights, or commercial rights are granted.
+
+All intellectual property rights remain with the author.

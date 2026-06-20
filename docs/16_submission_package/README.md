@@ -63,12 +63,12 @@ pip install -r docs/16_submission_package/build/requirements-docx.txt
 
 CLI: [build/docx_tool.py](build/docx_tool.py)
 
-| Command | Purpose |
-|---------|---------|
-| `python build/docx_tool.py inspect <file.docx>` | Paragraph counts + first lines (ASCII-safe on Windows consoles) |
-| `python build/docx_tool.py replace <src> <dst> "OLD" "NEW"` | Copy and global text replace in paragraphs, tables, headers, footers |
+| Command                                                                              | Purpose                                                                                         |
+| ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `python build/docx_tool.py inspect <file.docx>`                                      | Paragraph counts + first lines (ASCII-safe on Windows consoles)                                 |
+| `python build/docx_tool.py replace <src> <dst> "OLD" "NEW"`                          | Copy and global text replace in paragraphs, tables, headers, footers                            |
 | `python build/docx_tool.py fill-template <template.docx> <metadata.yaml> <out.docx>` | Copy faculty template; fill title + team (3rd member inserted after row 2); advisor placeholder |
-| `python build/docx_tool.py set-core-props <file.docx> <metadata.yaml>` | Set document **Title / Author / Comments** from YAML (in-place) |
+| `python build/docx_tool.py set-core-props <file.docx> <metadata.yaml>`               | Set document **Title / Author / Comments** from YAML (in-place)                                 |
 
 `build/export.ps1` runs **`set-core-props`** on the Pandoc-produced manual and paper, and **`fill-template`** into `dist/Faculty_Template_Filled.docx` when the template path exists and `python-docx` is installed.
 
@@ -84,12 +84,12 @@ powershell -ExecutionPolicy Bypass -File docs/16_submission_package/build/export
 
 **Outputs** under `docs/16_submission_package/dist/` (gitignored):
 
-| File | Role |
-|------|------|
-| `SmartGlasses_ProjectManual.docx` / `.pdf` | Full merged report (+ TOC in docx) |
-| `SmartGlasses_ResearchPaper.docx` / `.pdf` | Short paper |
-| `SmartGlasses_Defense.pptx` / `.pdf` | Slides |
-| `Faculty_Template_Filled.docx` / `.pdf` | Faculty template with cover fields from `metadata.yaml` (if template + python-docx available) |
+| File                                       | Role                                                                                          |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| `SmartGlasses_ProjectManual.docx` / `.pdf` | Full merged report (+ TOC in docx)                                                            |
+| `SmartGlasses_ResearchPaper.docx` / `.pdf` | Short paper                                                                                   |
+| `SmartGlasses_Defense.pptx` / `.pdf`       | Slides                                                                                        |
+| `Faculty_Template_Filled.docx` / `.pdf`    | Faculty template with cover fields from `metadata.yaml` (if template + python-docx available) |
 
 ### Verify code paths in Markdown
 
@@ -100,3 +100,13 @@ powershell -ExecutionPolicy Bypass -File docs/16_submission_package/build/verify
 ## Metadata
 
 Author list and title: [metadata.yaml](metadata.yaml) (used by Pandoc and `docx_tool.py`).
+
+---
+
+Copyright © 2026 Ahmed Moussa
+
+This software is provided to New Mansoura University solely for academic evaluation purposes.
+
+No license, ownership rights, distribution rights, modification rights, or commercial rights are granted.
+
+All intellectual property rights remain with the author.

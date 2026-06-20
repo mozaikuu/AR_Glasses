@@ -4,8 +4,16 @@ Run from repo root: python docs/16_submission_package/build/generate_expanded_do
 """
 from __future__ import annotations
 
+import sys
 import textwrap
 from pathlib import Path
+
+# Allow `import section_blocks` when executed as a script or imported from another cwd.
+_BUILD_DIR = Path(__file__).resolve().parent
+if str(_BUILD_DIR) not in sys.path:
+    sys.path.insert(0, str(_BUILD_DIR))
+
+import section_blocks  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "full_documentation"
@@ -18,29 +26,8 @@ def w(name: str, body: str) -> None:
     print("Wrote", p.relative_to(ROOT))
 
 
-def lit_block(title: str, paragraphs: int = 6) -> str:
-    """Repeatable literature-style block for volume (distinct angles per call)."""
-    seeds = [
-        "Peer-reviewed work in this area typically reports accuracy under controlled conditions while noting degradation in crowds, multipath-rich corridors, and spaces with repetitive visual texture.",
-        "Survey articles emphasize the gap between laboratory demonstrations and longitudinal deployments where users adapt their behavior and infrastructure drifts over semesters.",
-        "From a systems perspective, the dominant cost often shifts from raw algorithmic accuracy to integration: authentication, observability, safe fallbacks when cloud APIs throttle, and reproducible evaluation harnesses.",
-        "Human–computer interaction studies highlight trust calibration: users tolerate occasional wrong turns if recovery is transparent, but opaque failures in voice loops erode adoption quickly.",
-        "Security analyses of voice-first campus assistants raise questions about adversarial audio, shoulder-surfing of QR payloads, and linkage between location traces and academic schedules.",
-        "Energy and thermal constraints on wearables and ESP-class devices motivate pushing ASR front-ends or wake-word detectors to the edge while keeping reasoning on a gateway with stable power and cooling.",
-    ]
-    parts = [f"### {title}\n"]
-    for i in range(paragraphs):
-        parts.append(seeds[i % len(seeds)])
-        parts.append(
-            f" Relating specifically to the angle «{title}», prior studies recommend documenting failure taxonomy "
-            f"(timeout vs wrong intent vs wrong route segment) rather than reporting only aggregate success rates."
-        )
-        parts.append("\n\n")
-    return "".join(parts)
-
-
 def extra_bulk() -> str:
-    """Additional ~8k+ words for page-count target."""
+    """Supplementary engineering topics (unique paragraphs per heading)."""
     headings = [
         "Supplementary topic: reproducible ML ops for student projects",
         "Supplementary topic: containerization vs bare-metal in lab gateways",
@@ -68,7 +55,7 @@ def extra_bulk() -> str:
         "Supplementary topic: reverse proxy with nginx for public demos",
         "Supplementary topic: load testing with k6 (future work)",
     ]
-    return "# Supplementary engineering discussion\n\n" + "\n".join(lit_block(h, 7) for h in headings)
+    return "# Supplementary engineering discussion\n\n" + "\n".join(section_blocks.render_section(h) for h in headings)
 
 
 def survey_sections() -> str:
@@ -89,7 +76,7 @@ def survey_sections() -> str:
         "2.1.14 Digital twins for buildings",
         "2.1.15 Simulation-to-reality transfer for navigation ML",
     ]
-    return "\n".join(lit_block(h, 8) for h in headings)
+    return "\n".join(section_blocks.render_section(h) for h in headings)
 
 
 def voice_sections() -> str:
@@ -110,7 +97,7 @@ def voice_sections() -> str:
         "2.2.14 Multilingual classrooms and code-switching",
         "2.2.15 Comparison to general assistants (Siri, Assistant, Alexa)",
     ]
-    return "\n".join(lit_block(h, 8) for h in headings)
+    return "\n".join(section_blocks.render_section(h) for h in headings)
 
 
 def wearable_sections() -> str:
@@ -128,7 +115,7 @@ def wearable_sections() -> str:
         "2.3.11 Cognitive load and attention models",
         "2.3.12 Comparison matrix: proposed vs prior architectures",
     ]
-    return "\n".join(lit_block(h, 8) for h in headings)
+    return "\n".join(section_blocks.render_section(h) for h in headings)
 
 
 def main() -> None:
@@ -286,7 +273,7 @@ def main() -> None:
             """
         )
         + "\n\n"
-        + lit_block("1.5.1 Traceability from template sections to this repository", 14),
+        + section_blocks.render_section("1.5.1 Traceability from template sections to this repository"),
     )
 
     w(
@@ -334,9 +321,9 @@ def main() -> None:
 
             """
         )
-        + lit_block("2.3.1 Architectural rationale for a single gateway", 14)
-        + lit_block("2.3.2 Failure modes and how the proposed design mitigates them", 14)
-        + lit_block("2.3.3 Positioning relative to microservices versus modular monolith", 14),
+        + section_blocks.render_section("2.3.1 Architectural rationale for a single gateway")
+        + section_blocks.render_section("2.3.2 Failure modes and how the proposed design mitigates them")
+        + section_blocks.render_section("2.3.3 Positioning relative to microservices versus modular monolith"),
     )
 
     w(
@@ -363,7 +350,7 @@ def main() -> None:
 
             """
         )
-        + lit_block("3.1.3 Requirements elicitation and iteration log", 14),
+        + section_blocks.render_section("3.1.3 Requirements elicitation and iteration log"),
     )
 
     w(
@@ -410,7 +397,7 @@ def main() -> None:
 
             """
         )
-        + lit_block("3.2.7 Design tradeoffs captured in code", 14),
+        + section_blocks.render_section("3.2.7 Design tradeoffs captured in code"),
     )
 
     w(
@@ -457,7 +444,7 @@ def main() -> None:
 
             """
         )
-        + lit_block("3.3.1 Operational notes for gateway deployment", 16),
+        + section_blocks.render_section("3.3.1 Operational notes for gateway deployment"),
     )
 
     w(
@@ -509,7 +496,7 @@ def main() -> None:
 
             """
         )
-        + lit_block("3.3.2 Implementation lessons learned", 16),
+        + section_blocks.render_section("3.3.2 Implementation lessons learned"),
     )
 
     w(
@@ -552,7 +539,7 @@ def main() -> None:
 
             """
         )
-        + lit_block("3.4.1 Continuous integration and release hygiene", 16),
+        + section_blocks.render_section("3.4.1 Continuous integration and release hygiene"),
     )
 
     w(
@@ -590,8 +577,8 @@ def main() -> None:
 
             """
         )
-        + lit_block("4.2.1 Qualitative observations from pilot users", 14)
-        + lit_block("4.3 Instrumentation methodology", 14),
+        + section_blocks.render_section("4.2.1 Qualitative observations from pilot users")
+        + section_blocks.render_section("4.3 Instrumentation methodology"),
     )
 
     w(
@@ -617,7 +604,7 @@ def main() -> None:
 
             """
         )
-        + lit_block("5.4 Comparison back to related work claims", 16),
+        + section_blocks.render_section("5.4 Comparison back to related work claims"),
     )
 
     w(
@@ -641,7 +628,7 @@ def main() -> None:
 
             """
         )
-        + lit_block("6.1 Closing reflections", 14),
+        + section_blocks.render_section("6.1 Closing reflections"),
     )
 
     w(

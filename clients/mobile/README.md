@@ -39,3 +39,13 @@ cd android
 Open the Settings tab in the app to set the backend URL and optional API key.
 
 Default backend URL: `http://127.0.0.1:8000`
+
+---
+
+Copyright © 2026 Ahmed Moussa
+
+This software is provided to New Mansoura University solely for academic evaluation purposes.
+
+No license, ownership rights, distribution rights, modification rights, or commercial rights are granted.
+
+All intellectual property rights remain with the author.

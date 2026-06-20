@@ -22,3 +22,13 @@ This folder provides ready-to-customize presentation drafts for different audien
 2. Borrow deeper implementation slides from deck 2 if examiners ask for technical depth.
 3. Use deck 3 when time is limited or for external showcase.
 4. Rehearse with the Q&A bank and map answers to your actual demo outputs.
+
+---
+
+Copyright © 2026 Ahmed Moussa
+
+This software is provided to New Mansoura University solely for academic evaluation purposes.
+
+No license, ownership rights, distribution rights, modification rights, or commercial rights are granted.
+
+All intellectual property rights remain with the author.

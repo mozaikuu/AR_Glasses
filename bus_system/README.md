@@ -33,3 +33,13 @@ npm run dev
 
 - Frontend: http://localhost:3000
 - Backend docs: http://127.0.0.1:8000/docs
+
+---
+
+Copyright © 2026 Ahmed Moussa
+
+This software is provided to New Mansoura University solely for academic evaluation purposes.
+
+No license, ownership rights, distribution rights, modification rights, or commercial rights are granted.
+
+All intellectual property rights remain with the author.

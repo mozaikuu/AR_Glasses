@@ -118,24 +118,27 @@ flowchart LR
 
 ```mermaid
 gantt
-    title Smart Glasses Distilled Roadmap
+    title Smart Glasses Distilled Full Project Timeline
     dateFormat  YYYY-MM-DD
     axisFormat  %b %Y
 
-    section Stabilization (0-3 months)
-    Security hardening and secret rotation   :a1, 2026-04-01, 45d
-    Persistent session storage               :a2, 2026-04-15, 60d
-    CI validation gates                      :a3, 2026-04-20, 50d
+    section Planning and Requirements
+    Project scope, requirements, and success criteria :a1, 2025-09-01, 30d
 
-    section Capability Growth (3-6 months)
-    Navigation intelligence improvements     :b1, 2026-07-01, 75d
-    Voice robustness improvements            :b2, 2026-07-15, 75d
-    Firmware playback resilience             :b3, 2026-08-01, 60d
+    section Architecture and Core Build
+    Backend foundation, service structure, and API contracts :a2, after a1, 60d
 
-    section Productization (6-12 months)
-    Observability and tracing                :c1, 2026-10-01, 90d
-    Deployment automation                    :c2, 2026-10-15, 90d
-    Versioned API policy and release tracks :c3, 2026-11-01, 75d
+    section Assistant and Navigation
+    Assistant routing, navigation logic, and voice-command flow :a3, after a2, 75d
+
+    section Device and Firmware Integration
+    ESP32 communication, TTS handling, and client integration :a4, after a3, 60d
+
+    section Testing and Stabilization
+    Unit tests, integration checks, Unity validation, and bug fixing :a5, after a4, 60d
+
+    section Documentation and Final Delivery
+    Report writing, diagrams, demo preparation, and final submission :a6, 2026-05-01, 2026-06-01
 ```
 
 ## How To Use These Diagrams

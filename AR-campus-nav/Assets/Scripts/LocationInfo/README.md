@@ -80,6 +80,7 @@ LocationInfoSystem/
 ### TA Office
 
 **Displays:**
+
 - Staff member cards
 - Name, role, email
 - Office days and hours
@@ -89,6 +90,7 @@ LocationInfoSystem/
 ### Lecture Hall
 
 **Displays:**
+
 - Today's lectures
 - Course name, code, instructor
 - Start/end times
@@ -99,6 +101,7 @@ LocationInfoSystem/
 ### Generic Location
 
 **Displays:**
+
 - Description
 - Additional info
 
@@ -106,24 +109,24 @@ LocationInfoSystem/
 
 ### LocationTrigger Options
 
-| Option | Description |
-|--------|-------------|
-| `locationId` | ID from navigation.json |
+| Option           | Description                             |
+| ---------------- | --------------------------------------- |
+| `locationId`     | ID from navigation.json                 |
 | `overrideRadius` | Use custom radius instead of JSON value |
-| `customRadius` | Trigger radius in meters |
-| `popupOffset` | Where to show popup relative to trigger |
-| `autoHideOnExit` | Hide popup when leaving area |
-| `showDelay` | Delay before showing (seconds) |
-| `requireFacing` | Only show if user faces location |
+| `customRadius`   | Trigger radius in meters                |
+| `popupOffset`    | Where to show popup relative to trigger |
+| `autoHideOnExit` | Hide popup when leaving area            |
+| `showDelay`      | Delay before showing (seconds)          |
+| `requireFacing`  | Only show if user faces location        |
 
 ### LocationInfoPopup Options
 
-| Option | Description |
-|--------|-------------|
-| `billboardMode` | Always face user camera |
-| `followUser` | Popup follows user position |
-| `followDistance` | Distance from user (if following) |
-| `hideAfterSeconds` | Auto-hide timeout (0 = never) |
+| Option             | Description                       |
+| ------------------ | --------------------------------- |
+| `billboardMode`    | Always face user camera           |
+| `followUser`       | Popup follows user position       |
+| `followDistance`   | Distance from user (if following) |
+| `hideAfterSeconds` | Auto-hide timeout (0 = never)     |
 
 ## MultiSet Integration
 
@@ -146,6 +149,7 @@ The `LocalizationWrapper` provides user position to the navigation system.
 ## Debugging
 
 Enable `debugMode` on components to see:
+
 - Trigger radius gizmos (cyan spheres)
 - Popup position gizmos (yellow)
 - Console logs for trigger events
@@ -199,6 +203,16 @@ popup.OnHide += () => { /* Popup closed */ };
 
 ## Troubleshooting
 
+---
+
+Copyright © 2026 Ahmed Moussa
+
+This software is provided to New Mansoura University solely for academic evaluation purposes.
+
+No license, ownership rights, distribution rights, modification rights, or commercial rights are granted.
+
+All intellectual property rights remain with the author.
+
 ### Popup not showing
 
 - Check trigger radius covers player
@@ -240,4 +254,4 @@ No changes needed to navigation.json - same data format.
 
 ---
 
-*Part of Cerebro Smart Glasses Project*
+_Part of Cerebro Smart Glasses Project_
