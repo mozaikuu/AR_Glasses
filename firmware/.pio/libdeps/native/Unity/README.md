@@ -1,6 +1,6 @@
 # Unity Test ![CI][]
 
-__Copyright (c) 2007 - 2024 Unity Project by Mike Karlesky, Mark VanderVoord, and Greg Williams__
+**Copyright (c) 2007 - 2024 Unity Project by Mike Karlesky, Mark VanderVoord, and Greg Williams**
 
 Welcome to the Unity Test Project, one of the main projects of ThrowTheSwitch.org.
 Unity Test is a unit testing framework built for C, with a focus on working with embedded toolchains.
@@ -74,7 +74,7 @@ Like INT, there are variants for different sizes also.
     TEST_ASSERT_EQUAL_HEX64(expected, actual)
 
 Compares two integers for equality and display errors as hexadecimal.
-Like the other integer comparisons, you can specify the size... 
+Like the other integer comparisons, you can specify the size...
 here the size will also effect how many nibbles are shown (for example, `HEX16` will show 4 nibbles).
 
     TEST_ASSERT_EQUAL(expected, actual)
@@ -227,7 +227,7 @@ Fails if the pointer is equal to NULL
     TEST_ASSERT_EQUAL_MEMORY(expected, actual, len)
 
 Compare two blocks of memory.
-This is a good generic assertion for types that can't be coerced into acting like standard types... 
+This is a good generic assertion for types that can't be coerced into acting like standard types...
 but since it's a memory compare, you have to be careful that your data types are packed.
 
 ### \_MESSAGE

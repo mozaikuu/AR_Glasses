@@ -5,7 +5,7 @@
 #include "esp_heap_caps.h"
 
 // Camera-only temporary test sketch.
-// Remove folder: Firmware/_tmp_camera_only_test_delete_after after testing.
+// Remove folder: Firmware/_tmp_camera_only_test_delete_after after testing.d:\0_code\Life_Recorder\esp32.ino
 
 static const char *AP_SSID = "SmartGlasses_CamOnly";
 static const char *AP_PASSWORD = "12345678";
